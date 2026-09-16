@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { X, Phone, Mail, MessageCircle, Loader2, FileSignature } from "lucide-react";
 import { LEAD_STATUSES, leadStatusLabels, type StoredLead, type LeadStatusValue, type LeadActivityEntry } from "@/lib/leads";
+import { formatDateTime } from "@/lib/adminDate";
 import { services } from "@/lib/data/services";
 import Badge from "@/components/admin/ui/Badge";
 import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
@@ -208,7 +209,7 @@ export default function LeadDetailDrawer({
                   <li key={a.id} className="rounded-lg border border-admin-border p-2.5">
                     <p className="text-admin-text">{a.action.replace(/[._]/g, " ")}</p>
                     <p className="text-xs text-admin-text-muted">
-                      {a.adminName ?? "System"} · {new Date(a.createdAt).toLocaleString()}
+                      {a.adminName ?? "System"} · {formatDateTime(a.createdAt)}
                     </p>
                   </li>
                 ))}

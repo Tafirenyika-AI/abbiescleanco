@@ -8,6 +8,7 @@ import { QUOTE_STATUSES } from "@/lib/server/quoteStore";
 import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import { formatDate } from "@/lib/adminDate";
 
 const statusTone: Record<QuoteStatusValue, "neutral" | "info" | "success" | "error" | "warning"> = {
   DRAFT: "neutral",
@@ -44,7 +45,7 @@ export default function QuotesView({ quotes }: { quotes: QuoteListItem[] }) {
         </Card>
         <Card>
           <p className="text-sm font-medium text-admin-text-muted">Accepted value</p>
-          <p className="mt-2 text-2xl font-semibold text-admin-text">${(acceptedValue / 100).toLocaleString()}</p>
+          <p className="mt-2 text-2xl font-semibold text-admin-text">${(acceptedValue / 100).toLocaleString("en-US")}</p>
         </Card>
         <Card>
           <p className="text-sm font-medium text-admin-text-muted">Drafts</p>
@@ -92,7 +93,7 @@ export default function QuotesView({ quotes }: { quotes: QuoteListItem[] }) {
                   <td className="p-3.5 text-admin-text">{q.customerName}</td>
                   <td className="p-3.5 text-admin-text">{q.serviceName}</td>
                   <td className="p-3.5 text-admin-text">${(q.total / 100).toFixed(2)}</td>
-                  <td className="p-3.5 text-admin-text-muted">{q.expiresAt ? new Date(q.expiresAt).toLocaleDateString() : "—"}</td>
+                  <td className="p-3.5 text-admin-text-muted">{q.expiresAt ? formatDate(q.expiresAt) : "—"}</td>
                   <td className="p-3.5"><Badge tone={statusTone[q.status]}>{q.status}</Badge></td>
                 </tr>
               ))}

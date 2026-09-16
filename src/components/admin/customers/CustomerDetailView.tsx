@@ -8,6 +8,7 @@ import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import { useToast } from "@/components/admin/ui/Toast";
+import { formatDate, formatDateTime } from "@/lib/adminDate";
 
 const tabs = ["Overview", "Properties", "Bookings", "Payments", "Notes & preferences"] as const;
 type Tab = (typeof tabs)[number];
@@ -25,7 +26,7 @@ export default function CustomerDetailView({ customer }: { customer: CustomerDet
       <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-admin-text sm:text-[28px]">{fullName || "Customer"}</h1>
-          <p className="mt-1 text-sm text-admin-text-muted">Customer since {new Date(customer.createdAt).toLocaleDateString()}</p>
+          <p className="mt-1 text-sm text-admin-text-muted">Customer since {formatDate(customer.createdAt)}</p>
         </div>
         <div className="flex gap-2">
           <a href={`tel:${customer.phone}`} className="flex items-center gap-1.5 rounded-lg border border-admin-border px-3 py-2 text-sm font-medium text-admin-text hover:bg-admin-bg">
@@ -124,7 +125,7 @@ function BookingsTab({ customer }: { customer: CustomerDetail }) {
             <tr key={b.id} className="border-t border-admin-border">
               <td className="p-3.5 text-admin-text">{b.reference}</td>
               <td className="p-3.5"><Badge tone="neutral">{b.status.replace(/_/g, " ")}</Badge></td>
-              <td className="p-3.5 text-admin-text-muted">{b.scheduledStart ? new Date(b.scheduledStart).toLocaleString() : "—"}</td>
+              <td className="p-3.5 text-admin-text-muted">{b.scheduledStart ? formatDateTime(b.scheduledStart) : "—"}</td>
             </tr>
           ))}
         </tbody>
@@ -147,7 +148,7 @@ function PaymentsTab({ customer }: { customer: CustomerDetail }) {
               <td className="p-3.5 capitalize text-admin-text">{p.kind.replace(/_/g, " ")}</td>
               <td className="p-3.5 text-admin-text">${(p.amount / 100).toFixed(2)}</td>
               <td className="p-3.5"><Badge tone="neutral">{p.status}</Badge></td>
-              <td className="p-3.5 text-admin-text-muted">{new Date(p.createdAt).toLocaleDateString()}</td>
+              <td className="p-3.5 text-admin-text-muted">{formatDate(p.createdAt)}</td>
             </tr>
           ))}
         </tbody>

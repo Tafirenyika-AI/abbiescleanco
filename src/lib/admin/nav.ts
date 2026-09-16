@@ -55,8 +55,8 @@ export const navGroups: NavGroup[] = [
   {
     label: "Operations",
     items: [
-      { href: "/admin/bookings", label: "Bookings", icon: CalendarClock, permission: "MANAGE_BOOKINGS", built: false },
-      { href: "/admin/calendar", label: "Calendar", icon: CalendarDays, permission: "MANAGE_BOOKINGS", built: false },
+      { href: "/admin/bookings", label: "Bookings", icon: CalendarClock, permission: "MANAGE_BOOKINGS", built: true },
+      { href: "/admin/calendar", label: "Calendar", icon: CalendarDays, permission: "MANAGE_BOOKINGS", built: true },
       { href: "/admin/pricing", label: "Services & pricing", icon: Wrench, permission: "MANAGE_PRICING", built: true },
       { href: "/admin/team", label: "Team", icon: UsersRound, permission: "MANAGE_USERS", built: false },
     ],

@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, Loader2, Send, Copy, MessageCircle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Loader2, Send, Copy, MessageCircle, CalendarPlus } from "lucide-react";
 import type { QuoteDetail, QuoteStatusValue } from "@/lib/server/quoteStore";
 import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
 import { useToast } from "@/components/admin/ui/Toast";
+import { formatDate, formatDateTime } from "@/lib/adminDate";
 
 interface LineItem {
   label: string;
@@ -67,6 +68,14 @@ export default function QuoteDetailView({
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [bookingDialog, setBookingDialog] = useState(false);
+  const [bookingDate, setBookingDate] = useState("");
+  const [bookingStart, setBookingStart] = useState("09:00");
+  const [bookingEnd, setBookingEnd] = useState("11:00");
+  const [bookingArrivalWindow, setBookingArrivalWindow] = useState("");
+  const [bookingStaff, setBookingStaff] = useState("");
+  const [bookingConflicts, setBookingConflicts] = useState<{ reference: string; customerName: string; scheduledStart: string | null }[] | null>(null);
+  const [creatingBooking, setCreatingBooking] = useState(false);
 
   const subtotal = items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
   const total = Math.max(0, subtotal - discount + tax);
@@ -190,6 +199,38 @@ export default function QuoteDetailView({
       return;
     }
     router.push(`/admin/quotes/${json.id}`);
+  }
+
+  async function createBooking(confirmDespiteConflict = false) {
+    if (!quote || !bookingDate) return;
+    setCreatingBooking(true);
+    try {
+      const res = await fetch("/api/admin/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quoteId: quote.id,
+          scheduledStart: `${bookingDate}T${bookingStart}:00`,
+          scheduledEnd: `${bookingDate}T${bookingEnd}:00`,
+          arrivalWindow: bookingArrivalWindow || undefined,
+          staffAssignee: bookingStaff || undefined,
+          confirmDespiteConflict,
+        }),
+      });
+      const json = await res.json();
+      if (res.status === 409) {
+        setBookingConflicts(json.conflicts);
+        return;
+      }
+      if (!res.ok || !json.ok) {
+        showToast(json.error || "Couldn't create booking", "error");
+        return;
+      }
+      showToast("Booking created", "success");
+      router.push(`/admin/bookings/${json.id}`);
+    } finally {
+      setCreatingBooking(false);
+    }
   }
 
   async function confirmDeleteQuote() {
@@ -355,9 +396,15 @@ export default function QuoteDetailView({
                 <button type="button" onClick={duplicate} className="flex items-center justify-center gap-1.5 rounded-lg border border-admin-border px-3 py-2 text-sm font-medium text-admin-text hover:bg-admin-bg">
                   <Copy className="size-3.5" aria-hidden /> Duplicate as new draft
                 </button>
-                <span title="Coming soon" className="cursor-not-allowed rounded-lg border border-dashed border-admin-border px-3 py-2 text-center text-sm text-admin-text-muted">
-                  Convert to booking — Soon
-                </span>
+                {quote.status === "ACCEPTED" ? (
+                  <button type="button" onClick={() => setBookingDialog(true)} className="flex items-center justify-center gap-1.5 rounded-lg bg-admin-teal px-3 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover">
+                    <CalendarPlus className="size-3.5" aria-hidden /> Convert to booking
+                  </button>
+                ) : (
+                  <span title="Only accepted quotes can become bookings" className="cursor-not-allowed rounded-lg border border-dashed border-admin-border px-3 py-2 text-center text-sm text-admin-text-muted">
+                    Convert to booking
+                  </span>
+                )}
                 <button type="button" onClick={() => setConfirmDelete(true)} className="rounded-lg border border-admin-error/30 px-3 py-2 text-sm font-semibold text-admin-error hover:bg-red-50">
                   Delete quote
                 </button>
@@ -376,6 +423,67 @@ export default function QuoteDetailView({
         onConfirm={confirmDeleteQuote}
         onCancel={() => setConfirmDelete(false)}
       />
+
+      {bookingDialog && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-admin-card p-6 shadow-2xl">
+            <h2 className="text-base font-semibold text-admin-text">Schedule this cleaning</h2>
+            <div className="mt-3 space-y-3">
+              <label className="block">
+                <span className="text-xs font-medium text-admin-text-muted">Date</span>
+                <input type="date" value={bookingDate} onChange={(e) => setBookingDate(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block">
+                  <span className="text-xs font-medium text-admin-text-muted">Start</span>
+                  <input type="time" value={bookingStart} onChange={(e) => setBookingStart(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-medium text-admin-text-muted">End</span>
+                  <input type="time" value={bookingEnd} onChange={(e) => setBookingEnd(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+                </label>
+              </div>
+              <label className="block">
+                <span className="text-xs font-medium text-admin-text-muted">Arrival window (optional)</span>
+                <input value={bookingArrivalWindow} onChange={(e) => setBookingArrivalWindow(e.target.value)} placeholder="e.g. 9–11am" className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-admin-text-muted">Assigned cleaner (optional)</span>
+                <input value={bookingStaff} onChange={(e) => setBookingStaff(e.target.value)} placeholder="Name" className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+              </label>
+            </div>
+
+            {bookingConflicts && (
+              <div className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+                <p className="font-semibold">This overlaps with:</p>
+                <ul className="mt-1 list-disc pl-4">
+                  {bookingConflicts.map((c) => (
+                    <li key={c.reference}>{c.customerName} — {c.scheduledStart ? formatDateTime(c.scheduledStart) : ""}</li>
+                  ))}
+                </ul>
+                <button type="button" onClick={() => createBooking(true)} disabled={creatingBooking} className="mt-2 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-60">
+                  Schedule anyway
+                </button>
+              </div>
+            )}
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={() => { setBookingDialog(false); setBookingConflicts(null); }} className="rounded-lg border border-admin-border px-3.5 py-2 text-sm font-semibold text-admin-text hover:bg-admin-bg">
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!bookingDate || creatingBooking}
+                onClick={() => createBooking(false)}
+                className="flex items-center gap-2 rounded-lg bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
+              >
+                {creatingBooking ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+                Create booking
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -41,7 +41,7 @@ export default function CustomersView({ customers }: { customers: CustomerSummar
         </Card>
         <Card>
           <p className="text-sm font-medium text-admin-text-muted">Lifetime revenue (paid)</p>
-          <p className="mt-2 text-2xl font-semibold text-admin-text">${lifetimeTotal.toLocaleString()}</p>
+          <p className="mt-2 text-2xl font-semibold text-admin-text">${lifetimeTotal.toLocaleString("en-US")}</p>
         </Card>
       </div>
 
@@ -89,8 +89,8 @@ export default function CustomersView({ customers }: { customers: CustomerSummar
                   </td>
                   <td className="p-3.5 text-admin-text">{c.primaryAddress ?? "—"}</td>
                   <td className="p-3.5 text-admin-text">{c.totalBookings}</td>
-                  <td className="p-3.5 text-admin-text">${c.lifetimeValue.toLocaleString()}</td>
-                  <td className="p-3.5 text-admin-text">{c.outstandingBalance > 0 ? `$${c.outstandingBalance.toLocaleString()}` : "—"}</td>
+                  <td className="p-3.5 text-admin-text">${c.lifetimeValue.toLocaleString("en-US")}</td>
+                  <td className="p-3.5 text-admin-text">{c.outstandingBalance > 0 ? `$${c.outstandingBalance.toLocaleString("en-US")}` : "—"}</td>
                   <td className="p-3.5"><Badge tone={statusTone[c.status]}>{statusLabel[c.status]}</Badge></td>
                 </tr>
               ))}

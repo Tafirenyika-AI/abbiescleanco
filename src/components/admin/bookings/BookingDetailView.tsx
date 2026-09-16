@@ -1,0 +1,250 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft, Phone, Mail, Loader2 } from "lucide-react";
+import type { BookingDetail, BookingStatusValue } from "@/lib/server/bookingStore";
+import { BOOKING_STATUSES, bookingStatusLabels } from "@/lib/server/bookingStore";
+import Card from "@/components/admin/ui/Card";
+import Badge from "@/components/admin/ui/Badge";
+import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
+import { useToast } from "@/components/admin/ui/Toast";
+import { formatDateTime } from "@/lib/adminDate";
+
+const statusTone: Record<BookingStatusValue, "neutral" | "info" | "success" | "error" | "warning"> = {
+  REQUESTED: "neutral",
+  CONFIRMED: "info",
+  SCHEDULED: "info",
+  IN_PROGRESS: "warning",
+  COMPLETED: "success",
+  CANCELLED: "error",
+  RESCHEDULED: "warning",
+};
+
+function toDateInput(iso: string | null) {
+  return iso ? iso.slice(0, 10) : "";
+}
+function toTimeInput(iso: string | null) {
+  return iso ? new Date(iso).toTimeString().slice(0, 5) : "";
+}
+
+export default function BookingDetailView({ booking }: { booking: BookingDetail }) {
+  const router = useRouter();
+  const { showToast } = useToast();
+  const [staff, setStaff] = useState(booking.staffAssignee ?? "");
+  const [savingStaff, setSavingStaff] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const [rescheduling, setRescheduling] = useState(false);
+  const [date, setDate] = useState(toDateInput(booking.scheduledStart));
+  const [start, setStart] = useState(toTimeInput(booking.scheduledStart));
+  const [end, setEnd] = useState(toTimeInput(booking.scheduledEnd));
+  const [arrivalWindow, setArrivalWindow] = useState(booking.arrivalWindow ?? "");
+  const [conflicts, setConflicts] = useState<{ reference: string; customerName: string; scheduledStart: string | null }[] | null>(null);
+  const [savingSchedule, setSavingSchedule] = useState(false);
+
+  async function setStatus(status: BookingStatusValue) {
+    const res = await fetch(`/api/admin/bookings/${booking.id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (!res.ok) {
+      showToast("Couldn't update status", "error");
+      return;
+    }
+    showToast(`Marked ${bookingStatusLabels[status].toLowerCase()}`, "success");
+    router.refresh();
+  }
+
+  async function saveStaff() {
+    setSavingStaff(true);
+    const res = await fetch(`/api/admin/bookings/${booking.id}/assign`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ staffAssignee: staff }),
+    });
+    setSavingStaff(false);
+    if (!res.ok) {
+      showToast("Couldn't assign cleaner", "error");
+      return;
+    }
+    showToast("Cleaner assigned", "success");
+    router.refresh();
+  }
+
+  async function saveReschedule(confirmDespiteConflict = false) {
+    if (!date || !start || !end) return;
+    setSavingSchedule(true);
+    try {
+      const res = await fetch(`/api/admin/bookings/${booking.id}/reschedule`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scheduledStart: `${date}T${start}:00`,
+          scheduledEnd: `${date}T${end}:00`,
+          arrivalWindow: arrivalWindow || undefined,
+          confirmDespiteConflict,
+        }),
+      });
+      const json = await res.json();
+      if (res.status === 409) {
+        setConflicts(json.conflicts);
+        return;
+      }
+      if (!res.ok || !json.ok) {
+        showToast(json.error || "Couldn't reschedule", "error");
+        return;
+      }
+      showToast("Rescheduled", "success");
+      setConflicts(null);
+      setRescheduling(false);
+      router.refresh();
+    } finally {
+      setSavingSchedule(false);
+    }
+  }
+
+  async function confirmDeleteBooking() {
+    const res = await fetch(`/api/admin/bookings/${booking.id}`, { method: "DELETE" });
+    setConfirmDelete(false);
+    if (!res.ok) {
+      showToast("Couldn't delete booking", "error");
+      return;
+    }
+    router.push("/admin/bookings");
+  }
+
+  return (
+    <div>
+      <Link href="/admin/bookings" className="inline-flex items-center gap-1.5 text-sm text-admin-text-muted hover:text-admin-text">
+        <ArrowLeft className="size-4" aria-hidden /> Back to bookings
+      </Link>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-admin-text sm:text-[28px]">{booking.reference}</h1>
+          <p className="mt-1 text-sm text-admin-text-muted">{booking.customerName} · {booking.serviceName}</p>
+        </div>
+        <Badge tone={statusTone[booking.status]}>{bookingStatusLabels[booking.status]}</Badge>
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
+          <Card>
+            <h2 className="font-semibold text-admin-text">Details</h2>
+            <dl className="mt-3 space-y-1.5 text-sm">
+              <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Address</dt><dd className="text-right text-admin-text">{booking.address}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Scheduled</dt><dd className="text-admin-text">{booking.scheduledStart ? formatDateTime(booking.scheduledStart) : "Not scheduled"}</dd></div>
+              {booking.arrivalWindow && <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Arrival window</dt><dd className="text-admin-text">{booking.arrivalWindow}</dd></div>}
+            </dl>
+            {booking.additionalInstructions && (
+              <p className="mt-3 rounded-lg bg-admin-bg p-2.5 text-sm text-admin-text">{booking.additionalInstructions}</p>
+            )}
+            <div className="mt-3 flex gap-2">
+              <a href={`tel:${booking.customerPhone}`} className="flex items-center gap-1.5 rounded-lg border border-admin-border px-3 py-1.5 text-sm text-admin-text hover:bg-admin-bg"><Phone className="size-3.5" aria-hidden /> Call</a>
+              <a href={`mailto:${booking.customerEmail}`} className="flex items-center gap-1.5 rounded-lg border border-admin-border px-3 py-1.5 text-sm text-admin-text hover:bg-admin-bg"><Mail className="size-3.5" aria-hidden /> Email</a>
+            </div>
+          </Card>
+
+          <Card>
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-admin-text">Schedule</h2>
+              <button type="button" onClick={() => setRescheduling((v) => !v)} className="text-sm font-semibold text-admin-teal-hover hover:underline">
+                {rescheduling ? "Cancel" : "Reschedule"}
+              </button>
+            </div>
+            {rescheduling && (
+              <div className="mt-3 space-y-3">
+                <label className="block">
+                  <span className="text-xs font-medium text-admin-text-muted">Date</span>
+                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block">
+                    <span className="text-xs font-medium text-admin-text-muted">Start</span>
+                    <input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-medium text-admin-text-muted">End</span>
+                    <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+                  </label>
+                </div>
+                <label className="block">
+                  <span className="text-xs font-medium text-admin-text-muted">Arrival window</span>
+                  <input value={arrivalWindow} onChange={(e) => setArrivalWindow(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+                </label>
+                {conflicts && (
+                  <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+                    <p className="font-semibold">This overlaps with:</p>
+                    <ul className="mt-1 list-disc pl-4">
+                      {conflicts.map((c) => <li key={c.reference}>{c.customerName} — {c.scheduledStart ? formatDateTime(c.scheduledStart) : ""}</li>)}
+                    </ul>
+                    <button type="button" onClick={() => saveReschedule(true)} disabled={savingSchedule} className="mt-2 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-60">Reschedule anyway</button>
+                  </div>
+                )}
+                <button type="button" onClick={() => saveReschedule(false)} disabled={savingSchedule} className="flex items-center gap-2 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
+                  {savingSchedule ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null} Confirm reschedule
+                </button>
+              </div>
+            )}
+          </Card>
+
+          <Card>
+            <h2 className="font-semibold text-admin-text">Status history</h2>
+            {booking.statusHistory.length === 0 ? (
+              <p className="mt-2 text-sm text-admin-text-muted">No changes recorded yet.</p>
+            ) : (
+              <ul className="mt-2 space-y-2 text-sm">
+                {booking.statusHistory.map((h) => (
+                  <li key={h.id} className="rounded-lg border border-admin-border p-2.5">
+                    <p className="text-admin-text">{bookingStatusLabels[h.toStatus as BookingStatusValue] ?? h.toStatus}{h.note ? ` — ${h.note}` : ""}</p>
+                    <p className="text-xs text-admin-text-muted">{formatDateTime(h.createdAt)}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </div>
+
+        <div className="space-y-4">
+          <Card>
+            <h2 className="font-semibold text-admin-text">Assigned cleaner</h2>
+            <div className="mt-2 flex gap-2">
+              <input value={staff} onChange={(e) => setStaff(e.target.value)} placeholder="Unassigned" className="flex-1 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+              <button type="button" onClick={saveStaff} disabled={savingStaff} className="rounded-lg bg-admin-navy px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">Save</button>
+            </div>
+          </Card>
+
+          <Card>
+            <h2 className="font-semibold text-admin-text">Update status</h2>
+            <div className="mt-2 flex flex-col gap-1.5">
+              {BOOKING_STATUSES.filter((s) => s !== booking.status).map((s) => (
+                <button key={s} type="button" onClick={() => setStatus(s)} className="rounded-lg border border-admin-border px-3 py-2 text-left text-sm font-medium text-admin-text hover:bg-admin-bg">
+                  Mark {bookingStatusLabels[s].toLowerCase()}
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          <Card>
+            <button type="button" onClick={() => setConfirmDelete(true)} className="w-full rounded-lg border border-admin-error/30 px-3 py-2 text-sm font-semibold text-admin-error hover:bg-red-50">
+              Cancel &amp; delete booking
+            </button>
+          </Card>
+        </div>
+      </div>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete this booking?"
+        description="This can't be undone."
+        confirmLabel="Delete"
+        tone="danger"
+        onConfirm={confirmDeleteBooking}
+        onCancel={() => setConfirmDelete(false)}
+      />
+    </div>
+  );
+}
