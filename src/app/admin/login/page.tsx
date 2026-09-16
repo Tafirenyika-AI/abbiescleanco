@@ -9,10 +9,12 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [step, setStep] = useState<"credentials" | "2fa">("credentials");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function onSubmit(e: React.FormEvent) {
+  async function onSubmitCredentials(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -25,6 +27,35 @@ export default function AdminLoginPage() {
       const json = await res.json();
       if (!res.ok || !json.ok) {
         setError(json.error || "Login failed");
+        setLoading(false);
+        return;
+      }
+      if (json.requires2FA) {
+        setStep("2fa");
+        setLoading(false);
+        return;
+      }
+      router.push("/admin");
+      router.refresh();
+    } catch {
+      setError("Network error. Please try again.");
+      setLoading(false);
+    }
+  }
+
+  async function onSubmitCode(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/login/verify-2fa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        setError(json.error || "Verification failed");
         setLoading(false);
         return;
       }
@@ -45,48 +76,98 @@ export default function AdminLoginPage() {
         </div>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-xl">
-          <h1 className="text-xl font-semibold text-white">Sign in</h1>
-          <p className="mt-1 text-sm text-slate-400">Internal access only.</p>
+          {step === "credentials" ? (
+            <>
+              <h1 className="text-xl font-semibold text-white">Sign in</h1>
+              <p className="mt-1 text-sm text-slate-400">Internal access only.</p>
 
-          <form onSubmit={onSubmit} className="mt-6 space-y-4">
-            <label className="block">
-              <span className="text-sm font-medium text-slate-300">Email</span>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-admin-teal focus:outline-none"
-              />
-            </label>
-            <label className="block">
-              <span className="text-sm font-medium text-slate-300">Password</span>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white focus:border-admin-teal focus:outline-none"
-              />
-            </label>
-            {error && (
-              <p role="alert" className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400">
-                {error}
-              </p>
-            )}
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-admin-teal px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-admin-teal-hover disabled:opacity-60"
-            >
-              {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
-              {loading ? "Signing in…" : "Sign in"}
-            </button>
-          </form>
+              <form onSubmit={onSubmitCredentials} className="mt-6 space-y-4">
+                <label className="block">
+                  <span className="text-sm font-medium text-slate-300">Email</span>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-admin-teal focus:outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-medium text-slate-300">Password</span>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white focus:border-admin-teal focus:outline-none"
+                  />
+                </label>
+                {error && (
+                  <p role="alert" className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400">
+                    {error}
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-admin-teal px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-admin-teal-hover disabled:opacity-60"
+                >
+                  {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
+                  {loading ? "Signing in…" : "Sign in"}
+                </button>
+              </form>
 
-          <Link href="/admin/forgot-password" className="mt-4 block text-center text-sm text-slate-500 hover:text-slate-300">
-            Forgot password?
-          </Link>
+              <Link href="/admin/forgot-password" className="mt-4 block text-center text-sm text-slate-500 hover:text-slate-300">
+                Forgot password?
+              </Link>
+            </>
+          ) : (
+            <>
+              <h1 className="text-xl font-semibold text-white">Two-factor code</h1>
+              <p className="mt-1 text-sm text-slate-400">Enter the 6-digit code from your authenticator app, or a backup code.</p>
+
+              <form onSubmit={onSubmitCode} className="mt-6 space-y-4">
+                <label className="block">
+                  <span className="text-sm font-medium text-slate-300">Code</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoFocus
+                    required
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    placeholder="123456"
+                    className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-center text-lg tracking-[0.3em] text-white placeholder:tracking-normal placeholder:text-slate-500 focus:border-admin-teal focus:outline-none"
+                  />
+                </label>
+                {error && (
+                  <p role="alert" className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400">
+                    {error}
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-admin-teal px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-admin-teal-hover disabled:opacity-60"
+                >
+                  {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
+                  {loading ? "Verifying…" : "Verify"}
+                </button>
+              </form>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("credentials");
+                  setCode("");
+                  setError(null);
+                }}
+                className="mt-4 block w-full text-center text-sm text-slate-500 hover:text-slate-300"
+              >
+                ← Back
+              </button>
+            </>
+          )}
         </div>
 
         <Link href="/" className="mt-6 block text-center text-sm text-slate-500 hover:text-slate-300">

@@ -18,8 +18,8 @@ export default async function AdminUsersPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-900">Admin users</h1>
-      <p className="mt-1 text-sm text-slate-600">
+      <h1 className="text-2xl font-semibold text-admin-text">Admin users</h1>
+      <p className="mt-1 text-sm text-admin-text-muted">
         Create staff accounts and control exactly which admin sections each person can access.
       </p>
       <div className="mt-6">

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createAdminSessionToken, ADMIN_SESSION_COOKIE } from "@/lib/server/adminAuth";
+import { createAdminSessionToken, createAdmin2faPendingToken, ADMIN_SESSION_COOKIE, ADMIN_2FA_PENDING_COOKIE } from "@/lib/server/adminAuth";
 import { verifyAdminCredentials } from "@/lib/server/adminUsers";
 import { checkRateLimit } from "@/lib/server/rateLimit";
 
@@ -31,6 +31,19 @@ export async function POST(req: NextRequest) {
   const admin = await verifyAdminCredentials(parsed.data.email, parsed.data.password);
   if (!admin) {
     return NextResponse.json({ ok: false, error: "Invalid credentials" }, { status: 401 });
+  }
+
+  if (admin.twoFactorEnabled) {
+    const pendingToken = createAdmin2faPendingToken(admin.id);
+    const res = NextResponse.json({ ok: true, requires2FA: true });
+    res.cookies.set(ADMIN_2FA_PENDING_COOKIE, pendingToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 5 * 60,
+    });
+    return res;
   }
 
   const token = createAdminSessionToken(admin.id);

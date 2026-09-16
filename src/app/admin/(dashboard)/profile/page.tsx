@@ -13,10 +13,10 @@ export default async function AdminProfilePage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-900">My profile</h1>
-      <p className="mt-1 text-sm text-slate-600">Manage your own name and password.</p>
+      <h1 className="text-2xl font-semibold text-admin-text">My profile</h1>
+      <p className="mt-1 text-sm text-admin-text-muted">Manage your own name and password.</p>
       <div className="mt-6">
-        <ProfileForm name={admin.name} email={admin.email} isDemo={admin.id === "demo-admin"} />
+        <ProfileForm name={admin.name} email={admin.email} isDemo={admin.id === "demo-admin"} twoFactorEnabled={admin.twoFactorEnabled} />
       </div>
     </div>
   );

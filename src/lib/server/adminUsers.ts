@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { prisma, isDatabaseConfigured } from "@/lib/db";
 import { ALL_ADMIN_PERMISSIONS, type AdminPermission, type AdminProfile } from "@/lib/permissions";
+import { generateSecret, generateOtpAuthUrl, verifyTotp, generateBackupCodes, formatSecretForDisplay } from "./totp";
 
 export { ALL_ADMIN_PERMISSIONS, permissionLabels, type AdminPermission, type AdminProfile } from "@/lib/permissions";
 
@@ -15,6 +16,7 @@ function demoAdminProfile(): AdminProfile {
     role: "Owner",
     permissions: [...ALL_ADMIN_PERMISSIONS],
     isActive: true,
+    twoFactorEnabled: false,
   };
 }
 
@@ -32,6 +34,7 @@ export async function verifyAdminCredentials(email: string, password: string): P
       role: admin.role,
       permissions: admin.permissions as AdminPermission[],
       isActive: admin.isActive,
+      twoFactorEnabled: admin.twoFactorEnabled,
     };
   }
 
@@ -55,6 +58,7 @@ export async function getAdminProfile(adminUserId: string): Promise<AdminProfile
       role: admin.role,
       permissions: admin.permissions as AdminPermission[],
       isActive: admin.isActive,
+      twoFactorEnabled: admin.twoFactorEnabled,
     };
   }
 
@@ -75,6 +79,7 @@ export async function listAdminUsers(): Promise<AdminProfile[]> {
     role: a.role,
     permissions: a.permissions as AdminPermission[],
     isActive: a.isActive,
+    twoFactorEnabled: a.twoFactorEnabled,
   }));
 }
 
@@ -133,4 +138,65 @@ export async function resetAdminPassword(token: string, newPassword: string): Pr
     data: { passwordHash, resetToken: null, resetTokenExpiresAt: null },
   });
   return true;
+}
+
+// ---------- Two-factor authentication ----------
+
+/**
+ * Generates a new secret and stores it, but does NOT enable 2FA yet — the
+ * admin has to prove they can generate a valid code from it first
+ * (confirmTwoFactorSetup), otherwise a bad scan could lock them out.
+ */
+export async function startTwoFactorSetup(adminUserId: string): Promise<{ secretFormatted: string; otpAuthUrl: string } | null> {
+  if (!isDatabaseConfigured || !prisma) return null;
+  const admin = await prisma.adminUser.findUnique({ where: { id: adminUserId } });
+  if (!admin) return null;
+
+  const secret = generateSecret();
+  await prisma.adminUser.update({ where: { id: adminUserId }, data: { twoFactorSecret: secret, twoFactorEnabled: false, twoFactorBackupCodes: [] } });
+  return { secretFormatted: formatSecretForDisplay(secret), otpAuthUrl: generateOtpAuthUrl(secret, admin.email) };
+}
+
+export async function confirmTwoFactorSetup(adminUserId: string, code: string): Promise<{ ok: true; backupCodes: string[] } | { ok: false; error: string }> {
+  if (!isDatabaseConfigured || !prisma) return { ok: false, error: "Database not configured" };
+  const admin = await prisma.adminUser.findUnique({ where: { id: adminUserId } });
+  if (!admin?.twoFactorSecret) return { ok: false, error: "Start setup first" };
+  if (!verifyTotp(admin.twoFactorSecret, code)) return { ok: false, error: "That code didn't match. Check your authenticator app and try again." };
+
+  const backupCodes = generateBackupCodes();
+  const hashedCodes = await Promise.all(backupCodes.map((c) => bcrypt.hash(c, 10)));
+  await prisma.adminUser.update({ where: { id: adminUserId }, data: { twoFactorEnabled: true, twoFactorBackupCodes: hashedCodes } });
+  return { ok: true, backupCodes };
+}
+
+export async function disableTwoFactor(adminUserId: string, currentPassword: string): Promise<{ ok: boolean; error?: string }> {
+  if (!isDatabaseConfigured || !prisma) return { ok: false, error: "Database not configured" };
+  const admin = await prisma.adminUser.findUnique({ where: { id: adminUserId } });
+  if (!admin) return { ok: false, error: "Not found" };
+  const valid = await bcrypt.compare(currentPassword, admin.passwordHash);
+  if (!valid) return { ok: false, error: "Incorrect password" };
+
+  await prisma.adminUser.update({ where: { id: adminUserId }, data: { twoFactorEnabled: false, twoFactorSecret: null, twoFactorBackupCodes: [] } });
+  return { ok: true };
+}
+
+/** Used during login: a valid TOTP code, or a single-use backup code (consumed on success). */
+export async function verifyTwoFactorLogin(adminUserId: string, code: string): Promise<boolean> {
+  if (!isDatabaseConfigured || !prisma) return false;
+  const admin = await prisma.adminUser.findUnique({ where: { id: adminUserId } });
+  if (!admin?.twoFactorEnabled || !admin.twoFactorSecret) return false;
+
+  if (verifyTotp(admin.twoFactorSecret, code)) return true;
+
+  const cleanCode = code.trim().toUpperCase();
+  for (const hashed of admin.twoFactorBackupCodes) {
+    if (await bcrypt.compare(cleanCode, hashed)) {
+      await prisma.adminUser.update({
+        where: { id: adminUserId },
+        data: { twoFactorBackupCodes: admin.twoFactorBackupCodes.filter((h) => h !== hashed) },
+      });
+      return true;
+    }
+  }
+  return false;
 }

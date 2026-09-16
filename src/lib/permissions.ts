@@ -28,4 +28,5 @@ export interface AdminProfile {
   role: string;
   permissions: AdminPermission[];
   isActive: boolean;
+  twoFactorEnabled: boolean;
 }

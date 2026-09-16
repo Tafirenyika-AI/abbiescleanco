@@ -12,7 +12,7 @@ import crypto from "crypto";
  */
 export interface SessionPayload {
   sub: string; // subject id
-  scope: "admin" | "customer";
+  scope: "admin" | "customer" | "admin_2fa_pending";
   exp: number; // epoch ms
 }
 
