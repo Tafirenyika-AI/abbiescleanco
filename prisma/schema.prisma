@@ -1,0 +1,611 @@
+// Abbie's Clean Method LLC — database schema
+//
+// Provider is PostgreSQL per the project spec (works as-is with Supabase).
+// Until DATABASE_URL is configured, the app's API routes fall back to a
+// local JSON mock store (see src/lib/server/leadStore.ts) so the customer
+// journey is fully testable without live infrastructure. Run
+// `npx prisma migrate dev` once a real Postgres/Supabase URL is set.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  ESTIMATE_SENT
+  AWAITING_CUSTOMER
+  CONFIRMED
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  LOST
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum BookingStatus {
+  REQUESTED // customer-requested date/time, not yet approved by the business
+  CONFIRMED
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum RecurringInterval {
+  WEEKLY
+  BIWEEKLY
+  EVERY_4_WEEKS
+  CUSTOM
+}
+
+enum ContactMethod {
+  PHONE
+  EMAIL
+  WHATSAPP
+  SMS
+}
+
+enum MessageChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum AutomationEventType {
+  NEW_LEAD
+  QUOTE_FOLLOW_UP_1
+  QUOTE_FOLLOW_UP_2
+  BOOKING_CONFIRMATION
+  REMINDER_48H
+  REMINDER_24H
+  REMINDER_DAY_OF
+  POST_SERVICE_THANK_YOU
+  REVIEW_REQUEST
+  RECURRING_ENROLLMENT
+  WIN_BACK
+}
+
+enum AutomationEventStatus {
+  PENDING
+  SENT
+  SKIPPED
+  FAILED
+  CANCELLED
+}
+
+// ---------- Core people & access ----------
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("admin") // admin | staff — role-based access
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  auditLogs AuditLog[]
+
+  @@index([email])
+  @@map("admin_users")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  customer Customer?
+
+  @@map("users")
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  userId    String?  @unique
+  user      User?    @relation(fields: [userId], references: [id])
+
+  firstName String
+  lastName  String
+  email     String
+  phone     String
+  notes     String?
+  petsNote  String?
+  accessInstructions String? // never sent in email subject lines or to analytics
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  addresses               Address[]
+  leads                   Lead[]
+  bookings                Booking[]
+  recurringSchedules      RecurringSchedule[]
+  payments                Payment[]
+  communicationPreference CommunicationPreference?
+  messages                Message[]
+  reviews                 Review[]
+
+  @@index([email])
+  @@index([phone])
+  @@map("customers")
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  line1      String
+  line2      String?
+  city       String
+  state      String
+  zip        String
+  propertyType String // apartment | house | townhome | commercial
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  leads    Lead[]
+  bookings Booking[]
+
+  @@index([zip])
+  @@map("addresses")
+}
+
+// ---------- Leads & quotes ----------
+
+model Lead {
+  id           String     @id @default(cuid())
+  reference    String     @unique // human-friendly lead/quote reference, e.g. ACM-24-000123
+
+  customerId   String?
+  customer     Customer?  @relation(fields: [customerId], references: [id])
+  addressId    String?
+  address      Address?   @relation(fields: [addressId], references: [id])
+
+  status       LeadStatus @default(NEW)
+  source       String     @default("website") // website | referral | google | tiktok | facebook | other
+  campaign     String?    // UTM campaign, if present
+
+  serviceId    String
+  service      ServiceCatalogItem @relation(fields: [serviceId], references: [id])
+
+  preferredContactMethod ContactMethod @default(EMAIL)
+  additionalInstructions String?
+
+  lostReason   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  quoteRequest QuoteRequest?
+  quotes       Quote[]
+  bookings     Booking[]
+  automationEvents AutomationEvent[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("leads")
+}
+
+model QuoteRequest {
+  id     String @id @default(cuid())
+  leadId String @unique
+  lead   Lead   @relation(fields: [leadId], references: [id])
+
+  propertyType   String
+  squareFeet     Int
+  bedrooms       Int
+  bathrooms      Int
+  condition      String // light | normal | heavy | very-heavy
+  frequency      String // one-time | weekly | biweekly | every-4-weeks | custom
+  hasPets        Boolean @default(false)
+  lastProfessionalCleaning String?
+  preferredDate  DateTime?
+  preferredTimeWindow String?
+  addOns         String[] // AddOnKey[] stored as strings
+
+  estimateLow    Int?
+  estimateHigh   Int?
+  requiresManualQuote Boolean @default(false)
+
+  smsConsent   Boolean @default(false)
+  emailConsent Boolean @default(false)
+
+  duplicateOfId String? // set when detected as a likely duplicate submission
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+  @@map("quote_requests")
+}
+
+model Quote {
+  id         String      @id @default(cuid())
+  quoteNumber String     @unique
+  leadId     String
+  lead       Lead        @relation(fields: [leadId], references: [id])
+
+  status     QuoteStatus @default(DRAFT)
+  subtotal   Int
+  discount   Int         @default(0)
+  tax        Int         @default(0)
+  deposit    Int         @default(0)
+  total      Int
+  currency   String      @default("USD")
+  expiresAt  DateTime?
+  notes      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  items    QuoteItem[]
+  bookings Booking[]
+  payments Payment[]
+
+  @@index([status])
+  @@map("quotes")
+}
+
+model QuoteItem {
+  id      String @id @default(cuid())
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id])
+
+  label     String
+  quantity  Int    @default(1)
+  unitPrice Int
+  total     Int
+
+  createdAt DateTime @default(now())
+
+  @@map("quote_items")
+}
+
+// ---------- Services & pricing (admin-managed content) ----------
+
+model ServiceCatalogItem {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  addOns      ServiceAddon[]
+  pricingRules PricingRule[]
+  leads       Lead[]
+
+  @@map("services")
+}
+
+model ServiceAddon {
+  id        String @id @default(cuid())
+  serviceId String
+  service   ServiceCatalogItem @relation(fields: [serviceId], references: [id])
+
+  key       String
+  label     String
+  priceLow  Int
+  priceHigh Int
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([serviceId, key])
+  @@map("service_addons")
+}
+
+model PricingRule {
+  id        String @id @default(cuid())
+  serviceId String
+  service   ServiceCatalogItem @relation(fields: [serviceId], references: [id])
+
+  baseLow           Int
+  baseHigh          Int
+  baseBedrooms      Int @default(3)
+  baseBathrooms     Int @default(2)
+  baseSqFt          Int @default(1500)
+  perExtraBedroom   Int @default(0)
+  perExtraBathroom  Int @default(0)
+  perExtraSqFt      Float @default(0)
+  manualQuoteAboveSqFt Int @default(4000)
+  isActive          Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("pricing_rules")
+}
+
+// ---------- Bookings & scheduling ----------
+
+model Booking {
+  id        String        @id @default(cuid())
+  reference String        @unique
+
+  leadId     String?
+  lead       Lead?         @relation(fields: [leadId], references: [id])
+  quoteId    String?
+  quote      Quote?        @relation(fields: [quoteId], references: [id])
+  customerId String
+  customer   Customer      @relation(fields: [customerId], references: [id])
+  addressId  String
+  address    Address       @relation(fields: [addressId], references: [id])
+
+  status         BookingStatus @default(REQUESTED)
+  scheduledStart DateTime?
+  scheduledEnd   DateTime?
+  arrivalWindow  String?
+  durationMinutes Int?
+
+  staffAssignee String? // free-text placeholder until staff accounts exist
+
+  googleCalendarEventId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  statusHistory     BookingStatusHistory[]
+  recurringSchedule RecurringSchedule? @relation(fields: [recurringScheduleId], references: [id])
+  recurringScheduleId String?
+  payments          Payment[]
+  automationEvents  AutomationEvent[]
+
+  @@index([status])
+  @@index([scheduledStart])
+  @@map("bookings")
+}
+
+model BookingStatusHistory {
+  id        String   @id @default(cuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+
+  fromStatus BookingStatus?
+  toStatus   BookingStatus
+  note       String?
+  changedBy  String? // admin_users.id, when set programmatically
+
+  createdAt DateTime @default(now())
+
+  @@map("booking_status_history")
+}
+
+model RecurringSchedule {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  interval        RecurringInterval
+  customRuleNote  String?
+  isActive        Boolean @default(false) // future visits are created only after admin confirmation
+  confirmedByAdminId String?
+  nextRunAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  bookings Booking[]
+
+  @@map("recurring_schedules")
+}
+
+// ---------- Payments ----------
+
+model Payment {
+  id        String        @id @default(cuid())
+  customerId String
+  customer   Customer      @relation(fields: [customerId], references: [id])
+  quoteId    String?
+  quote      Quote?        @relation(fields: [quoteId], references: [id])
+  bookingId  String?
+  booking    Booking?      @relation(fields: [bookingId], references: [id])
+
+  status        PaymentStatus @default(PENDING)
+  amount        Int
+  currency      String        @default("USD")
+  kind          String        @default("deposit") // deposit | full_payment
+  stripePaymentIntentId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("payments")
+}
+
+// ---------- Communication ----------
+
+model CommunicationPreference {
+  id         String   @id @default(cuid())
+  customerId String   @unique
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  smsConsent      Boolean @default(false)
+  emailConsent    Boolean @default(false)
+  marketingConsent Boolean @default(false)
+  unsubscribedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("communication_preferences")
+}
+
+model Message {
+  id         String  @id @default(cuid())
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  channel   MessageChannel
+  templateKey String?
+  subject   String?
+  body      String
+  toAddress String
+
+  sentAt    DateTime?
+  failedAt  DateTime?
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+
+  @@index([channel])
+  @@index([customerId])
+  @@map("messages")
+}
+
+model MessageTemplate {
+  id       String @id @default(cuid())
+  key      String @unique // e.g. "new_lead_confirmation", "booking_confirmation"
+  channel  MessageChannel
+  subject  String?
+  body     String // supports {{variable}} interpolation
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("message_templates")
+}
+
+model AutomationEvent {
+  id     String @id @default(cuid())
+  leadId    String?
+  lead      Lead?    @relation(fields: [leadId], references: [id])
+  bookingId String?
+  booking   Booking? @relation(fields: [bookingId], references: [id])
+
+  type      AutomationEventType
+  status    AutomationEventStatus @default(PENDING)
+  scheduledFor DateTime?
+  processedAt  DateTime?
+  payload      Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type, status])
+  @@index([scheduledFor])
+  @@map("automation_events")
+}
+
+// ---------- Content & marketing ----------
+
+model Review {
+  id         String   @id @default(cuid())
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  authorName String
+  location   String?
+  quote      String
+  rating     Int?     // 1-5, optional
+  isPublished Boolean @default(false)
+  source     String   @default("direct") // direct | google
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@map("reviews")
+}
+
+model GalleryItem {
+  id          String  @id @default(cuid())
+  imageUrl    String
+  altText     String
+  caption     String?
+  serviceType String?
+  category    String?
+  isBeforeAfterPair Boolean @default(false)
+  pairGroupId String? // links a genuine before/after pair
+  sortOrder   Int     @default(0)
+  isPublished Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@map("gallery_items")
+}
+
+model ServiceArea {
+  id       String  @id @default(cuid())
+  name     String
+  zipCode  String?
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("service_areas")
+}
+
+model BusinessSetting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value Json
+
+  updatedAt DateTime @updatedAt
+
+  @@map("business_settings")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  adminUserId String?
+  adminUser   AdminUser? @relation(fields: [adminUserId], references: [id])
+
+  action      String // e.g. "lead.status_changed", "quote.sent"
+  entityType  String
+  entityId    String
+  before      Json?
+  after       Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}

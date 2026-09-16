@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #0f2438;
+
+  /* Brand: deep midnight navy (trust) */
+  --color-brand-navy-950: #060f1c;
+  --color-brand-navy-900: #0b1f33;
+  --color-brand-navy-800: #122d49;
+  --color-brand-navy-700: #1b3f63;
+  --color-brand-navy-600: #26547f;
+
+  /* Brand: fresh aqua/teal (primary accent) */
+  --color-brand-teal-600: #0d8f83;
+  --color-brand-teal-500: #14b3a3;
+  --color-brand-teal-400: #3fd0bd;
+  --color-brand-teal-300: #86e4d6;
+  --color-brand-teal-100: #e3f9f4;
+
+  /* Warm accent, used sparingly for highlights */
+  --color-brand-warm-600: #c9702f;
+  --color-brand-warm-500: #e08a41;
+  --color-brand-warm-100: #fbe9d8;
+
+  /* Cool neutral surfaces */
+  --color-surface-50: #f7f9fb;
+  --color-surface-100: #eef2f5;
+  --color-surface-200: #e2e8ee;
+  --color-surface-700: #4a5a6a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-navy-950: var(--color-brand-navy-950);
+  --color-navy-900: var(--color-brand-navy-900);
+  --color-navy-800: var(--color-brand-navy-800);
+  --color-navy-700: var(--color-brand-navy-700);
+  --color-navy-600: var(--color-brand-navy-600);
+
+  --color-teal-600: var(--color-brand-teal-600);
+  --color-teal-500: var(--color-brand-teal-500);
+  --color-teal-400: var(--color-brand-teal-400);
+  --color-teal-300: var(--color-brand-teal-300);
+  --color-teal-100: var(--color-brand-teal-100);
+
+  --color-warm-600: var(--color-brand-warm-600);
+  --color-warm-500: var(--color-brand-warm-500);
+  --color-warm-100: var(--color-brand-warm-100);
+
+  --color-surface-50: var(--color-surface-50);
+  --color-surface-100: var(--color-surface-100);
+  --color-surface-200: var(--color-surface-200);
+  --color-surface-700: var(--color-surface-700);
+
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-fraunces);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+}
+
+h1, h2, h3, .font-display {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+}
+
+/* Visible focus states for keyboard navigation (WCAG 2.2 AA) */
+:focus-visible {
+  outline: 3px solid var(--color-brand-teal-500);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Sticky mobile action bar spacing so content is never hidden behind it */
+.has-mobile-actionbar {
+  padding-bottom: 4.5rem;
+}
+@media (min-width: 768px) {
+  .has-mobile-actionbar {
+    padding-bottom: 0;
+  }
+}
