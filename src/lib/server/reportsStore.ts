@@ -17,6 +17,8 @@ export interface ReportsSummary {
   totalBookings: number;
   conversionRate: number | null; // quotesAccepted / leadsCount
   cancellationRate: number | null; // bookingsCancelled / totalBookings
+  totalExpenses: number; // cents
+  netRevenue: number; // acceptedValue - totalExpenses, cents
 }
 
 export async function getReportsSummary(rangeStart: Date, rangeEnd: Date): Promise<ReportsSummary> {
@@ -37,6 +39,8 @@ export async function getReportsSummary(rangeStart: Date, rangeEnd: Date): Promi
     totalBookings: 0,
     conversionRate: null,
     cancellationRate: null,
+    totalExpenses: 0,
+    netRevenue: 0,
   };
   if (!isDatabaseConfigured || !prisma) return empty;
 
@@ -45,6 +49,8 @@ export async function getReportsSummary(rangeStart: Date, rangeEnd: Date): Promi
   const leads = await prisma.lead.findMany({ where, include: { service: true } });
   const quotes = await prisma.quote.findMany({ where: { createdAt: { gte: rangeStart, lte: rangeEnd }, deletedAt: null } });
   const bookings = await prisma.booking.findMany({ where });
+  const expenses = await prisma.expense.findMany({ where: { date: { gte: rangeStart, lte: rangeEnd }, deletedAt: null } });
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
 
   const bySource = new Map<string, number>();
   const byStatus = new Map<string, number>();
@@ -81,5 +87,7 @@ export async function getReportsSummary(rangeStart: Date, rangeEnd: Date): Promi
     totalBookings: bookings.length,
     conversionRate: leads.length > 0 ? quotesAccepted / leads.length : null,
     cancellationRate: bookings.length > 0 ? bookingsCancelled / bookings.length : null,
+    totalExpenses,
+    netRevenue: acceptedValue - totalExpenses,
   };
 }

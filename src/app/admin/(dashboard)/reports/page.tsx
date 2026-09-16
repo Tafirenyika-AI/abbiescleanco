@@ -131,6 +131,17 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
         </Card>
       </div>
 
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Card>
+          <p className="text-sm font-medium text-admin-text-muted">Expenses</p>
+          <p className="mt-2 text-2xl font-semibold text-admin-text">${(report.totalExpenses / 100).toLocaleString("en-US")}</p>
+        </Card>
+        <Card className="sm:col-span-2">
+          <p className="text-sm font-medium text-admin-text-muted">Net (accepted quotes − expenses)</p>
+          <p className="mt-2 text-2xl font-semibold text-admin-text">${(report.netRevenue / 100).toLocaleString("en-US")}</p>
+        </Card>
+      </div>
+
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <div className="flex items-center justify-between">
@@ -188,7 +199,7 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
       </div>
 
       <p className="mt-4 text-xs text-admin-text-muted">
-        Team performance and expense reports aren&apos;t available yet — those need the Team and Expenses modules.
+        Team-member-level performance breakdowns aren&apos;t available yet — see the Team page for per-cleaner assigned/completed job counts.
       </p>
     </div>
   );

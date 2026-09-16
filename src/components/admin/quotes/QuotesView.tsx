@@ -8,7 +8,7 @@ import { QUOTE_STATUSES } from "@/lib/server/quoteStore";
 import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";
-import { formatDate } from "@/lib/adminDate";
+import { formatCalendarDate } from "@/lib/adminDate";
 
 const statusTone: Record<QuoteStatusValue, "neutral" | "info" | "success" | "error" | "warning"> = {
   DRAFT: "neutral",
@@ -93,7 +93,7 @@ export default function QuotesView({ quotes }: { quotes: QuoteListItem[] }) {
                   <td className="p-3.5 text-admin-text">{q.customerName}</td>
                   <td className="p-3.5 text-admin-text">{q.serviceName}</td>
                   <td className="p-3.5 text-admin-text">${(q.total / 100).toFixed(2)}</td>
-                  <td className="p-3.5 text-admin-text-muted">{q.expiresAt ? formatDate(q.expiresAt) : "—"}</td>
+                  <td className="p-3.5 text-admin-text-muted">{q.expiresAt ? formatCalendarDate(q.expiresAt) : "—"}</td>
                   <td className="p-3.5"><Badge tone={statusTone[q.status]}>{q.status}</Badge></td>
                 </tr>
               ))}

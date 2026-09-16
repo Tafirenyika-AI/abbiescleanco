@@ -686,3 +686,54 @@ model AuditLog {
   @@index([entityType, entityId])
   @@map("audit_logs")
 }
+
+// ---------- Team & expenses ----------
+
+model TeamMember {
+  id             String   @id @default(cuid())
+  name           String
+  email          String?
+  phone          String?
+  role           String   @default("Cleaner") // e.g. Cleaner, Lead Cleaner, Supervisor
+  qualifications String[] @default([]) // service names/slugs this person can perform
+  workingHours   String?  // free-text, e.g. "Mon-Fri 8am-5pm"
+  isActive       Boolean  @default(true)
+  notes          String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@map("team_members")
+}
+
+enum ExpenseCategory {
+  CLEANING_SUPPLIES
+  TRANSPORTATION
+  EQUIPMENT
+  ADVERTISING
+  SOFTWARE
+  INSURANCE
+  PAYROLL
+  OTHER
+}
+
+model Expense {
+  id              String          @id @default(cuid())
+  category        ExpenseCategory
+  vendor          String?
+  amount          Int // cents
+  date            DateTime
+  description     String?
+  paymentMethod   String? // cash | check | card | other
+  isTaxDeductible Boolean         @default(true)
+  receiptUrl      String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([category])
+  @@index([date])
+  @@map("expenses")
+}

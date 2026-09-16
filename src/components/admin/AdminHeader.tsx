@@ -13,7 +13,7 @@ const quickCreateItems = [
   { label: "New Booking", href: null },
   { label: "New Customer", href: null },
   { label: "Record Payment", href: "/admin/payments" },
-  { label: "Add Expense", href: null },
+  { label: "Add Expense", href: "/admin/expenses" },
 ];
 
 function useNotificationSummary() {

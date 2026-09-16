@@ -18,3 +18,14 @@ export function formatDateTime(iso: string) {
 export function formatTime(iso: string) {
   return new Intl.DateTimeFormat("en-US", { timeZone: BUSINESS_TZ, hour: "numeric", minute: "2-digit" }).format(new Date(iso));
 }
+
+/**
+ * For fields that are a plain calendar date with no time-of-day meaning
+ * (e.g. an expense's date, entered via <input type="date">). Browsers parse
+ * a bare "YYYY-MM-DD" as UTC midnight, so formatting it in BUSINESS_TZ (a
+ * negative UTC offset) would show the previous day — this formats in UTC
+ * instead, matching how the date was parsed on the way in.
+ */
+export function formatCalendarDate(iso: string) {
+  return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", year: "numeric", month: "short", day: "numeric" }).format(new Date(iso));
+}

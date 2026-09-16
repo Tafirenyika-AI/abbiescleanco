@@ -58,14 +58,14 @@ export const navGroups: NavGroup[] = [
       { href: "/admin/bookings", label: "Bookings", icon: CalendarClock, permission: "MANAGE_BOOKINGS", built: true },
       { href: "/admin/calendar", label: "Calendar", icon: CalendarDays, permission: "MANAGE_BOOKINGS", built: true },
       { href: "/admin/pricing", label: "Services & pricing", icon: Wrench, permission: "MANAGE_PRICING", built: true },
-      { href: "/admin/team", label: "Team", icon: UsersRound, permission: "MANAGE_USERS", built: false },
+      { href: "/admin/team", label: "Team", icon: UsersRound, permission: "MANAGE_USERS", built: true },
     ],
   },
   {
     label: "Finance",
     items: [
       { href: "/admin/payments", label: "Payments", icon: CreditCard, permission: "VIEW_REPORTS", built: true },
-      { href: "/admin/expenses", label: "Expenses", icon: Receipt, permission: "VIEW_REPORTS", built: false },
+      { href: "/admin/expenses", label: "Expenses", icon: Receipt, permission: "VIEW_REPORTS", built: true },
       { href: "/admin/reports", label: "Reports", icon: BarChart3, permission: "VIEW_REPORTS", built: true },
     ],
   },
