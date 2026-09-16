@@ -21,9 +21,30 @@ that this rebuild intentionally does not repeat without confirmation.
 
 ## Project status — what's built vs. roadmap
 
-This was implemented in the phased order the spec calls for. **Phases 1–2 are
-complete and live-testable end to end.** Phases 3–4 have their data model and
-architecture in place but not a full admin UI — see below.
+**A real database is connected** (Neon Postgres) — leads, pricing, reviews,
+FAQs, service areas, and admin/customer accounts all persist there, not to
+the local JSON mock store. The mock store still exists as a fallback for
+anyone running this without `DATABASE_URL` set.
+
+**Done and live-verified:** everything in Phase 1/2 below, plus:
+
+- **Customer accounts** — signup, login, forgot/reset password, profile +
+  password management at `/account`. The estimate wizard's success screen
+  offers to turn a just-submitted guest request into an account without
+  re-asking for name/email/phone.
+- **Admin RBAC** — `admin_users` carry a checkbox-managed permission set
+  (leads/pricing/content/reviews/bookings/users/reports); anyone with
+  `MANAGE_USERS` can create and edit other admin accounts from
+  `/admin/users`, with safeguards against locking yourself out.
+- **Admin is a fully separate product surface** — its own root layout, no
+  public header/footer, slate/indigo sidebar shell distinct from the
+  marketing site's navy/teal branding.
+- **Property-type-aware estimate form** — commercial properties hide the
+  bedroom field and relabel bathrooms to restrooms, instead of asking for
+  fields that don't apply.
+- **PWA install support** — a web app manifest, real icons generated from
+  the logo, and a custom "Add to Home Screen" prompt (native on Android,
+  manual instructions on iOS Safari) so the site can be pinned like an app.
 
 **Phase 1 — done:** design system, header/footer, homepage (all 14 sections),
 services overview + 9 individual service pages, cleaning checklist
@@ -34,23 +55,22 @@ comparison, about, gallery with filters + lightbox, reviews, contact page,
 **Phase 2 — done:** interactive estimate wizard (4-step, validated, saves
 progress in-session), a config-driven pricing engine (`src/lib/pricing.ts`)
 with every rate editable from `/admin/pricing` (see "Editing pricing"
-below), lead persistence (Postgres via Prisma, or a local JSON mock store
-when `DATABASE_URL` isn't set), duplicate-submission prevention, honeypot +
+below), lead persistence, duplicate-submission prevention, honeypot +
 rate-limited spam protection, confirmation email to the customer, lead
 notification email to the business, WhatsApp handoff with a prefilled
-summary, and a basic protected admin dashboard + lead list.
+summary, and a protected admin dashboard + lead list.
 
-**Phase 3/4 — architecture only, not a full UI:** the full database schema
-(`prisma/schema.prisma`) covers quotes, bookings, recurring schedules,
-payments, and audit logs. The automation *logic* for follow-ups, reminders,
+**Still open — the next chunk of work:** a public review-submission flow
+with star ratings and admin curation (which reviews get featured), a
+content CMS for services/FAQs/gallery captions/business hours (the data
+models exist; the admin UI to edit them doesn't yet), before/after job
+photo capture with client notes and media attachments, an in-app + email
+notification system with designed templates, and a booking calendar/quote
+management UI. The automation *logic* for follow-ups, reminders,
 post-service messages, and win-back campaigns exists as tested, callable
 functions in `src/lib/server/automation.ts`, but isn't wired to a live
 scheduler yet (see the doc comment at the top of that file for exactly what
-that takes — a Vercel Cron job and one new API route). Quote management UI,
-a booking calendar, Google Calendar sync, Stripe checkout, and a reporting
-dashboard are not built. Treat this as the natural next milestone, not a gap
-in what was asked for now — building all of Phase 3/4 out fully is
-realistically its own project phase.
+that takes). Google Calendar sync and Stripe checkout are not built.
 
 ## Local setup
 
