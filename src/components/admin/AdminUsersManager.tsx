@@ -90,7 +90,7 @@ function EditableUserRow({ user, isSelf, onSaved }: { user: AdminProfile; isSelf
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={isActive} disabled={isSelf} onChange={(e) => setIsActive(e.target.checked)} />
-          Active {isSelf && <span className="text-xs text-slate-400">(can't deactivate yourself)</span>}
+          Active {isSelf && <span className="text-xs text-slate-400">(can&apos;t deactivate yourself)</span>}
         </label>
         <label className="block">
           <span className="text-xs font-medium text-slate-500">Reset password (optional)</span>

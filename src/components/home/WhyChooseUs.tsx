@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { Check } from "lucide-react";
 import Section, { Eyebrow } from "@/components/ui/Section";
+import Reveal from "@/components/ui/Reveal";
 
 const points = [
   "Personal attention — every home is treated on its own terms, not a checklist.",
@@ -15,7 +16,7 @@ export default function WhyChooseUs() {
   return (
     <Section ariaLabelledby="why-heading">
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:items-center">
-        <div className="relative order-2 aspect-[4/3] overflow-hidden rounded-3xl lg:order-1">
+        <Reveal className="relative order-2 aspect-[4/3] overflow-hidden rounded-3xl shadow-xl ring-1 ring-navy-950/5 lg:order-1">
           <Image
             src="/images/founder-abigail.jpg"
             alt="Abigail, founder of Abbie's Clean Method, with cleaning supplies"
@@ -24,8 +25,8 @@ export default function WhyChooseUs() {
             className="object-cover"
             loading="lazy"
           />
-        </div>
-        <div className="order-1 lg:order-2">
+        </Reveal>
+        <Reveal delayMs={120} className="order-1 lg:order-2">
           <Eyebrow>Why Abbie&apos;s Clean Method</Eyebrow>
           <h2 id="why-heading" className="mt-2 text-3xl font-semibold text-navy-950 sm:text-4xl">
             A cleaning partner who treats your home like her own
@@ -40,7 +41,7 @@ export default function WhyChooseUs() {
               </li>
             ))}
           </ul>
-        </div>
+        </Reveal>
       </div>
     </Section>
   );

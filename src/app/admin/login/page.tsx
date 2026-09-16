@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ShieldCheck, Loader2 } from "lucide-react";
 
 export default function AdminLoginPage() {
@@ -84,9 +85,9 @@ export default function AdminLoginPage() {
           </form>
         </div>
 
-        <a href="/" className="mt-6 block text-center text-sm text-slate-500 hover:text-slate-300">
+        <Link href="/" className="mt-6 block text-center text-sm text-slate-500 hover:text-slate-300">
           ← Back to public site
-        </a>
+        </Link>
       </div>
     </div>
   );

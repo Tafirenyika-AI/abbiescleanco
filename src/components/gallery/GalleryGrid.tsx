@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Expand } from "lucide-react";
 import { galleryItems, type GalleryItem } from "@/lib/data/gallery";
 
 const categories: { key: GalleryItem["category"] | "all"; label: string }[] = [
@@ -13,6 +13,11 @@ const categories: { key: GalleryItem["category"] | "all"; label: string }[] = [
   { key: "hallway", label: "Hallway" },
   { key: "laundry", label: "Laundry" },
 ];
+
+// Cycled per tile (not tied to real image dimensions) to give the grid a
+// varied, editorial "portfolio" rhythm instead of uniform squares — object-cover
+// on the fill image means nothing crops oddly regardless of the source aspect.
+const aspectCycle = ["aspect-[3/4]", "aspect-square", "aspect-[4/5]", "aspect-[4/3]"];
 
 export default function GalleryGrid() {
   const [filter, setFilter] = useState<(typeof categories)[number]["key"]>("all");
@@ -59,24 +64,29 @@ export default function GalleryGrid() {
         ))}
       </div>
 
-      <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="mt-8 columns-2 gap-4 sm:columns-3 lg:columns-4">
         {filtered.map((item, i) => (
           <button
             key={item.id}
             type="button"
             onClick={() => setActiveIndex(i)}
-            className="group relative aspect-square overflow-hidden rounded-2xl text-left"
+            className={`group relative mb-4 block w-full overflow-hidden rounded-2xl text-left break-inside-avoid ${aspectCycle[i % aspectCycle.length]}`}
           >
             <Image
               src={item.src}
               alt={item.alt}
               fill
               sizes="(min-width: 1024px) 22vw, 45vw"
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
               loading="lazy"
             />
-            <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-navy-950/80 to-transparent p-3">
-              <span className="block text-xs font-medium text-white">{item.serviceType}</span>
+            <div className="absolute inset-0 bg-navy-950/0 transition-colors duration-300 group-hover:bg-navy-950/20" />
+            <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-navy-950/90 to-transparent p-3.5 pt-8">
+              <span className="block text-xs font-semibold uppercase tracking-wide text-teal-300">{item.serviceType}</span>
+              <span className="mt-0.5 block text-sm font-medium text-white">{item.caption}</span>
+            </span>
+            <span className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full bg-white/0 text-white opacity-0 backdrop-blur-sm transition-all duration-300 group-hover:bg-white/20 group-hover:opacity-100">
+              <Expand className="size-4" aria-hidden />
             </span>
           </button>
         ))}

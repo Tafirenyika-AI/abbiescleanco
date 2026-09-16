@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import Section, { Eyebrow } from "@/components/ui/Section";
 import Button from "@/components/ui/Button";
+import Reveal from "@/components/ui/Reveal";
+import ServiceCard from "@/components/services/ServiceCard";
 import { services } from "@/lib/data/services";
 
 export const metadata: Metadata = {
@@ -14,6 +13,8 @@ export const metadata: Metadata = {
 };
 
 export default function ServicesPage() {
+  const [first, ...rest] = services;
+
   return (
     <>
       <Section className="bg-navy-950 py-14 sm:py-16" ariaLabelledby="services-page-heading">
@@ -31,31 +32,14 @@ export default function ServicesPage() {
       </Section>
 
       <Section>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {services.map((service) => (
-            <Link
-              key={service.id}
-              href={`/services/${service.id}`}
-              className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-surface-200 transition-shadow hover:shadow-lg"
-            >
-              <div className="relative h-44 w-full overflow-hidden">
-                <Image
-                  src={service.image}
-                  alt={service.imageAlt}
-                  fill
-                  sizes="(min-width: 1024px) 30vw, 90vw"
-                  className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  loading="lazy"
-                />
-              </div>
-              <div className="flex flex-1 flex-col p-5">
-                <h2 className="font-display text-lg font-semibold text-navy-950">{service.name}</h2>
-                <p className="mt-1.5 flex-1 text-sm text-surface-700">{service.shortDescription}</p>
-                <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-teal-600 group-hover:gap-2">
-                  See details <ArrowRight className="size-4 transition-all" aria-hidden />
-                </span>
-              </div>
-            </Link>
+        <Reveal>
+          <ServiceCard service={first} featured priority />
+        </Reveal>
+        <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {rest.map((service, i) => (
+            <Reveal key={service.id} delayMs={(i % 3) * 80}>
+              <ServiceCard service={service} />
+            </Reveal>
           ))}
         </div>
       </Section>
