@@ -4,16 +4,9 @@ import { prisma, isDatabaseConfigured } from "@/lib/db";
 import { generateReference } from "@/lib/reference";
 import type { QuoteRequestInput } from "@/lib/validation/quote";
 import type { EstimateResult } from "@/lib/pricing";
+import { LEAD_STATUSES, type LeadStatusValue, type StoredLead, type LeadActivityEntry } from "@/lib/leads";
 
-export interface StoredLead {
-  reference: string;
-  status: "NEW";
-  source: string;
-  campaign?: string;
-  input: QuoteRequestInput;
-  estimate: EstimateResult;
-  createdAt: string;
-}
+export { LEAD_STATUSES, leadStatusLabels, type LeadStatusValue, type StoredLead, type LeadActivityEntry } from "@/lib/leads";
 
 const MOCK_DATA_DIR = path.join(process.cwd(), ".data");
 const MOCK_LEADS_FILE = path.join(MOCK_DATA_DIR, "leads.json");
@@ -132,69 +125,175 @@ export async function createLead(input: QuoteRequestInput, estimate: EstimateRes
   }
 
   const leads = await readMockLeads();
+  const now = new Date().toISOString();
   leads.push({
+    id: reference,
     reference,
     status: "NEW",
     source: input.source || "website",
     campaign: input.campaign,
     input,
     estimate,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
+    updatedAt: now,
   });
   await writeMockLeads(leads);
 
   return { reference, persisted: "mock-json" as const };
 }
 
+function mapLead(
+  l: NonNullable<Awaited<ReturnType<typeof prismaFindLeadWithRelations>>>
+): StoredLead {
+  return {
+    id: l.id,
+    reference: l.reference,
+    status: l.status as LeadStatusValue,
+    lostReason: l.lostReason,
+    source: l.source,
+    campaign: l.campaign ?? undefined,
+    createdAt: l.createdAt.toISOString(),
+    updatedAt: l.updatedAt.toISOString(),
+    input: {
+      firstName: l.customer?.firstName ?? "",
+      lastName: l.customer?.lastName ?? "",
+      email: l.customer?.email ?? "",
+      phone: l.customer?.phone ?? "",
+      service: l.service.slug as QuoteRequestInput["service"],
+      zip: l.address?.zip ?? "",
+      propertyType: (l.quoteRequest?.propertyType as QuoteRequestInput["propertyType"]) ?? "house",
+      squareFeet: l.quoteRequest?.squareFeet ?? 0,
+      bedrooms: l.quoteRequest?.bedrooms ?? 0,
+      bathrooms: l.quoteRequest?.bathrooms ?? 0,
+      condition: (l.quoteRequest?.condition as QuoteRequestInput["condition"]) ?? "normal",
+      frequency: (l.quoteRequest?.frequency as QuoteRequestInput["frequency"]) ?? "one-time",
+      hasPets: l.quoteRequest?.hasPets ?? false,
+      preferredContactMethod: l.preferredContactMethod,
+      smsConsent: l.quoteRequest?.smsConsent ?? false,
+      emailConsent: l.quoteRequest?.emailConsent ?? false,
+      policiesAccepted: true,
+      addOns: (l.quoteRequest?.addOns ?? []) as QuoteRequestInput["addOns"],
+      additionalInstructions: l.additionalInstructions ?? undefined,
+    } as QuoteRequestInput,
+    estimate: {
+      requiresManualQuote: l.quoteRequest?.requiresManualQuote ?? false,
+      low: l.quoteRequest?.estimateLow ?? 0,
+      high: l.quoteRequest?.estimateHigh ?? 0,
+      addOnsLow: 0,
+      addOnsHigh: 0,
+      totalLow: l.quoteRequest?.estimateLow ?? 0,
+      totalHigh: l.quoteRequest?.estimateHigh ?? 0,
+      durationHoursLow: 0,
+      durationHoursHigh: 0,
+      breakdown: [],
+    } satisfies EstimateResult,
+  };
+}
+
+function prismaFindLeadWithRelations() {
+  return prisma!.lead.findFirst({
+    include: { customer: true, quoteRequest: true, service: true, address: true },
+  });
+}
+
 /** Admin-facing read path; used by the lead dashboard. */
 export async function listLeads(): Promise<StoredLead[]> {
   if (isDatabaseConfigured && prisma) {
     const leads = await prisma.lead.findMany({
-      include: { customer: true, quoteRequest: true, service: true },
+      where: { deletedAt: null },
+      include: { customer: true, quoteRequest: true, service: true, address: true },
       orderBy: { createdAt: "desc" },
       take: 200,
     });
-    return leads.map((l) => ({
-      reference: l.reference,
-      status: "NEW",
-      source: l.source,
-      campaign: l.campaign ?? undefined,
-      createdAt: l.createdAt.toISOString(),
-      input: {
-        firstName: l.customer?.firstName ?? "",
-        lastName: l.customer?.lastName ?? "",
-        email: l.customer?.email ?? "",
-        phone: l.customer?.phone ?? "",
-        service: l.service.slug as QuoteRequestInput["service"],
-        zip: "",
-        propertyType: (l.quoteRequest?.propertyType as QuoteRequestInput["propertyType"]) ?? "house",
-        squareFeet: l.quoteRequest?.squareFeet ?? 0,
-        bedrooms: l.quoteRequest?.bedrooms ?? 0,
-        bathrooms: l.quoteRequest?.bathrooms ?? 0,
-        condition: (l.quoteRequest?.condition as QuoteRequestInput["condition"]) ?? "normal",
-        frequency: (l.quoteRequest?.frequency as QuoteRequestInput["frequency"]) ?? "one-time",
-        hasPets: l.quoteRequest?.hasPets ?? false,
-        preferredContactMethod: l.preferredContactMethod,
-        smsConsent: l.quoteRequest?.smsConsent ?? false,
-        emailConsent: l.quoteRequest?.emailConsent ?? false,
-        policiesAccepted: true,
-        addOns: (l.quoteRequest?.addOns ?? []) as QuoteRequestInput["addOns"],
-      } as QuoteRequestInput,
-      estimate: {
-        requiresManualQuote: l.quoteRequest?.requiresManualQuote ?? false,
-        low: l.quoteRequest?.estimateLow ?? 0,
-        high: l.quoteRequest?.estimateHigh ?? 0,
-        addOnsLow: 0,
-        addOnsHigh: 0,
-        totalLow: l.quoteRequest?.estimateLow ?? 0,
-        totalHigh: l.quoteRequest?.estimateHigh ?? 0,
-        durationHoursLow: 0,
-        durationHoursHigh: 0,
-        breakdown: [],
-      } satisfies EstimateResult,
-    }));
+    return leads.map(mapLead);
   }
 
   const leads = await readMockLeads();
   return leads.slice().reverse();
+}
+
+export async function getLeadById(id: string): Promise<StoredLead | null> {
+  if (isDatabaseConfigured && prisma) {
+    const lead = await prisma.lead.findFirst({
+      where: { id, deletedAt: null },
+      include: { customer: true, quoteRequest: true, service: true, address: true },
+    });
+    return lead ? mapLead(lead) : null;
+  }
+  const leads = await readMockLeads();
+  return leads.find((l) => l.id === id) ?? null;
+}
+
+export async function deleteLead(id: string, adminUserId: string): Promise<boolean> {
+  if (isDatabaseConfigured && prisma) {
+    const before = await prisma.lead.findUnique({ where: { id } });
+    if (!before || before.deletedAt) return false;
+    await prisma.lead.update({ where: { id }, data: { deletedAt: new Date() } });
+    await prisma.auditLog.create({
+      data: { adminUserId, action: "lead.deleted", entityType: "lead", entityId: id, before: { reference: before.reference } },
+    });
+    return true;
+  }
+  const leads = await readMockLeads();
+  const next = leads.filter((l) => l.id !== id);
+  if (next.length === leads.length) return false;
+  await writeMockLeads(next);
+  return true;
+}
+
+export async function updateLeadStatus(
+  id: string,
+  data: { status: LeadStatusValue; lostReason?: string },
+  adminUserId: string
+): Promise<StoredLead | null> {
+  if (isDatabaseConfigured && prisma) {
+    const before = await prisma.lead.findUnique({ where: { id } });
+    if (!before) return null;
+
+    const lead = await prisma.lead.update({
+      where: { id },
+      data: {
+        status: data.status,
+        lostReason: data.status === "LOST" ? data.lostReason ?? null : null,
+      },
+      include: { customer: true, quoteRequest: true, service: true, address: true },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        adminUserId,
+        action: "lead.status_changed",
+        entityType: "lead",
+        entityId: id,
+        before: { status: before.status },
+        after: { status: lead.status, lostReason: lead.lostReason },
+      },
+    });
+
+    return mapLead(lead);
+  }
+
+  const leads = await readMockLeads();
+  const idx = leads.findIndex((l) => l.id === id);
+  if (idx === -1) return null;
+  leads[idx] = { ...leads[idx], status: data.status, lostReason: data.status === "LOST" ? data.lostReason ?? null : null, updatedAt: new Date().toISOString() };
+  await writeMockLeads(leads);
+  return leads[idx];
+}
+
+export async function listLeadActivity(leadId: string): Promise<LeadActivityEntry[]> {
+  if (!isDatabaseConfigured || !prisma) return [];
+  const logs = await prisma.auditLog.findMany({
+    where: { entityType: "lead", entityId: leadId },
+    include: { adminUser: true },
+    orderBy: { createdAt: "desc" },
+  });
+  return logs.map((l) => ({
+    id: l.id,
+    action: l.action,
+    before: l.before,
+    after: l.after,
+    adminName: l.adminUser?.name ?? null,
+    createdAt: l.createdAt.toISOString(),
+  }));
 }
