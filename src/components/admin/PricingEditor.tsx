@@ -104,16 +104,16 @@ export default function PricingEditor({ initialConfig }: { initialConfig: Pricin
   return (
     <div className="space-y-10">
       <section>
-        <h2 className="text-lg font-semibold text-navy-950">Service pricing</h2>
+        <h2 className="text-lg font-semibold text-admin-text">Service pricing</h2>
         <div className="mt-4 space-y-3">
           {servicesWithPricing.map((service) => {
             const pricing = config.services[service.id];
             return (
-              <details key={service.id} className="rounded-2xl border border-surface-200 bg-white p-4 open:pb-5">
+              <details key={service.id} className="rounded-2xl border border-admin-border bg-admin-card p-4 open:pb-5">
                 <summary className="cursor-pointer list-none">
                   <span className="flex items-center justify-between">
-                    <span className="font-semibold text-navy-950">{service.name}</span>
-                    <span className="text-sm text-surface-700">
+                    <span className="font-semibold text-admin-text">{service.name}</span>
+                    <span className="text-sm text-admin-text-muted">
                       ${pricing.baseLow}–${pricing.baseHigh}
                     </span>
                   </span>
@@ -121,16 +121,16 @@ export default function PricingEditor({ initialConfig }: { initialConfig: Pricin
                 <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   {serviceFieldMeta.map((field) => (
                     <label key={field.key} className="block">
-                      <span className="text-xs font-medium text-surface-700">{field.label}</span>
+                      <span className="text-xs font-medium text-admin-text-muted">{field.label}</span>
                       <input
                         type="number"
                         step={field.step ?? "1"}
                         min={0}
                         value={pricing[field.key]}
                         onChange={(e) => updateService(service.id, field.key, Number(e.target.value))}
-                        className="mt-1 w-full rounded-lg border border-surface-200 px-2.5 py-1.5 text-sm"
+                        className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm"
                       />
-                      {field.hint && <span className="mt-0.5 block text-[11px] text-surface-700">{field.hint}</span>}
+                      {field.hint && <span className="mt-0.5 block text-[11px] text-admin-text-muted">{field.hint}</span>}
                     </label>
                   ))}
                 </div>
@@ -142,46 +142,46 @@ export default function PricingEditor({ initialConfig }: { initialConfig: Pricin
 
       <section>
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-navy-950">Add-ons</h2>
+          <h2 className="text-lg font-semibold text-admin-text">Add-ons</h2>
           <Button type="button" variant="outline" size="md" onClick={addAddOn}>
             <Plus className="size-4" aria-hidden /> Add new
           </Button>
         </div>
         <div className="mt-4 space-y-2">
           {config.addOns.map((addOn, index) => (
-            <div key={index} className="grid grid-cols-12 items-end gap-2 rounded-xl border border-surface-200 p-3">
+            <div key={index} className="grid grid-cols-12 items-end gap-2 rounded-xl border border-admin-border p-3">
               <label className="col-span-4">
-                <span className="text-xs font-medium text-surface-700">Label</span>
+                <span className="text-xs font-medium text-admin-text-muted">Label</span>
                 <input
-                  className="mt-1 w-full rounded-lg border border-surface-200 px-2.5 py-1.5 text-sm"
+                  className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm"
                   value={addOn.label}
                   onChange={(e) => updateAddOn(index, "label", e.target.value)}
                 />
               </label>
               <label className="col-span-3">
-                <span className="text-xs font-medium text-surface-700">Key</span>
+                <span className="text-xs font-medium text-admin-text-muted">Key</span>
                 <input
-                  className="mt-1 w-full rounded-lg border border-surface-200 px-2.5 py-1.5 text-sm font-mono"
+                  className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm font-mono"
                   value={addOn.key}
                   onChange={(e) => updateAddOn(index, "key", e.target.value)}
                 />
               </label>
               <label className="col-span-2">
-                <span className="text-xs font-medium text-surface-700">Low ($)</span>
+                <span className="text-xs font-medium text-admin-text-muted">Low ($)</span>
                 <input
                   type="number"
                   min={0}
-                  className="mt-1 w-full rounded-lg border border-surface-200 px-2.5 py-1.5 text-sm"
+                  className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm"
                   value={addOn.low}
                   onChange={(e) => updateAddOn(index, "low", Number(e.target.value))}
                 />
               </label>
               <label className="col-span-2">
-                <span className="text-xs font-medium text-surface-700">High ($)</span>
+                <span className="text-xs font-medium text-admin-text-muted">High ($)</span>
                 <input
                   type="number"
                   min={0}
-                  className="mt-1 w-full rounded-lg border border-surface-200 px-2.5 py-1.5 text-sm"
+                  className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm"
                   value={addOn.high}
                   onChange={(e) => updateAddOn(index, "high", Number(e.target.value))}
                 />
@@ -196,17 +196,17 @@ export default function PricingEditor({ initialConfig }: { initialConfig: Pricin
               </button>
             </div>
           ))}
-          {config.addOns.length === 0 && <p className="text-sm text-surface-700">No add-ons configured.</p>}
+          {config.addOns.length === 0 && <p className="text-sm text-admin-text-muted">No add-ons configured.</p>}
         </div>
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold text-navy-950">Condition multipliers</h2>
-        <p className="mt-1 text-sm text-surface-700">Applied to the base price based on the property&apos;s reported condition.</p>
+        <h2 className="text-lg font-semibold text-admin-text">Condition multipliers</h2>
+        <p className="mt-1 text-sm text-admin-text-muted">Applied to the base price based on the property&apos;s reported condition.</p>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {(Object.keys(conditionLabels) as Condition[]).map((condition) => (
             <label key={condition} className="block">
-              <span className="text-xs font-medium text-surface-700">{conditionLabels[condition]}</span>
+              <span className="text-xs font-medium text-admin-text-muted">{conditionLabels[condition]}</span>
               <input
                 type="number"
                 step="0.01"
@@ -214,7 +214,7 @@ export default function PricingEditor({ initialConfig }: { initialConfig: Pricin
                 max={5}
                 value={config.conditionMultiplier[condition]}
                 onChange={(e) => updateConditionMultiplier(condition, Number(e.target.value))}
-                className="mt-1 w-full rounded-lg border border-surface-200 px-2.5 py-1.5 text-sm"
+                className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm"
               />
             </label>
           ))}
@@ -223,7 +223,7 @@ export default function PricingEditor({ initialConfig }: { initialConfig: Pricin
 
       <section>
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-navy-950">Recurring-service discounts</h2>
+          <h2 className="text-lg font-semibold text-admin-text">Recurring-service discounts</h2>
           <label className="flex items-center gap-1.5 text-sm">
             <input
               type="checkbox"
@@ -233,14 +233,14 @@ export default function PricingEditor({ initialConfig }: { initialConfig: Pricin
             Enabled
           </label>
         </div>
-        <p className="mt-1 text-sm text-surface-700">
+        <p className="mt-1 text-sm text-admin-text-muted">
           Off by default — savings language only appears on the site once this is enabled.
         </p>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
           {(Object.keys(frequencyLabels) as Frequency[]).map((frequency) => (
             <label key={frequency} className="block">
-              <span className="text-xs font-medium text-surface-700">{frequencyLabels[frequency]}</span>
-              <div className="mt-1 flex items-center rounded-lg border border-surface-200 px-2.5 py-1.5">
+              <span className="text-xs font-medium text-admin-text-muted">{frequencyLabels[frequency]}</span>
+              <div className="mt-1 flex items-center rounded-lg border border-admin-border px-2.5 py-1.5">
                 <input
                   type="number"
                   min={0}
@@ -249,7 +249,7 @@ export default function PricingEditor({ initialConfig }: { initialConfig: Pricin
                   onChange={(e) => updateDiscountRate(frequency, Number(e.target.value))}
                   className="w-full text-sm outline-none"
                 />
-                <span className="text-sm text-surface-700">%</span>
+                <span className="text-sm text-admin-text-muted">%</span>
               </div>
             </label>
           ))}
@@ -268,7 +268,7 @@ export default function PricingEditor({ initialConfig }: { initialConfig: Pricin
         </div>
       )}
 
-      <div className="flex items-center gap-4 border-t border-surface-200 pt-6">
+      <div className="flex items-center gap-4 border-t border-admin-border pt-6">
         <Button type="button" size="lg" onClick={handleSave} disabled={saveState.status === "saving"}>
           {saveState.status === "saving" ? (
             <>
@@ -279,7 +279,7 @@ export default function PricingEditor({ initialConfig }: { initialConfig: Pricin
           )}
         </Button>
         {saveState.status === "success" && (
-          <span className="flex items-center gap-1.5 text-sm text-teal-700">
+          <span className="flex items-center gap-1.5 text-sm text-admin-teal-hover">
             <CheckCircle2 className="size-4" aria-hidden /> Saved — live on the site now.
           </span>
         )}

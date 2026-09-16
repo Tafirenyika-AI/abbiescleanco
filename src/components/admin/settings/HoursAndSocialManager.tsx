@@ -42,7 +42,7 @@ export default function HoursAndSocialManager({
 
   return (
     <div className="space-y-8">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5">
+      <section className="rounded-2xl border border-slate-200 bg-admin-card p-5">
         <h2 className="font-semibold text-slate-900">Business hours</h2>
         <div className="mt-4 space-y-3">
           {hours.map((h, i) => (
@@ -61,14 +61,14 @@ export default function HoursAndSocialManager({
           ))}
         </div>
         <div className="mt-4 flex items-center gap-3">
-          <button type="button" onClick={saveHours} disabled={hoursState === "saving"} className="inline-flex items-center gap-2 rounded-full bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400 disabled:opacity-60">
+          <button type="button" onClick={saveHours} disabled={hoursState === "saving"} className="inline-flex items-center gap-2 rounded-full bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
             {hoursState === "saving" ? <Loader2 className="size-4 animate-spin" aria-hidden /> : "Save hours"}
           </button>
-          {hoursState === "saved" && <span className="flex items-center gap-1 text-sm text-teal-700"><CheckCircle2 className="size-4" aria-hidden /> Saved</span>}
+          {hoursState === "saved" && <span className="flex items-center gap-1 text-sm text-admin-teal-hover"><CheckCircle2 className="size-4" aria-hidden /> Saved</span>}
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5">
+      <section className="rounded-2xl border border-slate-200 bg-admin-card p-5">
         <h2 className="font-semibold text-slate-900">Social links</h2>
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="block">
@@ -89,10 +89,10 @@ export default function HoursAndSocialManager({
           </label>
         </div>
         <div className="mt-4 flex items-center gap-3">
-          <button type="button" onClick={saveSocial} disabled={socialState === "saving"} className="inline-flex items-center gap-2 rounded-full bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400 disabled:opacity-60">
+          <button type="button" onClick={saveSocial} disabled={socialState === "saving"} className="inline-flex items-center gap-2 rounded-full bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
             {socialState === "saving" ? <Loader2 className="size-4 animate-spin" aria-hidden /> : "Save links"}
           </button>
-          {socialState === "saved" && <span className="flex items-center gap-1 text-sm text-teal-700"><CheckCircle2 className="size-4" aria-hidden /> Saved</span>}
+          {socialState === "saved" && <span className="flex items-center gap-1 text-sm text-admin-teal-hover"><CheckCircle2 className="size-4" aria-hidden /> Saved</span>}
         </div>
       </section>
     </div>

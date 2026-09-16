@@ -32,7 +32,7 @@ function ReviewRow({ review }: { review: AdminReview }) {
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+    <div className="rounded-2xl border border-slate-200 bg-admin-card p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -55,7 +55,7 @@ function ReviewRow({ review }: { review: AdminReview }) {
           Featured on homepage
         </label>
         {saving && <span className="text-xs text-slate-400">Saving…</span>}
-        {!saving && <CheckCircle2 className="size-4 text-teal-500 opacity-0" aria-hidden />}
+        {!saving && <CheckCircle2 className="size-4 text-admin-teal opacity-0" aria-hidden />}
       </div>
     </div>
   );

@@ -64,7 +64,7 @@ function EditableUserRow({ user, isSelf, onSaved }: { user: AdminProfile; isSelf
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+    <div className="rounded-2xl border border-slate-200 bg-admin-card p-5">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <label className="block">
           <span className="text-xs font-medium text-slate-500">Name</span>
@@ -109,7 +109,7 @@ function EditableUserRow({ user, isSelf, onSaved }: { user: AdminProfile; isSelf
           {state === "saving" ? <Loader2 className="size-4 animate-spin" aria-hidden /> : "Save"}
         </Button>
         {state === "saved" && (
-          <span className="flex items-center gap-1 text-sm text-teal-700">
+          <span className="flex items-center gap-1 text-sm text-admin-teal-hover">
             <CheckCircle2 className="size-4" aria-hidden /> Saved
           </span>
         )}
@@ -165,7 +165,7 @@ export default function AdminUsersManager({
   return (
     <div className="space-y-6">
       {!databaseConfigured && (
-        <p className="rounded-xl bg-warm-100 p-3 text-sm text-navy-900">
+        <p className="rounded-xl bg-warm-100 p-3 text-sm text-admin-text">
           No DATABASE_URL is configured — only the single demo admin account exists. Connect a database to create
           and manage additional admin users with individual permissions.
         </p>
@@ -181,7 +181,7 @@ export default function AdminUsersManager({
       </div>
 
       {showCreate && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="rounded-2xl border border-slate-200 bg-admin-card p-5">
           <h3 className="font-semibold text-slate-900">New admin user</h3>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">

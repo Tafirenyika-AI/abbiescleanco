@@ -45,7 +45,7 @@ function ResetPasswordForm() {
       <h1 className="text-xl font-semibold text-white">Choose a new password</h1>
 
       {state === "done" ? (
-        <p className="mt-6 rounded-lg bg-indigo-500/10 p-4 text-sm text-indigo-300">
+        <p className="mt-6 rounded-lg bg-admin-teal/10 p-4 text-sm text-admin-aqua">
           Password updated — redirecting you to sign in…
         </p>
       ) : (
@@ -58,7 +58,7 @@ function ResetPasswordForm() {
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+              className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white focus:border-admin-teal focus:outline-none"
             />
           </label>
           {error && (
@@ -69,7 +69,7 @@ function ResetPasswordForm() {
           <button
             type="submit"
             disabled={state === "submitting"}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-400 disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-admin-teal px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-admin-teal-hover disabled:opacity-60"
           >
             {state === "submitting" ? "Saving…" : "Save new password"}
           </button>
@@ -84,7 +84,7 @@ export default function AdminResetPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-16">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center justify-center gap-2 text-white">
-          <ShieldCheck className="size-6 text-indigo-400" aria-hidden />
+          <ShieldCheck className="size-6 text-admin-aqua" aria-hidden />
           <span className="font-display text-lg font-semibold">Abbie&apos;s Admin</span>
         </div>
         <Suspense fallback={null}>

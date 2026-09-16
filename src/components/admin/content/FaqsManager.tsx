@@ -28,28 +28,28 @@ function Row({ faq, onDeleted }: { faq: FaqItem; onDeleted: (id: string) => void
   }
 
   return (
-    <div className="rounded-2xl border border-surface-200 bg-white p-4">
+    <div className="rounded-2xl border border-admin-border bg-admin-card p-4">
       <label className="block">
-        <span className="text-xs font-medium text-surface-700">Question</span>
+        <span className="text-xs font-medium text-admin-text-muted">Question</span>
         <input
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           onBlur={() => save({ question })}
-          className="mt-1 w-full rounded-lg border border-surface-200 px-2.5 py-1.5 text-sm font-medium"
+          className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm font-medium"
         />
       </label>
       <label className="mt-2 block">
-        <span className="text-xs font-medium text-surface-700">Answer</span>
+        <span className="text-xs font-medium text-admin-text-muted">Answer</span>
         <textarea
           rows={2}
           value={answer}
           onChange={(e) => setAnswer(e.target.value)}
           onBlur={() => save({ answer })}
-          className="mt-1 w-full rounded-lg border border-surface-200 px-2.5 py-1.5 text-sm"
+          className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm"
         />
       </label>
       <div className="mt-2 flex items-center justify-between">
-        <label className="flex items-center gap-2 text-sm text-navy-900">
+        <label className="flex items-center gap-2 text-sm text-admin-text">
           <input
             type="checkbox"
             checked={isActive}
@@ -60,7 +60,7 @@ function Row({ faq, onDeleted }: { faq: FaqItem; onDeleted: (id: string) => void
           />
           Published
         </label>
-        <div className="flex items-center gap-2 text-xs text-surface-500">
+        <div className="flex items-center gap-2 text-xs text-admin-text-muted">
           {saving && <Loader2 className="size-3.5 animate-spin" aria-hidden />}
           <button type="button" onClick={remove} disabled={deleting} aria-label="Delete FAQ" className="flex size-8 items-center justify-center rounded-lg text-red-600 hover:bg-red-50">
             <Trash2 className="size-4" aria-hidden />
@@ -96,22 +96,22 @@ export default function FaqsManager({ initialFaqs }: { initialFaqs: FaqItem[] })
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-dashed border-surface-300 p-4">
-        <p className="text-sm font-semibold text-navy-950">Add a new FAQ</p>
+      <div className="rounded-2xl border border-dashed border-admin-border p-4">
+        <p className="text-sm font-semibold text-admin-text">Add a new FAQ</p>
         <input
           placeholder="Question"
           value={newQuestion}
           onChange={(e) => setNewQuestion(e.target.value)}
-          className="mt-2 w-full rounded-lg border border-surface-200 px-2.5 py-1.5 text-sm"
+          className="mt-2 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm"
         />
         <textarea
           placeholder="Answer"
           rows={2}
           value={newAnswer}
           onChange={(e) => setNewAnswer(e.target.value)}
-          className="mt-2 w-full rounded-lg border border-surface-200 px-2.5 py-1.5 text-sm"
+          className="mt-2 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm"
         />
-        <button type="button" onClick={addFaq} disabled={creating} className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-navy-950 px-4 py-2 text-sm font-semibold text-white hover:bg-navy-900 disabled:opacity-60">
+        <button type="button" onClick={addFaq} disabled={creating} className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-admin-navy px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
           <Plus className="size-4" aria-hidden /> Add FAQ
         </button>
       </div>

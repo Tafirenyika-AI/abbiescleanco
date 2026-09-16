@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-16">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center justify-center gap-2 text-white">
-          <ShieldCheck className="size-6 text-indigo-400" aria-hidden />
+          <ShieldCheck className="size-6 text-admin-aqua" aria-hidden />
           <span className="font-display text-lg font-semibold">Abbie&apos;s Admin</span>
         </div>
 
@@ -56,7 +56,7 @@ export default function AdminLoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none"
+                className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-admin-teal focus:outline-none"
               />
             </label>
             <label className="block">
@@ -66,7 +66,7 @@ export default function AdminLoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white focus:border-admin-teal focus:outline-none"
               />
             </label>
             {error && (
@@ -77,7 +77,7 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-400 disabled:opacity-60"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-admin-teal px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-admin-teal-hover disabled:opacity-60"
             >
               {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
               {loading ? "Signing in…" : "Sign in"}

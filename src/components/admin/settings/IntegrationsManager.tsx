@@ -78,7 +78,7 @@ export default function IntegrationsManager({ initialStatus }: { initialStatus: 
         {fields.map((field) => {
           const current = status[field.key];
           return (
-            <div key={field.key} className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div key={field.key} className="rounded-2xl border border-slate-200 bg-admin-card p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">{field.label}</p>
@@ -87,7 +87,7 @@ export default function IntegrationsManager({ initialStatus }: { initialStatus: 
                 <div className="flex items-center gap-2 text-xs">
                   {!field.wired && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-500">Not wired into code yet</span>}
                   {current?.configured ? (
-                    <span className="rounded-full bg-teal-50 px-2 py-0.5 text-teal-700">
+                    <span className="rounded-full bg-admin-teal/10 px-2 py-0.5 text-admin-teal-hover">
                       Configured ({current.source === "database" ? "here" : "env var"})
                     </span>
                   ) : (
@@ -108,7 +108,7 @@ export default function IntegrationsManager({ initialStatus }: { initialStatus: 
                   type="button"
                   onClick={() => saveField(field.key)}
                   disabled={saving === field.key || !drafts[field.key]}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500 px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-indigo-400 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-admin-teal px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-50"
                 >
                   {saving === field.key ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : "Save"}
                 </button>
@@ -122,7 +122,7 @@ export default function IntegrationsManager({ initialStatus }: { initialStatus: 
                     <X className="size-4" aria-hidden />
                   </button>
                 )}
-                {saved === field.key && saving !== field.key && <CheckCircle2 className="size-4 text-teal-600" aria-hidden />}
+                {saved === field.key && saving !== field.key && <CheckCircle2 className="size-4 text-admin-teal-hover" aria-hidden />}
               </div>
             </div>
           );

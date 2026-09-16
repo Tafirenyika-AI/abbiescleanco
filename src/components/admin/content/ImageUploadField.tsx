@@ -43,13 +43,13 @@ export default function ImageUploadField({
   return (
     <div>
       <label className="block">
-        <span className="text-xs font-medium text-surface-700">{label}</span>
+        <span className="text-xs font-medium text-admin-text-muted">{label}</span>
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onBlur={() => onCommit?.(value)}
           placeholder="/images/example.jpg"
-          className="mt-1 w-full rounded-lg border border-surface-200 px-2.5 py-1.5 text-sm font-mono"
+          className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm font-mono"
         />
       </label>
       <div className="mt-1.5 flex items-center gap-3">
@@ -57,13 +57,13 @@ export default function ImageUploadField({
           // Admin-pasted or uploaded URLs can be any host — plain <img> avoids
           // requiring every possible source in next.config's remotePatterns.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={value} alt="" className="size-12 shrink-0 rounded-lg border border-surface-200 object-cover" />
+          <img src={value} alt="" className="size-12 shrink-0 rounded-lg border border-admin-border object-cover" />
         )}
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className="inline-flex items-center gap-1.5 rounded-full border border-surface-200 px-3 py-1.5 text-xs font-semibold text-navy-900 hover:bg-surface-50 disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 rounded-full border border-admin-border px-3 py-1.5 text-xs font-semibold text-admin-text hover:bg-admin-bg disabled:opacity-60"
         >
           {uploading ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Upload className="size-3.5" aria-hidden />}
           {uploading ? "Uploading…" : "Upload image"}
