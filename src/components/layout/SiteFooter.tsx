@@ -4,9 +4,11 @@ import { Phone, Mail, MapPin } from "lucide-react";
 import Container from "@/components/ui/Container";
 import { business, telHref, mailtoHref, whatsappLink } from "@/lib/data/business";
 import { services } from "@/lib/data/services";
+import { getSocialLinks } from "@/lib/server/siteSettings";
 
-export default function SiteFooter() {
+export default async function SiteFooter() {
   const year = new Date().getFullYear();
+  const social = await getSocialLinks();
 
   return (
     <footer className="bg-navy-950 text-surface-200">
@@ -18,13 +20,13 @@ export default function SiteFooter() {
           </div>
           <p className="mt-4 text-sm leading-relaxed">{business.tagline}</p>
           <div className="mt-4 flex gap-3">
-            {business.social.tiktok && (
-              <a href={business.social.tiktok} target="_blank" rel="noopener noreferrer" className="text-sm underline hover:text-teal-300">
+            {social.tiktok && (
+              <a href={social.tiktok} target="_blank" rel="noopener noreferrer" className="text-sm underline hover:text-teal-300">
                 TikTok
               </a>
             )}
-            {business.social.facebook && (
-              <a href={business.social.facebook} target="_blank" rel="noopener noreferrer" className="text-sm underline hover:text-teal-300">
+            {social.facebook && (
+              <a href={social.facebook} target="_blank" rel="noopener noreferrer" className="text-sm underline hover:text-teal-300">
                 Facebook
               </a>
             )}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Section, { Eyebrow } from "@/components/ui/Section";
 import GalleryGrid from "@/components/gallery/GalleryGrid";
+import { listGalleryItems } from "@/lib/server/content";
 
 export const metadata: Metadata = {
   title: "Gallery",
@@ -8,7 +9,23 @@ export const metadata: Metadata = {
   alternates: { canonical: "/gallery" },
 };
 
-export default function GalleryPage() {
+// Gallery is admin-editable from /admin/content — revalidate frequently
+// rather than only rebuilding on deploy.
+export const revalidate = 60;
+
+export default async function GalleryPage() {
+  const dbItems = await listGalleryItems(true);
+  const items = dbItems
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((g) => ({
+      id: g.id,
+      src: g.imageUrl,
+      alt: g.altText,
+      caption: g.caption || "",
+      serviceType: g.serviceType || "",
+      category: (g.category || "living") as "kitchen" | "bathroom" | "living" | "hallway" | "laundry",
+    }));
+
   return (
     <>
       <Section className="bg-navy-950 py-14 sm:py-16">
@@ -23,7 +40,7 @@ export default function GalleryPage() {
       </Section>
 
       <Section>
-        <GalleryGrid />
+        <GalleryGrid items={items} />
       </Section>
     </>
   );

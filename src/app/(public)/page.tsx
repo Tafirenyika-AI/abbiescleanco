@@ -11,6 +11,8 @@ import TestimonialsSection from "@/components/home/TestimonialsSection";
 import FaqSection from "@/components/FaqSection";
 import FinalCta from "@/components/home/FinalCta";
 import { getPricingConfig } from "@/lib/server/pricingStore";
+import { getServicesContent } from "@/lib/server/servicesContent";
+import { listGalleryItems, listServiceAreas } from "@/lib/server/content";
 
 export const metadata: Metadata = {
   title: "House Cleaning in Spokane Valley, WA",
@@ -19,27 +21,41 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-// The homepage stays statically generated for performance/SEO, but the
-// estimate teaser shows admin-editable pricing — revalidate frequently so an
-// admin pricing change shows up here within a minute rather than only on
-// the next deploy. The full wizard at /estimate is always fully fresh
-// (force-dynamic there) since that's what actually calculates a submitted
-// quote.
+// The homepage stays statically generated for performance/SEO, but shows
+// admin-editable pricing/services/gallery/service-area content — revalidate
+// frequently so an admin change shows up here within a minute rather than
+// only on the next deploy.
 export const revalidate = 60;
 
 export default async function HomePage() {
-  const pricingConfig = await getPricingConfig();
+  const [pricingConfig, servicesContent, galleryItemsDb, serviceAreasDb] = await Promise.all([
+    getPricingConfig(),
+    getServicesContent(),
+    listGalleryItems(true),
+    listServiceAreas(true),
+  ]);
+
+  const galleryItems = galleryItemsDb
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((g) => ({
+      id: g.id,
+      src: g.imageUrl,
+      alt: g.altText,
+      caption: g.caption || "",
+      serviceType: g.serviceType || "",
+      category: (g.category || "living") as "kitchen" | "bathroom" | "living" | "hallway" | "laundry",
+    }));
 
   return (
     <>
       <Hero />
       <TrustIndicators />
-      <ServicesOverview />
-      <EstimateTeaser pricingConfig={pricingConfig} />
+      <ServicesOverview services={servicesContent} />
+      <EstimateTeaser pricingConfig={pricingConfig} services={servicesContent} />
       <WhyChooseUs />
-      <GalleryPreview />
+      <GalleryPreview items={galleryItems} />
       <HowBookingWorks />
-      <ServiceAreaSection />
+      <ServiceAreaSection areas={serviceAreasDb.map((a) => a.name)} />
       <TestimonialsSection />
       <FaqSection />
       <FinalCta />

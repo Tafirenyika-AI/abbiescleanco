@@ -1,10 +1,13 @@
+import { getIntegrationValue } from "@/lib/server/integrationSettings";
+
 /**
  * SMS / WhatsApp Business notification adapter.
  *
  * Live sending requires Twilio (or an approved WhatsApp Business API
- * provider) credentials — see .env.example for TWILIO_ACCOUNT_SID,
- * TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER. Without them this logs the message
- * instead of sending it, so automation flows remain testable.
+ * provider) credentials — set from /admin/settings (checked first) or
+ * TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_FROM_NUMBER (fallback).
+ * Without either, this logs the message instead of sending it, so
+ * automation flows remain testable.
  */
 export interface SendSmsResult {
   ok: boolean;
@@ -12,11 +15,13 @@ export interface SendSmsResult {
   error?: string;
 }
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const fromNumber = process.env.TWILIO_FROM_NUMBER;
-
 export async function sendSms(to: string, body: string): Promise<SendSmsResult> {
+  const [accountSid, authToken, fromNumber] = await Promise.all([
+    getIntegrationValue("twilioAccountSid", "TWILIO_ACCOUNT_SID"),
+    getIntegrationValue("twilioAuthToken", "TWILIO_AUTH_TOKEN"),
+    getIntegrationValue("twilioFromNumber", "TWILIO_FROM_NUMBER"),
+  ]);
+
   if (!accountSid || !authToken || !fromNumber) {
     console.info(`[mock sms] to=${to} body="${body}"`);
     return { ok: true, mode: "mock" };

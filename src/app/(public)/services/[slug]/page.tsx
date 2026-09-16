@@ -6,17 +6,23 @@ import { Check, ArrowLeft } from "lucide-react";
 import Section, { Eyebrow } from "@/components/ui/Section";
 import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
-import { services, getService } from "@/lib/data/services";
+import { services, isServiceId } from "@/lib/data/services";
 import { business, whatsappLink } from "@/lib/data/business";
 import { serviceIcons } from "@/lib/serviceIcons";
+import { getServiceContentById } from "@/lib/server/servicesContent";
 
 export function generateStaticParams() {
   return services.map((s) => ({ slug: s.id }));
 }
 
+// Content is admin-editable from /admin/content — revalidate frequently
+// rather than only rebuilding on deploy.
+export const revalidate = 60;
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const service = getService(slug);
+  if (!isServiceId(slug)) return {};
+  const service = await getServiceContentById(slug);
   if (!service) return {};
   return {
     title: `${service.name} in Spokane Valley, WA`,
@@ -27,7 +33,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function ServiceDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const service = getService(slug);
+  if (!isServiceId(slug)) notFound();
+  const service = await getServiceContentById(slug);
   if (!service) notFound();
   const ServiceIcon = serviceIcons[service.id];
 

@@ -3,7 +3,7 @@ import Section, { Eyebrow } from "@/components/ui/Section";
 import Button from "@/components/ui/Button";
 import { business } from "@/lib/data/business";
 
-export default function ServiceAreaSection() {
+export default function ServiceAreaSection({ areas = [...business.areaServed] }: { areas?: string[] }) {
   return (
     <Section className="bg-navy-950" ariaLabelledby="service-area-heading">
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:items-center">
@@ -24,7 +24,7 @@ export default function ServiceAreaSection() {
 
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6 sm:p-8">
           <ul className="grid grid-cols-2 gap-3">
-            {business.areaServed.map((area) => (
+            {areas.map((area) => (
               <li key={area} className="flex items-center gap-2 rounded-xl bg-white/5 px-3.5 py-2.5 text-sm text-white">
                 <MapPin className="size-4 shrink-0 text-teal-400" aria-hidden />
                 {area}

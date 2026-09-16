@@ -4,11 +4,23 @@ import { useMemo, useState } from "react";
 import Section, { Eyebrow } from "@/components/ui/Section";
 import Button from "@/components/ui/Button";
 import { calculateEstimate, defaultPricingConfig, type Condition, type PricingConfig } from "@/lib/pricing";
-import { services, type ServiceId } from "@/lib/data/services";
+import { services as defaultServices, type ServiceId } from "@/lib/data/services";
 
-const quickServices = services.filter((s) => s.category !== "commercial");
+interface SelectableService {
+  id: ServiceId;
+  name: string;
+  category: string;
+  isActive?: boolean;
+}
 
-export default function EstimateTeaser({ pricingConfig = defaultPricingConfig }: { pricingConfig?: PricingConfig }) {
+export default function EstimateTeaser({
+  pricingConfig = defaultPricingConfig,
+  services = defaultServices,
+}: {
+  pricingConfig?: PricingConfig;
+  services?: SelectableService[];
+}) {
+  const quickServices = services.filter((s) => s.category !== "commercial" && s.isActive !== false);
   const [serviceId, setServiceId] = useState<ServiceId>("standard-cleaning");
   const [bedrooms, setBedrooms] = useState(3);
   const [bathrooms, setBathrooms] = useState(2);

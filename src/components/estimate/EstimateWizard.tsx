@@ -7,11 +7,17 @@ import { useSearchParams } from "next/navigation";
 import { CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { quoteRequestSchema, type QuoteRequestInput, type QuoteRequestFormValues } from "@/lib/validation/quote";
 import { calculateEstimate, conditionLabels, frequencyLabels, defaultPricingConfig, type PricingConfig } from "@/lib/pricing";
-import { services, type ServiceId } from "@/lib/data/services";
+import { services as defaultServices, type ServiceId } from "@/lib/data/services";
 import Button from "@/components/ui/Button";
 import ClaimAccountPrompt from "@/components/account/ClaimAccountPrompt";
 
 const steps = ["Property & Service", "Cleaning Details", "Your Info", "Review & Submit"] as const;
+
+interface SelectableService {
+  id: ServiceId;
+  name: string;
+  isActive?: boolean;
+}
 
 function fieldError(message?: string) {
   if (!message) return null;
@@ -25,10 +31,13 @@ function fieldError(message?: string) {
 export default function EstimateWizard({
   pricingConfig = defaultPricingConfig,
   isLoggedIn = false,
+  services = defaultServices,
 }: {
   pricingConfig?: PricingConfig;
   isLoggedIn?: boolean;
+  services?: SelectableService[];
 }) {
+  const selectableServices = services.filter((s) => s.isActive !== false);
   const searchParams = useSearchParams();
   const [step, setStep] = useState(0);
   const [submitState, setSubmitState] = useState<
@@ -260,7 +269,7 @@ export default function EstimateWizard({
             <label className="block">
               <span className="text-sm font-semibold text-navy-900">Cleaning service</span>
               <select className="mt-1.5 w-full rounded-xl border border-surface-200 px-3.5 py-2.5 text-sm" {...register("service")}>
-                {services.map((s) => (
+                {selectableServices.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
               </select>
@@ -420,7 +429,7 @@ export default function EstimateWizard({
             <div className="rounded-2xl border border-surface-200 p-5">
               <h3 className="font-semibold text-navy-950">Review your request</h3>
               <dl className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-                <div><dt className="text-surface-700">Service</dt><dd className="font-medium text-navy-900">{services.find((s) => s.id === values.service)?.name}</dd></div>
+                <div><dt className="text-surface-700">Service</dt><dd className="font-medium text-navy-900">{selectableServices.find((s) => s.id === values.service)?.name}</dd></div>
                 <div>
                   <dt className="text-surface-700">Property</dt>
                   <dd className="font-medium text-navy-900">

@@ -11,6 +11,10 @@ export const metadata: Metadata = {
   alternates: { canonical: "/checklist" },
 };
 
+// Shares a layout with admin-editable footer content (social links) —
+// revalidate so this page doesn't lag behind a deploy for that.
+export const revalidate = 60;
+
 export default function ChecklistPage() {
   return (
     <>

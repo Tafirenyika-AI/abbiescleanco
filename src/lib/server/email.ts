@@ -1,10 +1,6 @@
 import { Resend } from "resend";
 import { business } from "@/lib/data/business";
-
-const resendApiKey = process.env.RESEND_API_KEY;
-const fromAddress = process.env.EMAIL_FROM || "Abbie's Clean Method <onboarding@resend.dev>";
-
-const resend = resendApiKey ? new Resend(resendApiKey) : null;
+import { getIntegrationValue } from "@/lib/server/integrationSettings";
 
 export interface SendEmailInput {
   to: string;
@@ -21,15 +17,19 @@ export interface SendEmailResult {
 }
 
 /**
- * Sends transactional email via Resend when RESEND_API_KEY is configured.
- * Falls back to a logged "mock send" so the full lead/quote flow can be
- * exercised locally without a live email provider. See .env.example.
+ * Sends transactional email via Resend once a key is configured — from
+ * /admin/settings (checked first) or RESEND_API_KEY (fallback). Falls back
+ * to a logged "mock send" so the full lead/quote flow can be exercised
+ * without a live email provider. See .env.example.
  */
 export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
-  if (!resend) {
+  const resendApiKey = await getIntegrationValue("resendApiKey", "RESEND_API_KEY");
+  if (!resendApiKey) {
     console.info(`[mock email] to=${input.to} subject="${input.subject}"`);
     return { ok: true, mode: "mock" };
   }
+  const fromAddress = (await getIntegrationValue("emailFrom", "EMAIL_FROM")) || "Abbie's Clean Method <onboarding@resend.dev>";
+  const resend = new Resend(resendApiKey);
 
   try {
     const { data, error } = await resend.emails.send({

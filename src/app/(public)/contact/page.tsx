@@ -3,6 +3,8 @@ import { Phone, Mail, MessageCircle, Clock, MapPin, AlertCircle } from "lucide-r
 import Section, { Eyebrow } from "@/components/ui/Section";
 import ContactForm from "@/components/contact/ContactForm";
 import { business, telHref, mailtoHref, whatsappLink } from "@/lib/data/business";
+import { getBusinessHours } from "@/lib/server/siteSettings";
+import { listServiceAreas } from "@/lib/server/content";
 
 export const metadata: Metadata = {
   title: "Contact Us",
@@ -10,7 +12,12 @@ export const metadata: Metadata = {
   alternates: { canonical: "/contact" },
 };
 
-export default function ContactPage() {
+// Hours/service-area are admin-editable — revalidate frequently.
+export const revalidate = 60;
+
+export default async function ContactPage() {
+  const [hours, areas] = await Promise.all([getBusinessHours(), listServiceAreas(true)]);
+
   return (
     <>
       <Section className="bg-navy-950 py-14 sm:py-16">
@@ -59,7 +66,7 @@ export default function ContactPage() {
                 <div>
                   <p className="text-sm font-semibold text-navy-950">Business hours</p>
                   <ul className="mt-1 space-y-0.5 text-sm text-surface-700">
-                    {business.hours.map((h) => (
+                    {hours.map((h) => (
                       <li key={h.days}>{h.days}: {h.time}</li>
                     ))}
                   </ul>
@@ -70,7 +77,7 @@ export default function ContactPage() {
                 <MapPin className="mt-0.5 size-5 shrink-0 text-teal-600" aria-hidden />
                 <div>
                   <p className="text-sm font-semibold text-navy-950">Service area</p>
-                  <p className="mt-1 text-sm text-surface-700">{business.areaServed.join(", ")}</p>
+                  <p className="mt-1 text-sm text-surface-700">{areas.map((a) => a.name).join(", ")}</p>
                 </div>
               </div>
 

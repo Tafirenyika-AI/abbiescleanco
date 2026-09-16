@@ -2,12 +2,14 @@ import Section, { Eyebrow } from "@/components/ui/Section";
 import Button from "@/components/ui/Button";
 import Reveal from "@/components/ui/Reveal";
 import ServiceCard from "@/components/services/ServiceCard";
-import { services } from "@/lib/data/services";
+import type { ServiceContent } from "@/lib/server/servicesContent";
 
-export default function ServicesOverview() {
-  const featured = services.filter((s) =>
-    ["standard-cleaning", "deep-cleaning", "move-in-cleaning", "move-out-cleaning", "bathroom-deep-cleaning", "kitchen-deep-cleaning"].includes(s.id)
-  );
+const FEATURED_IDS = ["standard-cleaning", "deep-cleaning", "move-in-cleaning", "move-out-cleaning", "bathroom-deep-cleaning", "kitchen-deep-cleaning"];
+
+export default function ServicesOverview({ services }: { services: ServiceContent[] }) {
+  const active = services.filter((s) => s.isActive);
+  const featured = FEATURED_IDS.map((id) => active.find((s) => s.id === id)).filter((s): s is ServiceContent => Boolean(s));
+  if (featured.length === 0) return null;
   const [hero, ...rest] = featured;
 
   return (

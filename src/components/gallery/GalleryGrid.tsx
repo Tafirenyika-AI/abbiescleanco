@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { X, ChevronLeft, ChevronRight, Expand } from "lucide-react";
-import { galleryItems, type GalleryItem } from "@/lib/data/gallery";
+import { galleryItems as defaultGalleryItems, type GalleryItem } from "@/lib/data/gallery";
 
-const categories: { key: GalleryItem["category"] | "all"; label: string }[] = [
+const categories: { key: string; label: string }[] = [
   { key: "all", label: "All" },
   { key: "kitchen", label: "Kitchen" },
   { key: "bathroom", label: "Bathroom" },
@@ -19,14 +19,14 @@ const categories: { key: GalleryItem["category"] | "all"; label: string }[] = [
 // on the fill image means nothing crops oddly regardless of the source aspect.
 const aspectCycle = ["aspect-[3/4]", "aspect-square", "aspect-[4/5]", "aspect-[4/3]"];
 
-export default function GalleryGrid() {
-  const [filter, setFilter] = useState<(typeof categories)[number]["key"]>("all");
+export default function GalleryGrid({ items = defaultGalleryItems }: { items?: GalleryItem[] }) {
+  const [filter, setFilter] = useState<string>("all");
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const filtered = useMemo(
-    () => (filter === "all" ? galleryItems : galleryItems.filter((g) => g.category === filter)),
-    [filter]
+    () => (filter === "all" ? items : items.filter((g) => g.category === filter)),
+    [filter, items]
   );
 
   useEffect(() => {

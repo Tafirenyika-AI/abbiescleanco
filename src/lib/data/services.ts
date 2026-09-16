@@ -189,3 +189,7 @@ export const services: Service[] = [
 export function getService(id: string) {
   return services.find((s) => s.id === id);
 }
+
+export function isServiceId(id: string): id is ServiceId {
+  return services.some((s) => s.id === id);
+}

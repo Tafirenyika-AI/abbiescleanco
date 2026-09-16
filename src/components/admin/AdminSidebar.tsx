@@ -9,6 +9,8 @@ import {
   FileText,
   Star,
   ShieldCheck,
+  Settings,
+  UserCircle,
   X,
 } from "lucide-react";
 import type { AdminPermission } from "@/lib/permissions";
@@ -27,6 +29,8 @@ const navItems: NavItem[] = [
   { href: "/admin/content", label: "Content", icon: FileText, permission: "MANAGE_CONTENT" },
   { href: "/admin/reviews", label: "Reviews", icon: Star, permission: "MANAGE_REVIEWS" },
   { href: "/admin/users", label: "Admin users", icon: ShieldCheck, permission: "MANAGE_USERS" },
+  { href: "/admin/settings", label: "Settings", icon: Settings, permission: "MANAGE_CONTENT" },
+  { href: "/admin/profile", label: "My profile", icon: UserCircle },
 ];
 
 export default function AdminSidebar({

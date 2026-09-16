@@ -2,12 +2,12 @@ import Image from "next/image";
 import Section, { Eyebrow } from "@/components/ui/Section";
 import Button from "@/components/ui/Button";
 import Reveal from "@/components/ui/Reveal";
-import { galleryItems } from "@/lib/data/gallery";
+import { galleryItems as defaultGalleryItems, type GalleryItem } from "@/lib/data/gallery";
 
 const aspectCycle = ["aspect-[4/5]", "aspect-square", "aspect-[3/4]"];
 
-export default function GalleryPreview() {
-  const items = galleryItems.slice(0, 6);
+export default function GalleryPreview({ items: allItems = defaultGalleryItems }: { items?: GalleryItem[] }) {
+  const items = allItems.slice(0, 6);
 
   return (
     <Section className="bg-surface-50" ariaLabelledby="gallery-heading">

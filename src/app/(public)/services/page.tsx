@@ -4,7 +4,7 @@ import Button from "@/components/ui/Button";
 import Reveal from "@/components/ui/Reveal";
 import ServiceCard from "@/components/services/ServiceCard";
 import ServicesFilterGrid from "@/components/services/ServicesFilterGrid";
-import { services } from "@/lib/data/services";
+import { getServicesContent } from "@/lib/server/servicesContent";
 
 export const metadata: Metadata = {
   title: "Cleaning Services in Spokane Valley, WA",
@@ -13,8 +13,14 @@ export const metadata: Metadata = {
   alternates: { canonical: "/services" },
 };
 
-export default function ServicesPage() {
-  const [first, ...rest] = services;
+// Content is admin-editable from /admin/content — revalidate frequently
+// rather than only rebuilding on deploy.
+export const revalidate = 60;
+
+export default async function ServicesPage() {
+  const allServices = await getServicesContent();
+  const active = allServices.filter((s) => s.isActive);
+  const [first, ...rest] = active;
 
   return (
     <>
@@ -33,9 +39,11 @@ export default function ServicesPage() {
       </Section>
 
       <Section>
-        <Reveal>
-          <ServiceCard service={first} featured priority />
-        </Reveal>
+        {first && (
+          <Reveal>
+            <ServiceCard service={first} featured priority />
+          </Reveal>
+        )}
         <div className="mt-8">
           <ServicesFilterGrid services={rest} />
         </div>

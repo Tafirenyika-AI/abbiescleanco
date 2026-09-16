@@ -11,6 +11,10 @@ export const metadata: Metadata = {
   alternates: { canonical: "/about" },
 };
 
+// Shares a layout with admin-editable footer content (social links) —
+// revalidate so this page doesn't lag behind a deploy for that.
+export const revalidate = 60;
+
 const values = [
   { icon: Heart, title: "Personal attention", description: "Every home gets a plan that fits how you actually live in it, not a one-size-fits-all checklist." },
   { icon: MessageSquare, title: "Consistent work & clear communication", description: "You'll always know what to expect, and we'll tell you before anything changes." },

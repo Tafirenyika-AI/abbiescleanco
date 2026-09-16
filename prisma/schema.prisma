@@ -323,7 +323,15 @@ model ServiceCatalogItem {
   id          String   @id @default(cuid())
   slug        String   @unique
   name        String
-  description String
+  description String   // short/teaser description
+  category    String   @default("home") // home | specialty | commercial
+  imageUrl    String?
+  imageAlt    String?
+  // Everything else that varies per service and is genuinely admin-editable
+  // content (not pricing): { forWho, included: string[], addOns: string[],
+  // recommendedFrequency, prepare: string[] }. Kept as JSON rather than more
+  // columns since it's read as a whole object everywhere it's used.
+  details     Json?
   isActive    Boolean  @default(true)
   sortOrder   Int      @default(0)
 
