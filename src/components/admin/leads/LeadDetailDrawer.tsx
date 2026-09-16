@@ -37,13 +37,13 @@ export default function LeadDetailDrawer({
 
   useEffect(() => {
     let cancelled = false;
-    setLoadingActivity(true);
     fetch(`/api/admin/leads/${lead.id}`)
       .then((res) => res.json())
       .then((json) => {
-        if (!cancelled && json.ok) setActivity(json.activity);
-      })
-      .finally(() => !cancelled && setLoadingActivity(false));
+        if (cancelled) return;
+        if (json.ok) setActivity(json.activity);
+        setLoadingActivity(false);
+      });
     return () => {
       cancelled = true;
     };

@@ -15,7 +15,6 @@ export default async function AdminQuoteDetailPage({ params }: { params: Promise
       leadId={quote.leadId}
       leadReference={lead?.reference ?? "—"}
       customerName={quote.customerName}
-      customerEmail={quote.customerEmail}
       customerPhone={quote.customerPhone}
       serviceName={quote.serviceName}
       quote={quote}

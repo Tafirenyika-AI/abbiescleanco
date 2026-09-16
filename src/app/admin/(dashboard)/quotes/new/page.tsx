@@ -31,7 +31,6 @@ export default async function NewQuotePage({ searchParams }: { searchParams: Pro
       leadId={lead.id}
       leadReference={lead.reference}
       customerName={`${lead.input.firstName} ${lead.input.lastName}`.trim()}
-      customerEmail={lead.input.email}
       customerPhone={lead.input.phone}
       serviceName={serviceName}
       quote={null}

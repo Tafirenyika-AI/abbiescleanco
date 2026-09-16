@@ -30,9 +30,12 @@ export default function BookingsView({ bookings }: { bookings: BookingListItem[]
     return true;
   });
 
-  const now = Date.now();
+  const [{ now, todayKey }] = useState(() => {
+    const n = Date.now();
+    return { now: n, todayKey: new Date(n).toDateString() };
+  });
   const upcoming = bookings.filter((b) => b.scheduledStart && new Date(b.scheduledStart).getTime() > now && b.status !== "CANCELLED").length;
-  const today = bookings.filter((b) => b.scheduledStart && new Date(b.scheduledStart).toDateString() === new Date().toDateString()).length;
+  const today = bookings.filter((b) => b.scheduledStart && new Date(b.scheduledStart).toDateString() === todayKey).length;
 
   return (
     <div>

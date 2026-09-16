@@ -9,7 +9,7 @@ import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
 import { useToast } from "@/components/admin/ui/Toast";
-import { formatDate, formatDateTime } from "@/lib/adminDate";
+import { formatDateTime } from "@/lib/adminDate";
 
 interface LineItem {
   label: string;
@@ -25,16 +25,11 @@ const statusTone: Record<QuoteStatusValue, "neutral" | "info" | "success" | "err
   EXPIRED: "warning",
 };
 
-function toDollars(cents: number) {
-  return (cents / 100).toFixed(2);
-}
-
 export default function QuoteDetailView({
   mode,
   leadId,
   leadReference,
   customerName,
-  customerEmail,
   customerPhone,
   serviceName,
   quote,
@@ -44,7 +39,6 @@ export default function QuoteDetailView({
   leadId: string;
   leadReference: string;
   customerName: string;
-  customerEmail: string;
   customerPhone: string;
   serviceName: string;
   quote: QuoteDetail | null;

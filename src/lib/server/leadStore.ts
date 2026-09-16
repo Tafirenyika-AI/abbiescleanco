@@ -4,7 +4,7 @@ import { prisma, isDatabaseConfigured } from "@/lib/db";
 import { generateReference } from "@/lib/reference";
 import type { QuoteRequestInput } from "@/lib/validation/quote";
 import type { EstimateResult } from "@/lib/pricing";
-import { LEAD_STATUSES, type LeadStatusValue, type StoredLead, type LeadActivityEntry } from "@/lib/leads";
+import type { LeadStatusValue, StoredLead, LeadActivityEntry } from "@/lib/leads";
 
 export { LEAD_STATUSES, leadStatusLabels, type LeadStatusValue, type StoredLead, type LeadActivityEntry } from "@/lib/leads";
 
@@ -143,7 +143,7 @@ export async function createLead(input: QuoteRequestInput, estimate: EstimateRes
 }
 
 function mapLead(
-  l: NonNullable<Awaited<ReturnType<typeof prismaFindLeadWithRelations>>>
+  l: NonNullable<Awaited<ReturnType<typeof _prismaFindLeadWithRelations>>>
 ): StoredLead {
   return {
     id: l.id,
@@ -190,7 +190,7 @@ function mapLead(
   };
 }
 
-function prismaFindLeadWithRelations() {
+function _prismaFindLeadWithRelations() {
   return prisma!.lead.findFirst({
     include: { customer: true, quoteRequest: true, service: true, address: true },
   });
