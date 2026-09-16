@@ -5,10 +5,11 @@ launch. Nothing here was invented as fact — each item is either carried
 over from the current live site (flagged where it conflicts with something
 else) or left as a placeholder pending your answer.
 
-## 1. Pricing
+## 1. Pricing — CONFIRMED, now admin-editable (2026-09-16)
 
-The current site (abbiescleanco.com/packages) publishes these ranges, which
-this rebuild used as the estimator's pricing engine (`src/lib/pricing.ts`):
+You confirmed the rates already published on the current site
+(abbiescleanco.com/packages) as accurate, so they're in active use as the
+estimator's starting numbers:
 
 - Standard Cleaning: $150–$200 (2–3 hrs)
 - Deep Cleaning: $225–$450 (3–6 hrs)
@@ -16,17 +17,26 @@ this rebuild used as the estimator's pricing engine (`src/lib/pricing.ts`):
 - Add-ons: inside oven $25–$50, inside fridge $25–$40, pet hair $25+,
   laundry $20+, dishes $15–$30, interior windows $50+, extra attention $25+
 
-**Please confirm these are still accurate.** The estimator scales them by
-bedrooms/bathrooms/square footage/condition to produce a range — the exact
-scaling formula is a reasonable starting point, not something you've
-approved line by line. Recommend a short call to sanity-check a few sample
-estimates against what you'd actually quote.
+**You (or anyone with admin access) can now change any of these — and add
+or remove add-ons — from `/admin/pricing`, with no code deploy needed.**
+That page controls every base price, the per-bedroom/bathroom/sq-ft scaling
+amounts, the manual-quote size threshold, condition multipliers, and the
+recurring-discount toggle/rates, per service. Changes apply to the full
+estimate wizard immediately and to the homepage's quick-preview estimator
+within about a minute. See the "Editing pricing" section in README.md for
+how this is wired up (and how it upgrades to Postgres automatically once
+`DATABASE_URL` is set — no separate migration of these numbers needed,
+since the admin panel writes there directly).
 
-**Recurring-service discounts are OFF.** The spec says not to show savings
-language unless you approve specific rates — none are shown anywhere on the
-site right now. If you want to offer a discount for weekly/biweekly/monthly
-service, tell us the percentage and we'll enable it (`recurringDiscountsEnabled`
-in `src/lib/pricing.ts`).
+The bedroom/bathroom/sq-ft scaling formula itself (how much each extra
+bedroom/bathroom/sq ft adds) is a reasonable starting point we set, not
+something you've reviewed line by line — worth a short call to sanity-check
+a few sample estimates against what you'd actually quote, and adjust in the
+admin panel if anything's off.
+
+**Recurring-service discounts are OFF by default**, per the project spec
+(no savings language until you approve specific rates). Toggle it on and
+set rates per frequency directly in `/admin/pricing` whenever you're ready.
 
 ## 2. Image/pricing conflict — needs a decision
 

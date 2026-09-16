@@ -3,12 +3,12 @@
 import { useMemo, useState } from "react";
 import Section, { Eyebrow } from "@/components/ui/Section";
 import Button from "@/components/ui/Button";
-import { calculateEstimate, type Condition } from "@/lib/pricing";
+import { calculateEstimate, defaultPricingConfig, type Condition, type PricingConfig } from "@/lib/pricing";
 import { services, type ServiceId } from "@/lib/data/services";
 
 const quickServices = services.filter((s) => s.category !== "commercial");
 
-export default function EstimateTeaser() {
+export default function EstimateTeaser({ pricingConfig = defaultPricingConfig }: { pricingConfig?: PricingConfig }) {
   const [serviceId, setServiceId] = useState<ServiceId>("standard-cleaning");
   const [bedrooms, setBedrooms] = useState(3);
   const [bathrooms, setBathrooms] = useState(2);
@@ -16,18 +16,21 @@ export default function EstimateTeaser() {
 
   const estimate = useMemo(
     () =>
-      calculateEstimate({
-        service: serviceId,
-        propertyType: "house",
-        squareFeet: 1500,
-        bedrooms,
-        bathrooms,
-        condition,
-        frequency: "one-time",
-        hasPets: false,
-        addOns: [],
-      }),
-    [serviceId, bedrooms, bathrooms, condition]
+      calculateEstimate(
+        {
+          service: serviceId,
+          propertyType: "house",
+          squareFeet: 1500,
+          bedrooms,
+          bathrooms,
+          condition,
+          frequency: "one-time",
+          hasPets: false,
+          addOns: [],
+        },
+        pricingConfig
+      ),
+    [serviceId, bedrooms, bathrooms, condition, pricingConfig]
   );
 
   const params = new URLSearchParams({

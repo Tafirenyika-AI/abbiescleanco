@@ -5,16 +5,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { quoteRequestSchema, type QuoteRequestInput, type QuoteRequestFormValues, addOnKeys } from "@/lib/validation/quote";
-import { calculateEstimate, addOnPricing, conditionLabels, frequencyLabels, type AddOnKey } from "@/lib/pricing";
+import { quoteRequestSchema, type QuoteRequestInput, type QuoteRequestFormValues } from "@/lib/validation/quote";
+import { calculateEstimate, conditionLabels, frequencyLabels, defaultPricingConfig, type PricingConfig } from "@/lib/pricing";
 import { services, type ServiceId } from "@/lib/data/services";
 import Button from "@/components/ui/Button";
 
 const steps = ["Property & Service", "Cleaning Details", "Your Info", "Review & Submit"] as const;
-
-const addOnLabels: Record<AddOnKey, string> = Object.fromEntries(
-  addOnKeys.map((k) => [k, addOnPricing[k].label])
-) as Record<AddOnKey, string>;
 
 function fieldError(message?: string) {
   if (!message) return null;
@@ -25,7 +21,7 @@ function fieldError(message?: string) {
   );
 }
 
-export default function EstimateWizard() {
+export default function EstimateWizard({ pricingConfig = defaultPricingConfig }: { pricingConfig?: PricingConfig }) {
   const searchParams = useSearchParams();
   const [step, setStep] = useState(0);
   const [submitState, setSubmitState] = useState<
@@ -94,8 +90,8 @@ export default function EstimateWizard() {
       frequency: values.frequency,
       hasPets: Boolean(values.hasPets),
       addOns: values.addOns || [],
-    });
-  }, [values.service, values.propertyType, values.squareFeet, values.bedrooms, values.bathrooms, values.condition, values.frequency, values.hasPets, values.addOns]);
+    }, pricingConfig);
+  }, [values.service, values.propertyType, values.squareFeet, values.bedrooms, values.bathrooms, values.condition, values.frequency, values.hasPets, values.addOns, pricingConfig]);
 
   const estimateLabel = estimate.requiresManualQuote
     ? "Manual quote required"
@@ -322,14 +318,14 @@ export default function EstimateWizard() {
             <div className="sm:col-span-2">
               <span className="text-sm font-semibold text-navy-900">Optional add-ons</span>
               <div className="mt-2 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                {addOnKeys.map((key) => (
-                  <label key={key} className="flex items-center justify-between gap-2 rounded-xl border border-surface-200 px-3.5 py-2.5 text-sm">
+                {pricingConfig.addOns.map((addOn) => (
+                  <label key={addOn.key} className="flex items-center justify-between gap-2 rounded-xl border border-surface-200 px-3.5 py-2.5 text-sm">
                     <span className="flex items-center gap-2">
-                      <input type="checkbox" value={key} className="size-4" {...register("addOns")} />
-                      {addOnLabels[key]}
+                      <input type="checkbox" value={addOn.key} className="size-4" {...register("addOns")} />
+                      {addOn.label}
                     </span>
                     <span className="text-xs text-surface-700">
-                      +${addOnPricing[key].low}–${addOnPricing[key].high}
+                      +${addOn.low}–${addOn.high}
                     </span>
                   </label>
                 ))}
@@ -400,7 +396,7 @@ export default function EstimateWizard() {
                 <div><dt className="text-surface-700">ZIP</dt><dd className="font-medium text-navy-900">{values.zip}</dd></div>
                 <div><dt className="text-surface-700">Frequency</dt><dd className="font-medium text-navy-900">{frequencyLabels[values.frequency]}</dd></div>
                 <div><dt className="text-surface-700">Condition</dt><dd className="font-medium text-navy-900">{conditionLabels[values.condition]}</dd></div>
-                <div><dt className="text-surface-700">Add-ons</dt><dd className="font-medium text-navy-900">{values.addOns?.length ? values.addOns.map((a) => addOnLabels[a]).join(", ") : "None"}</dd></div>
+                <div><dt className="text-surface-700">Add-ons</dt><dd className="font-medium text-navy-900">{values.addOns?.length ? values.addOns.map((a) => pricingConfig.addOns.find((x) => x.key === a)?.label ?? a).join(", ") : "None"}</dd></div>
                 <div><dt className="text-surface-700">Contact</dt><dd className="font-medium text-navy-900">{values.firstName} {values.lastName} · {values.phone} · {values.email}</dd></div>
               </dl>
             </div>

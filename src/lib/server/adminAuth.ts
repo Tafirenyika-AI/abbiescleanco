@@ -18,22 +18,33 @@ function getSecret(): string {
   return secret;
 }
 
+function sign(expires: number, email: string): string {
+  return crypto.createHmac("sha256", getSecret()).update(`${expires}.${email}`).digest("hex");
+}
+
 export function createSessionToken(email: string): string {
   const expires = Date.now() + SESSION_TTL_MS;
-  const payload = `${email}.${expires}`;
-  const signature = crypto.createHmac("sha256", getSecret()).update(payload).digest("hex");
-  return Buffer.from(`${payload}.${signature}`).toString("base64url");
+  const signature = sign(expires, email);
+  // Field order matters: expires (digits only) and signature (hex only)
+  // never contain ".", so they can lead safely. Email is last and rejoined
+  // from every remaining segment, since real addresses routinely contain
+  // "." themselves (e.g. "admin@abbiescleanco.com") — splitting on "." with
+  // email first or in the middle silently mis-parses those.
+  return Buffer.from(`${expires}.${signature}.${email}`).toString("base64url");
 }
 
 export function verifySessionToken(token: string | undefined): { email: string } | null {
   if (!token) return null;
   try {
     const decoded = Buffer.from(token, "base64url").toString("utf-8");
-    const [email, expiresStr, signature] = decoded.split(".");
-    if (!email || !expiresStr || !signature) return null;
+    const [expiresStr, signature, ...emailParts] = decoded.split(".");
+    const email = emailParts.join(".");
+    if (!expiresStr || !signature || !email) return null;
 
-    const expected = crypto.createHmac("sha256", getSecret()).update(`${email}.${expiresStr}`).digest("hex");
-    const valid = crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+    const expected = sign(Number(expiresStr), email);
+    const valid =
+      signature.length === expected.length &&
+      crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
     if (!valid) return null;
 
     if (Date.now() > Number(expiresStr)) return null;

@@ -1,19 +1,15 @@
 import type { ServiceId } from "@/lib/data/services";
 
 /**
- * Preliminary-estimate pricing configuration.
+ * Pricing calculation — pure, config-driven, no hardcoded dollar figures.
  *
- * This is intentionally the single source of truth for every number the
- * estimator shows — nothing in the UI should hardcode a dollar figure.
- * In Phase 3 this shape should move into the `pricing_rules` admin-managed
- * database table (see prisma/schema.prisma) so the business can update rates
- * without a code deploy; the estimator's calculation logic will not need to
- * change, only where these values are read from.
- *
- * Base ranges below are anchored to the price ranges already published by
- * the business on its current site for a typical ~1,500 sq ft, 3-bed/2-bath
- * home. CONFIRM ALL RATES WITH THE CLIENT BEFORE LAUNCH — see
- * CLIENT_CONFIRMATION_CHECKLIST.md.
+ * `defaultPricingConfig` below holds the confirmed starting rates (the
+ * ranges Abbie's Clean Method already publishes) and doubles as the seed
+ * data / fallback when nothing has been edited yet. The values an estimate
+ * actually uses at runtime come from `getPricingConfig()` in
+ * `src/lib/server/pricingStore.ts`, which layers admin edits (from Postgres
+ * once DATABASE_URL is set, or a local JSON override file before then) on
+ * top of these defaults. Edit rates from /admin/pricing, not this file.
  */
 
 export type PropertyType = "apartment" | "house" | "townhome" | "commercial";
@@ -35,7 +31,7 @@ export const frequencyLabels: Record<Frequency, string> = {
   custom: "Custom schedule",
 };
 
-interface ServicePricing {
+export interface ServicePricing {
   baseLow: number;
   baseHigh: number;
   /** Baseline the base range assumes, before per-bedroom/bathroom/sqft adjustments. */
@@ -52,7 +48,22 @@ interface ServicePricing {
   durationHoursHigh: number;
 }
 
-export const servicePricing: Record<ServiceId, ServicePricing> = {
+export interface AddOnDefinition {
+  key: string;
+  label: string;
+  low: number;
+  high: number;
+}
+
+export interface PricingConfig {
+  services: Record<ServiceId, ServicePricing>;
+  addOns: AddOnDefinition[];
+  conditionMultiplier: Record<Condition, number>;
+  recurringDiscountsEnabled: boolean;
+  recurringDiscountRates: Record<Frequency, number>;
+}
+
+export const defaultServicePricing: Record<ServiceId, ServicePricing> = {
   "standard-cleaning": { baseLow: 150, baseHigh: 200, baseBedrooms: 3, baseBathrooms: 2, baseSqFt: 1500, perExtraBedroom: 15, perExtraBathroom: 20, perExtraSqFt: 0.05, manualQuoteAboveSqFt: 4000, durationHoursLow: 2, durationHoursHigh: 3 },
   "residential-cleaning": { baseLow: 150, baseHigh: 200, baseBedrooms: 3, baseBathrooms: 2, baseSqFt: 1500, perExtraBedroom: 15, perExtraBathroom: 20, perExtraSqFt: 0.05, manualQuoteAboveSqFt: 4000, durationHoursLow: 2, durationHoursHigh: 3 },
   "deep-cleaning": { baseLow: 225, baseHigh: 450, baseBedrooms: 3, baseBathrooms: 2, baseSqFt: 1500, perExtraBedroom: 25, perExtraBathroom: 35, perExtraSqFt: 0.09, manualQuoteAboveSqFt: 3500, durationHoursLow: 3, durationHoursHigh: 6 },
@@ -64,39 +75,42 @@ export const servicePricing: Record<ServiceId, ServicePricing> = {
   "commercial-cleaning": { baseLow: 0, baseHigh: 0, baseBedrooms: 0, baseBathrooms: 0, baseSqFt: 0, perExtraBedroom: 0, perExtraBathroom: 0, perExtraSqFt: 0, manualQuoteAboveSqFt: 0, durationHoursLow: 0, durationHoursHigh: 0 },
 };
 
-export const conditionMultiplier: Record<Condition, number> = {
+export const defaultConditionMultiplier: Record<Condition, number> = {
   light: 0.92,
   normal: 1,
   heavy: 1.25,
   "very-heavy": 1.5,
 };
 
-export const addOnPricing = {
-  insideFridge: { label: "Inside refrigerator", low: 25, high: 40 },
-  insideOven: { label: "Inside oven", low: 25, high: 50 },
-  interiorWindows: { label: "Interior windows", low: 50, high: 90 },
-  insideCabinets: { label: "Inside cabinets", low: 30, high: 60 },
-  baseboards: { label: "Baseboards detail pass", low: 20, high: 40 },
-  laundry: { label: "Laundry (wash & fold)", low: 20, high: 45 },
-  organization: { label: "Organization", low: 30, high: 75 },
-  petHairTreatment: { label: "Pet-hair treatment", low: 25, high: 45 },
-  dishes: { label: "Dishes (wash & put away)", low: 15, high: 30 },
-  sameDayUrgent: { label: "Same-day / urgent service", low: 40, high: 80 },
-} as const;
+export const defaultAddOns: AddOnDefinition[] = [
+  { key: "insideFridge", label: "Inside refrigerator", low: 25, high: 40 },
+  { key: "insideOven", label: "Inside oven", low: 25, high: 50 },
+  { key: "interiorWindows", label: "Interior windows", low: 50, high: 90 },
+  { key: "insideCabinets", label: "Inside cabinets", low: 30, high: 60 },
+  { key: "baseboards", label: "Baseboards detail pass", low: 20, high: 40 },
+  { key: "laundry", label: "Laundry (wash & fold)", low: 20, high: 45 },
+  { key: "organization", label: "Organization", low: 30, high: 75 },
+  { key: "petHairTreatment", label: "Pet-hair treatment", low: 25, high: 45 },
+  { key: "dishes", label: "Dishes (wash & put away)", low: 15, high: 30 },
+  { key: "sameDayUrgent", label: "Same-day / urgent service", low: 40, high: 80 },
+];
 
-export type AddOnKey = keyof typeof addOnPricing;
-
-/**
- * Recurring-frequency discounts are NOT enabled. Do not surface any savings
- * language until the client explicitly approves specific discount rates.
- */
-export const recurringDiscountsEnabled = false;
-export const recurringDiscountRates: Record<Frequency, number> = {
+/** Confirmed with the business (2026-09): keep this off until specific discount rates are approved for re-enabling. */
+export const defaultRecurringDiscountsEnabled = false;
+export const defaultRecurringDiscountRates: Record<Frequency, number> = {
   "one-time": 0,
   weekly: 0.15,
   biweekly: 0.1,
   "every-4-weeks": 0.05,
   custom: 0,
+};
+
+export const defaultPricingConfig: PricingConfig = {
+  services: defaultServicePricing,
+  addOns: defaultAddOns,
+  conditionMultiplier: defaultConditionMultiplier,
+  recurringDiscountsEnabled: defaultRecurringDiscountsEnabled,
+  recurringDiscountRates: defaultRecurringDiscountRates,
 };
 
 export interface EstimateInput {
@@ -108,7 +122,7 @@ export interface EstimateInput {
   condition: Condition;
   frequency: Frequency;
   hasPets: boolean;
-  addOns: AddOnKey[];
+  addOns: string[];
 }
 
 export interface EstimateResult {
@@ -124,10 +138,10 @@ export interface EstimateResult {
   breakdown: { label: string; low: number; high: number }[];
 }
 
-export function calculateEstimate(input: EstimateInput): EstimateResult {
-  const pricing = servicePricing[input.service];
+export function calculateEstimate(input: EstimateInput, config: PricingConfig = defaultPricingConfig): EstimateResult {
+  const pricing = config.services[input.service];
 
-  if (input.propertyType === "commercial" || input.service === "commercial-cleaning") {
+  if (input.propertyType === "commercial" || input.service === "commercial-cleaning" || !pricing) {
     return manualQuoteResult();
   }
 
@@ -144,7 +158,7 @@ export function calculateEstimate(input: EstimateInput): EstimateResult {
     extraBathrooms * pricing.perExtraBathroom +
     extraSqFt * pricing.perExtraSqFt;
 
-  const multiplier = conditionMultiplier[input.condition];
+  const multiplier = config.conditionMultiplier[input.condition];
 
   let low = (pricing.baseLow + sizeAdjustment) * multiplier;
   let high = (pricing.baseHigh + sizeAdjustment) * multiplier;
@@ -165,7 +179,8 @@ export function calculateEstimate(input: EstimateInput): EstimateResult {
   let addOnsLow = 0;
   let addOnsHigh = 0;
   for (const key of input.addOns) {
-    const addOn = addOnPricing[key];
+    const addOn = config.addOns.find((a) => a.key === key);
+    if (!addOn) continue; // ignore unknown/removed add-on keys rather than failing the whole estimate
     addOnsLow += addOn.low;
     addOnsHigh += addOn.high;
   }

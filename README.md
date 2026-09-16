@@ -32,9 +32,10 @@ comparison, about, gallery with filters + lightbox, reviews, contact page,
 (metadata, sitemap, robots.txt, LocalBusiness/Service/Breadcrumb JSON-LD).
 
 **Phase 2 — done:** interactive estimate wizard (4-step, validated, saves
-progress in-session), pricing engine (`src/lib/pricing.ts`), lead
-persistence (Postgres via Prisma, or a local JSON mock store when
-`DATABASE_URL` isn't set), duplicate-submission prevention, honeypot +
+progress in-session), a config-driven pricing engine (`src/lib/pricing.ts`)
+with every rate editable from `/admin/pricing` (see "Editing pricing"
+below), lead persistence (Postgres via Prisma, or a local JSON mock store
+when `DATABASE_URL` isn't set), duplicate-submission prevention, honeypot +
 rate-limited spam protection, confirmation email to the customer, lead
 notification email to the business, WhatsApp handoff with a prefilled
 summary, and a basic protected admin dashboard + lead list.
@@ -86,6 +87,34 @@ npm run db:migrate   # creates the initial migration + applies it
 npm run db:seed      # safe demo data: services, pricing rules, add-ons, reviews
 ```
 
+## Editing pricing
+
+Every dollar figure the site shows — base price ranges, the per-extra
+bedroom/bathroom/sq-ft scaling, the manual-quote size threshold, condition
+multipliers, add-ons (including adding brand-new ones), and the recurring-
+discount toggle/rates — lives in one place: `/admin/pricing`, protected by
+the same admin login as the lead dashboard.
+
+Nothing in the UI ever hardcodes a price. The estimate wizard, the
+homepage's quick-preview estimator, and the server-side calculation behind
+every submitted quote all read from the same config, fetched via
+`getPricingConfig()` (`src/lib/server/pricingStore.ts`):
+
+- **Without `DATABASE_URL`:** edits save to `.data/pricing-config.json`.
+- **With `DATABASE_URL`:** edits save to the `pricing_rules`,
+  `service_addons`, and `business_settings` tables — no separate migration
+  of these numbers is needed when you connect a real database, since the
+  admin panel becomes the source of truth immediately.
+
+The full wizard (`/estimate`) always reads the very latest saved config
+(that route is `force-dynamic`). The homepage teaser is statically
+generated for performance and revalidates every 60 seconds, so a pricing
+change can take up to a minute to show up there specifically — this is
+deliberate (see the comment in `src/app/page.tsx`), not a bug.
+
+`src/lib/pricing.ts`'s `defaultPricingConfig` is only the fallback/seed —
+edit rates from `/admin/pricing`, not that file, once the site is live.
+
 ## Testing
 
 ```bash
@@ -95,6 +124,16 @@ npm test          # unit + integration tests (Vitest) — pricing math, Zod
 npm run test:e2e   # Playwright — primary customer journey end to end.
                    # Run `npm run build` first; the config starts `next
                    # start` for you (see the Windows note above for why not `next dev`).
+```
+
+The admin-pricing e2e suite (`e2e/admin-pricing.spec.ts` — logs in, edits a
+price, confirms the wizard reflects it immediately) needs
+`ADMIN_DEMO_EMAIL`/`ADMIN_DEMO_PASSWORD` set in the shell running the test
+command (not just `.env.local` — the test script itself reads them), and
+skips itself with a clear message if they're not set:
+
+```bash
+ADMIN_DEMO_EMAIL=admin@abbiescleanco.com ADMIN_DEMO_PASSWORD=... npm run test:e2e
 ```
 
 ## Deployment (Vercel)
@@ -132,7 +171,8 @@ default, real credentials activate the real thing with no code changes.
 2. Visit `/admin/login` and sign in.
 3. `/admin` shows lead counts and popular services; `/admin/leads` lists
    every submitted estimate request with contact info and the calculated
-   estimate.
+   estimate; `/admin/pricing` edits every rate the site quotes with (see
+   "Editing pricing" above) — changes apply immediately, no deploy needed.
 4. This is a starting point — replace the env-based demo login with real
    `admin_users` table lookups (hashed passwords) before giving real staff
    access. Status changes, notes, and quote creation are Phase 3 work.

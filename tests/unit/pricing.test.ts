@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calculateEstimate } from "@/lib/pricing";
+import { calculateEstimate, defaultPricingConfig } from "@/lib/pricing";
 
 const baseInput = {
   service: "standard-cleaning" as const,
@@ -60,5 +60,20 @@ describe("calculateEstimate", () => {
     expect(Number.isFinite(result.low)).toBe(true);
     expect(Number.isFinite(result.high)).toBe(true);
     expect(result.low).toBeGreaterThanOrEqual(0);
+  });
+
+  it("reflects an admin-edited pricing config rather than the hardcoded defaults", () => {
+    const editedConfig = structuredClone(defaultPricingConfig);
+    editedConfig.services["standard-cleaning"].baseLow = 999;
+    editedConfig.services["standard-cleaning"].baseHigh = 1099;
+
+    const result = calculateEstimate(baseInput, editedConfig);
+    expect(result.low).toBe(999);
+    expect(result.high).toBe(1099);
+  });
+
+  it("ignores an add-on key that no longer exists in the config instead of throwing", () => {
+    const result = calculateEstimate({ ...baseInput, addOns: ["insideOven", "this-addon-was-deleted"] });
+    expect(result.addOnsLow).toBe(defaultPricingConfig.addOns.find((a) => a.key === "insideOven")!.low);
   });
 });

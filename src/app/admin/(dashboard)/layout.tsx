@@ -23,6 +23,7 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
             </Link>
             <Link href="/admin" className="text-sm text-surface-200 hover:text-teal-300">Dashboard</Link>
             <Link href="/admin/leads" className="text-sm text-surface-200 hover:text-teal-300">Leads</Link>
+            <Link href="/admin/pricing" className="text-sm text-surface-200 hover:text-teal-300">Pricing</Link>
           </nav>
           <SignOutButton />
         </Container>

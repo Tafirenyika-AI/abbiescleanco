@@ -3,6 +3,7 @@ import { quoteRequestSchema } from "@/lib/validation/quote";
 import { calculateEstimate } from "@/lib/pricing";
 import { getService } from "@/lib/data/services";
 import { createLead, findRecentDuplicate } from "@/lib/server/leadStore";
+import { getPricingConfig } from "@/lib/server/pricingStore";
 import { sendEmail, customerConfirmationEmail, businessNotificationEmail } from "@/lib/server/email";
 import { sendSms } from "@/lib/server/sms";
 import { checkRateLimit } from "@/lib/server/rateLimit";
@@ -54,17 +55,21 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const estimate = calculateEstimate({
-    service: input.service,
-    propertyType: input.propertyType,
-    squareFeet: input.squareFeet,
-    bedrooms: input.bedrooms,
-    bathrooms: input.bathrooms,
-    condition: input.condition,
-    frequency: input.frequency,
-    hasPets: input.hasPets,
-    addOns: input.addOns,
-  });
+  const pricingConfig = await getPricingConfig();
+  const estimate = calculateEstimate(
+    {
+      service: input.service,
+      propertyType: input.propertyType,
+      squareFeet: input.squareFeet,
+      bedrooms: input.bedrooms,
+      bathrooms: input.bathrooms,
+      condition: input.condition,
+      frequency: input.frequency,
+      hasPets: input.hasPets,
+      addOns: input.addOns,
+    },
+    pricingConfig
+  );
 
   const { reference } = await createLead(input, estimate);
 

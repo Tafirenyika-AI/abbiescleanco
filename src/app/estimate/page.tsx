@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Section, { Eyebrow } from "@/components/ui/Section";
 import EstimateWizard from "@/components/estimate/EstimateWizard";
+import { getPricingConfig } from "@/lib/server/pricingStore";
 
 export const metadata: Metadata = {
   title: "Get a Free Cleaning Estimate — Spokane Valley, WA",
@@ -10,7 +11,13 @@ export const metadata: Metadata = {
   alternates: { canonical: "/estimate" },
 };
 
-export default function EstimatePage() {
+// Pricing is admin-editable and must never be served stale — render this
+// page fresh on every request instead of at build time.
+export const dynamic = "force-dynamic";
+
+export default async function EstimatePage() {
+  const pricingConfig = await getPricingConfig();
+
   return (
     <Section>
       <div className="mx-auto max-w-2xl text-center">
@@ -26,7 +33,7 @@ export default function EstimatePage() {
 
       <div className="mx-auto mt-10 max-w-2xl">
         <Suspense fallback={<div className="text-center text-surface-700">Loading estimator…</div>}>
-          <EstimateWizard />
+          <EstimateWizard pricingConfig={pricingConfig} />
         </Suspense>
       </div>
     </Section>

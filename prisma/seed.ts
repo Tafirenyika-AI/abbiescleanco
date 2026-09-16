@@ -4,60 +4,25 @@
  */
 import { PrismaClient } from "@prisma/client";
 import { services } from "../src/lib/data/services";
-import { servicePricing, addOnPricing } from "../src/lib/pricing";
+import { defaultPricingConfig } from "../src/lib/pricing";
+import { savePricingConfig } from "../src/lib/server/pricingStore";
 import { testimonials } from "../src/lib/data/testimonials";
 import { business } from "../src/lib/data/business";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Seeding services, pricing rules, and add-ons...");
+  console.log("Seeding service catalog...");
   for (const service of services) {
-    const created = await prisma.serviceCatalogItem.upsert({
+    await prisma.serviceCatalogItem.upsert({
       where: { slug: service.id },
       update: { name: service.name, description: service.shortDescription },
       create: { slug: service.id, name: service.name, description: service.shortDescription },
     });
-
-    const pricing = servicePricing[service.id];
-    if (pricing.baseLow > 0 || pricing.baseHigh > 0) {
-      await prisma.pricingRule.upsert({
-        where: { id: `seed-${service.id}` },
-        update: {
-          baseLow: pricing.baseLow,
-          baseHigh: pricing.baseHigh,
-          baseBedrooms: pricing.baseBedrooms,
-          baseBathrooms: pricing.baseBathrooms,
-          baseSqFt: pricing.baseSqFt,
-          perExtraBedroom: pricing.perExtraBedroom,
-          perExtraBathroom: pricing.perExtraBathroom,
-          perExtraSqFt: pricing.perExtraSqFt,
-          manualQuoteAboveSqFt: pricing.manualQuoteAboveSqFt,
-        },
-        create: {
-          id: `seed-${service.id}`,
-          serviceId: created.id,
-          baseLow: pricing.baseLow,
-          baseHigh: pricing.baseHigh,
-          baseBedrooms: pricing.baseBedrooms,
-          baseBathrooms: pricing.baseBathrooms,
-          baseSqFt: pricing.baseSqFt,
-          perExtraBedroom: pricing.perExtraBedroom,
-          perExtraBathroom: pricing.perExtraBathroom,
-          perExtraSqFt: pricing.perExtraSqFt,
-          manualQuoteAboveSqFt: pricing.manualQuoteAboveSqFt,
-        },
-      });
-    }
-
-    for (const [key, addOn] of Object.entries(addOnPricing)) {
-      await prisma.serviceAddon.upsert({
-        where: { serviceId_key: { serviceId: created.id, key } },
-        update: { label: addOn.label, priceLow: addOn.low, priceHigh: addOn.high },
-        create: { serviceId: created.id, key, label: addOn.label, priceLow: addOn.low, priceHigh: addOn.high },
-      });
-    }
   }
+
+  console.log("Seeding pricing rules and add-ons (via the same path /admin/pricing writes to)...");
+  await savePricingConfig(defaultPricingConfig);
 
   console.log("Seeding service areas...");
   for (const area of business.areaServed) {
@@ -90,11 +55,8 @@ async function main() {
     update: { value: business.hours },
     create: { key: "business_hours", value: business.hours },
   });
-  await prisma.businessSetting.upsert({
-    where: { key: "recurring_discounts_enabled" },
-    update: { value: false },
-    create: { key: "recurring_discounts_enabled", value: false },
-  });
+  // recurring_discounts_enabled, recurring_discount_rates, and
+  // condition_multiplier are already written by savePricingConfig() above.
 
   console.log("Seed complete.");
 }

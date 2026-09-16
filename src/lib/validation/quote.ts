@@ -1,18 +1,5 @@
 import { z } from "zod";
 
-export const addOnKeys = [
-  "insideFridge",
-  "insideOven",
-  "interiorWindows",
-  "insideCabinets",
-  "baseboards",
-  "laundry",
-  "organization",
-  "petHairTreatment",
-  "dishes",
-  "sameDayUrgent",
-] as const;
-
 export const serviceIds = [
   "standard-cleaning",
   "deep-cleaning",
@@ -43,7 +30,10 @@ export const quoteRequestSchema = z.object({
   hasPets: z.boolean().default(false),
   lastProfessionalCleaning: z.string().trim().max(100).optional().or(z.literal("")),
   preferredDate: z.string().trim().optional().or(z.literal("")),
-  addOns: z.array(z.enum(addOnKeys)).default([]),
+  // Add-on keys are admin-managed (see /admin/pricing), not a fixed enum —
+  // validated loosely here; unknown/removed keys are simply ignored when the
+  // estimate is calculated (see calculateEstimate in lib/pricing.ts).
+  addOns: z.array(z.string().trim().min(1).max(60)).max(20).default([]),
 
   // Contact
   firstName: z.string().trim().min(1, "First name is required").max(80),
