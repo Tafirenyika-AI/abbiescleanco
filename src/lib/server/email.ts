@@ -143,6 +143,46 @@ export function adminPasswordResetEmail(params: { resetUrl: string }) {
   };
 }
 
+export function quoteEmail(params: {
+  firstName: string;
+  quoteNumber: string;
+  items: { label: string; quantity: number; unitPrice: number; total: number }[];
+  discount: number;
+  tax: number;
+  deposit: number;
+  total: number;
+  expiresAt: string | null;
+  message?: string;
+}) {
+  const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+  const rows = params.items
+    .map(
+      (i) =>
+        `<tr><td style="padding:6px 0">${escapeHtml(i.label)} ${i.quantity > 1 ? `× ${i.quantity}` : ""}</td><td style="padding:6px 0;text-align:right">${money(i.total)}</td></tr>`
+    )
+    .join("");
+  return {
+    subject: `Your quote from ${business.name} — ${params.quoteNumber}`,
+    html: `
+      <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
+        <h2 style="color:#0b1f33">Hi ${escapeHtml(params.firstName)},</h2>
+        ${params.message ? `<p>${escapeHtml(params.message)}</p>` : ""}
+        <p>Here's your quote <strong>${escapeHtml(params.quoteNumber)}</strong>:</p>
+        <table style="width:100%;border-collapse:collapse">
+          ${rows}
+          ${params.discount ? `<tr><td style="padding:6px 0">Discount</td><td style="padding:6px 0;text-align:right">-${money(params.discount)}</td></tr>` : ""}
+          ${params.tax ? `<tr><td style="padding:6px 0">Tax</td><td style="padding:6px 0;text-align:right">${money(params.tax)}</td></tr>` : ""}
+          <tr style="border-top:1px solid #e2e8f0;font-weight:bold"><td style="padding:8px 0">Total</td><td style="padding:8px 0;text-align:right">${money(params.total)}</td></tr>
+          ${params.deposit ? `<tr><td style="padding:6px 0">Deposit due to confirm</td><td style="padding:6px 0;text-align:right">${money(params.deposit)}</td></tr>` : ""}
+        </table>
+        ${params.expiresAt ? `<p style="color:#4a5a6a;font-size:13px">This quote is valid until ${new Date(params.expiresAt).toLocaleDateString()}.</p>` : ""}
+        <p>Reply to this email or call/text us at ${business.phoneDisplay} to accept or ask questions.</p>
+        <p style="margin-top:24px;color:#4a5a6a;font-size:14px">${business.name} · ${business.city}, ${business.region}</p>
+      </div>
+    `,
+  };
+}
+
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
 }

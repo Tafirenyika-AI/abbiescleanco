@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Phone, Mail, MessageCircle, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { X, Phone, Mail, MessageCircle, Loader2, FileSignature } from "lucide-react";
 import { LEAD_STATUSES, leadStatusLabels, type StoredLead, type LeadStatusValue, type LeadActivityEntry } from "@/lib/leads";
 import { services } from "@/lib/data/services";
 import Badge from "@/components/admin/ui/Badge";
@@ -179,9 +180,15 @@ export default function LeadDetailDrawer({
           </section>
 
           <section className="mt-5">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Not yet available</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Actions</h3>
             <div className="mt-2 flex flex-wrap gap-2">
-              {["Assign", "Create quote", "Schedule booking"].map((label) => (
+              <Link
+                href={`/admin/quotes/new?leadId=${lead.id}`}
+                className="inline-flex items-center gap-1.5 rounded-full bg-admin-navy px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+              >
+                <FileSignature className="size-3.5" aria-hidden /> Create quote
+              </Link>
+              {["Assign", "Schedule booking"].map((label) => (
                 <span key={label} title="Coming soon" className="cursor-not-allowed rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-500">
                   {label}
                 </span>

@@ -8,12 +8,12 @@ import { allNavItems, findNavItem } from "@/lib/admin/nav";
 import SignOutButton from "./SignOutButton";
 
 const quickCreateItems = [
-  { label: "New Lead", built: false },
-  { label: "New Quote", built: false },
-  { label: "New Booking", built: false },
-  { label: "New Customer", built: false },
-  { label: "Record Payment", built: false },
-  { label: "Add Expense", built: false },
+  { label: "New Lead", href: null },
+  { label: "New Quote", href: "/admin/quotes/new" },
+  { label: "New Booking", href: null },
+  { label: "New Customer", href: null },
+  { label: "Record Payment", href: null },
+  { label: "Add Expense", href: null },
 ];
 
 function useNotificationSummary() {
@@ -149,16 +149,22 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
           <span className="hidden sm:inline">Create</span>
         </summary>
         <div className="absolute right-0 top-full z-20 mt-1.5 w-52 rounded-xl border border-admin-border bg-admin-card p-1.5 shadow-lg">
-          {quickCreateItems.map((item) => (
-            <span
-              key={item.label}
-              title="Coming soon — this module isn't built yet"
-              className="flex cursor-not-allowed items-center justify-between rounded-lg px-2.5 py-2 text-sm text-admin-text-muted"
-            >
-              {item.label}
-              <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">Soon</span>
-            </span>
-          ))}
+          {quickCreateItems.map((item) =>
+            item.href ? (
+              <Link key={item.label} href={item.href} className="flex items-center justify-between rounded-lg px-2.5 py-2 text-sm text-admin-text hover:bg-admin-bg">
+                {item.label}
+              </Link>
+            ) : (
+              <span
+                key={item.label}
+                title="Coming soon — this module isn't built yet"
+                className="flex cursor-not-allowed items-center justify-between rounded-lg px-2.5 py-2 text-sm text-admin-text-muted"
+              >
+                {item.label}
+                <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">Soon</span>
+              </span>
+            )
+          )}
         </div>
       </details>
 
