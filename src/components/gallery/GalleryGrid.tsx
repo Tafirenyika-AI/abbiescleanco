@@ -78,6 +78,7 @@ export default function GalleryGrid() {
               fill
               sizes="(min-width: 1024px) 22vw, 45vw"
               className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+              quality={90}
               loading="lazy"
             />
             <div className="absolute inset-0 bg-navy-950/0 transition-colors duration-300 group-hover:bg-navy-950/20" />
@@ -102,7 +103,7 @@ export default function GalleryGrid() {
         >
           <div className="relative w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
             <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl">
-              <Image src={active.src} alt={active.alt} fill sizes="90vw" className="object-cover" />
+              <Image src={active.src} alt={active.alt} fill sizes="90vw" quality={95} className="object-cover" />
             </div>
             <p className="mt-3 text-center text-sm text-white">
               {active.caption} — {active.serviceType}

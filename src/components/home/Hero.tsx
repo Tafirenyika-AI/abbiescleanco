@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { ShieldCheck, Sparkles, Leaf } from "lucide-react";
+import { ShieldCheck, Sparkles, Leaf, Clock3 } from "lucide-react";
 import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import { business, whatsappLink } from "@/lib/data/business";
@@ -53,17 +53,29 @@ export default function Hero() {
           </ul>
         </div>
 
-        <div className="relative">
+        <div className="relative pb-6 pr-6 sm:pb-8 sm:pr-8">
           <div className="relative aspect-[4/3] overflow-hidden rounded-3xl shadow-2xl ring-1 ring-white/10">
             <Image
               src="/images/hero-living-room.jpg"
               alt="Bright, freshly cleaned living room in a Spokane Valley home"
               fill
               priority
+              quality={90}
               sizes="(min-width: 1024px) 44vw, 90vw"
               className="object-cover"
             />
           </div>
+
+          <div className="absolute -top-4 right-0 hidden items-center gap-2.5 rounded-2xl border border-white/10 bg-navy-900/90 px-4 py-3 shadow-xl backdrop-blur-md sm:flex">
+            <span className="flex size-9 items-center justify-center rounded-xl bg-teal-500/15 text-teal-300">
+              <Clock3 className="size-4.5" aria-hidden />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-white">Preliminary estimate</p>
+              <p className="text-xs text-surface-200">Ready in about 2 minutes</p>
+            </div>
+          </div>
+
           <div className="absolute -bottom-6 -left-6 hidden rounded-2xl bg-white p-4 shadow-xl sm:block">
             <p className="font-display text-sm font-semibold text-navy-950">&ldquo;Professional, dependable, and takes genuine pride in her work.&rdquo;</p>
             <p className="mt-1 text-xs text-surface-700">— Jackie Roman, Spokane Valley</p>

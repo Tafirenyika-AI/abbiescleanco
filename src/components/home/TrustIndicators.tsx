@@ -32,8 +32,11 @@ export default function TrustIndicators() {
       </h2>
       <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
         {indicators.map(({ icon: Icon, title, description }) => (
-          <div key={title} className="flex flex-col items-start gap-2 rounded-2xl border border-surface-200 bg-surface-50 p-5">
-            <span className="flex size-10 items-center justify-center rounded-full bg-teal-100 text-teal-600">
+          <div
+            key={title}
+            className="flex flex-col items-start gap-2.5 rounded-2xl border border-surface-200 bg-white p-5 transition-colors duration-300 hover:border-teal-200"
+          >
+            <span className="flex size-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600 ring-1 ring-teal-100">
               <Icon className="size-5" aria-hidden />
             </span>
             <p className="font-semibold text-navy-950">{title}</p>

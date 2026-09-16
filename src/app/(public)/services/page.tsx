@@ -3,6 +3,7 @@ import Section, { Eyebrow } from "@/components/ui/Section";
 import Button from "@/components/ui/Button";
 import Reveal from "@/components/ui/Reveal";
 import ServiceCard from "@/components/services/ServiceCard";
+import ServicesFilterGrid from "@/components/services/ServicesFilterGrid";
 import { services } from "@/lib/data/services";
 
 export const metadata: Metadata = {
@@ -35,12 +36,8 @@ export default function ServicesPage() {
         <Reveal>
           <ServiceCard service={first} featured priority />
         </Reveal>
-        <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {rest.map((service, i) => (
-            <Reveal key={service.id} delayMs={(i % 3) * 80}>
-              <ServiceCard service={service} />
-            </Reveal>
-          ))}
+        <div className="mt-8">
+          <ServicesFilterGrid services={rest} />
         </div>
       </Section>
 

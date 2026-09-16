@@ -8,6 +8,7 @@ import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import { services, getService } from "@/lib/data/services";
 import { business, whatsappLink } from "@/lib/data/business";
+import { serviceIcons } from "@/lib/serviceIcons";
 
 export function generateStaticParams() {
   return services.map((s) => ({ slug: s.id }));
@@ -28,6 +29,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
   const { slug } = await params;
   const service = getService(slug);
   if (!service) notFound();
+  const ServiceIcon = serviceIcons[service.id];
 
   const serviceSchema = {
     "@context": "https://schema.org",
@@ -69,8 +71,12 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
               fill
               sizes="(min-width: 1024px) 44vw, 90vw"
               className="object-cover"
+              quality={90}
               priority
             />
+            <span className="absolute left-4 top-4 flex size-11 items-center justify-center rounded-xl bg-white/10 text-teal-300 backdrop-blur-md ring-1 ring-white/15">
+              <ServiceIcon className="size-5" aria-hidden />
+            </span>
           </div>
 
           <div>

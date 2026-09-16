@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Image from "next/image";
-import { Quote } from "lucide-react";
+import { Quote, Star } from "lucide-react";
 import Section, { Eyebrow } from "@/components/ui/Section";
-import Button from "@/components/ui/Button";
-import { testimonials } from "@/lib/data/testimonials";
+import Reveal from "@/components/ui/Reveal";
+import ReviewForm from "@/components/reviews/ReviewForm";
+import { listPublishedReviews } from "@/lib/server/reviews";
 
 export const metadata: Metadata = {
   title: "Customer Reviews",
@@ -11,7 +11,22 @@ export const metadata: Metadata = {
   alternates: { canonical: "/reviews" },
 };
 
-export default function ReviewsPage() {
+// Reviews are admin-moderated and can change at any time — never cache a stale set.
+export const dynamic = "force-dynamic";
+
+function Stars({ rating }: { rating: number }) {
+  return (
+    <div className="flex gap-0.5" aria-label={`${rating} out of 5 stars`}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Star key={n} className={`size-4 ${n <= rating ? "fill-warm-500 text-warm-500" : "fill-transparent text-surface-200"}`} aria-hidden />
+      ))}
+    </div>
+  );
+}
+
+export default async function ReviewsPage() {
+  const reviews = await listPublishedReviews();
+
   return (
     <>
       <Section className="bg-navy-950 py-14 sm:py-16">
@@ -20,39 +35,43 @@ export default function ReviewsPage() {
           <h1 className="mt-2 text-4xl font-semibold text-white sm:text-5xl">
             What our customers say
           </h1>
+          <p className="mt-4 text-surface-200">
+            Genuine feedback, published as submitted. We never edit or fabricate a review.
+          </p>
         </div>
       </Section>
 
       <Section>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          {testimonials.map((t) => (
-            <figure key={t.id} className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-surface-200">
-              <Quote className="size-6 text-teal-400" aria-hidden />
-              <blockquote className="mt-3 text-navy-900">&ldquo;{t.quote}&rdquo;</blockquote>
-              <figcaption className="mt-4 flex items-center gap-3">
-                {t.avatar && <Image src={t.avatar} alt="" width={40} height={40} className="rounded-full" aria-hidden />}
-                <div>
-                  <p className="font-semibold text-navy-950">{t.name}</p>
-                  <p className="text-sm text-surface-700">{t.location}</p>
-                </div>
-              </figcaption>
-            </figure>
-          ))}
-        </div>
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-5">
+          <div className="lg:col-span-3">
+            {reviews.length === 0 ? (
+              <p className="text-surface-700">No published reviews yet — be the first to leave one.</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                {reviews.map((r, i) => (
+                  <Reveal key={r.id} delayMs={(i % 4) * 80}>
+                    <figure className="h-full rounded-2xl border border-surface-200 bg-white p-6 transition-shadow duration-300 hover:shadow-md">
+                      <div className="flex items-center justify-between">
+                        <Quote className="size-6 text-teal-400" aria-hidden />
+                        <Stars rating={r.rating} />
+                      </div>
+                      <blockquote className="mt-3 text-navy-900">&ldquo;{r.quote}&rdquo;</blockquote>
+                      <figcaption className="mt-4">
+                        <p className="font-semibold text-navy-950">{r.authorName}</p>
+                        {r.location && <p className="text-sm text-surface-700">{r.location}</p>}
+                      </figcaption>
+                    </figure>
+                  </Reveal>
+                ))}
+              </div>
+            )}
+          </div>
 
-        <p className="mt-10 text-sm text-surface-700">
-          Reviews shown here are genuine feedback from real customers. Additional reviews are
-          added by our team as they come in.
-        </p>
-      </Section>
-
-      <Section className="bg-surface-50 text-center">
-        <h2 className="text-2xl font-semibold text-navy-950">Had a great experience with us?</h2>
-        <p className="mx-auto mt-2 max-w-md text-surface-700">
-          We&apos;d love to hear from you — reach out and let us know how your cleaning went.
-        </p>
-        <div className="mt-6">
-          <Button href="/contact" size="lg">Share your feedback</Button>
+          <div className="lg:col-span-2">
+            <div className="lg:sticky lg:top-24">
+              <ReviewForm />
+            </div>
+          </div>
         </div>
       </Section>
     </>

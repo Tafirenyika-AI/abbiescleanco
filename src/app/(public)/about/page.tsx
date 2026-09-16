@@ -42,6 +42,7 @@ export default function AboutPage() {
               fill
               sizes="(min-width: 1024px) 40vw, 90vw"
               className="object-cover"
+              quality={90}
               priority
             />
           </div>

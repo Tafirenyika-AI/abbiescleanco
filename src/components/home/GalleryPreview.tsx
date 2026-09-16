@@ -35,6 +35,7 @@ export default function GalleryPreview() {
               fill
               sizes="(min-width: 640px) 30vw, 45vw"
               className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+              quality={90}
               loading={i < 3 ? "eager" : "lazy"}
             />
             <div className="absolute inset-0 bg-navy-950/0 transition-colors duration-300 group-hover:bg-navy-950/15" />
