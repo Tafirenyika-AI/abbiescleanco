@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Phone, MessageCircle, User } from "lucide-react";
 import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import TopBar from "./TopBar";
+import { telHref, whatsappLink } from "@/lib/data/business";
 
 const navLinks = [
   { href: "/services", label: "Services" },
@@ -39,6 +40,24 @@ export default function SiteHeader() {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
+  // Fetched client-side (not server-rendered in the root layout) so that
+  // marketing pages stay statically generated — account state doesn't need
+  // to block or opt out every page from prerendering, just this one widget.
+  const [account, setAccount] = useState<{ name: string } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/account/me")
+      .then((res) => res.json())
+      .then((json) => {
+        if (cancelled || !json.user) return;
+        setAccount({ name: json.user.name || json.user.customer?.firstName || "Account" });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-sm">
       <TopBar />
@@ -69,7 +88,30 @@ export default function SiteHeader() {
           ))}
         </nav>
 
-        <div className="hidden lg:block">
+        <div className="hidden items-center gap-3 lg:flex">
+          <a
+            href={telHref()}
+            aria-label="Call us"
+            className="flex size-10 items-center justify-center rounded-full text-navy-700 hover:bg-surface-100 hover:text-teal-600"
+          >
+            <Phone className="size-4.5" aria-hidden />
+          </a>
+          <a
+            href={whatsappLink("Hi Abbie's Clean Method! I'd like to ask about a cleaning.")}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Message us on WhatsApp"
+            className="flex size-10 items-center justify-center rounded-full text-navy-700 hover:bg-surface-100 hover:text-teal-600"
+          >
+            <MessageCircle className="size-4.5" aria-hidden />
+          </a>
+          <Link
+            href={account ? "/account" : "/account/login"}
+            className="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-medium text-navy-700 hover:bg-surface-100 hover:text-teal-600"
+          >
+            <User className="size-4.5" aria-hidden />
+            {account ? account.name.split(" ")[0] : "Sign in"}
+          </Link>
           <Button href="/estimate" size="md">
             Get My Free Estimate
           </Button>
@@ -99,6 +141,13 @@ export default function SiteHeader() {
                 {link.label}
               </Link>
             ))}
+            <Link
+              href={account ? "/account" : "/account/login"}
+              className="flex items-center gap-2 rounded-lg px-3 py-3 text-base font-medium text-navy-900 hover:bg-surface-100"
+            >
+              <User className="size-4.5" aria-hidden />
+              {account ? `My account (${account.name.split(" ")[0]})` : "Sign in / Create account"}
+            </Link>
             <Button href="/estimate" size="lg" className="mt-3 w-full">
               Get My Free Estimate
             </Button>

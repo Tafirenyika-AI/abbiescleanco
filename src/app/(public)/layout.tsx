@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Inter, Fraunces } from "next/font/google";
-import "./globals.css";
+import "../globals.css";
 import SiteHeader from "@/components/layout/SiteHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
 import MobileActionBar from "@/components/layout/MobileActionBar";
+import InstallPrompt from "@/components/layout/InstallPrompt";
 import { business } from "@/lib/data/business";
 
 const inter = Inter({
@@ -67,11 +68,14 @@ const localBusinessSchema = {
   url: siteUrl,
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${fraunces.variable} h-full antialiased`}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <meta name="theme-color" content="#0b1f33" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }}
@@ -90,6 +94,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </main>
         <SiteFooter />
         <MobileActionBar />
+        <InstallPrompt />
       </body>
     </html>
   );

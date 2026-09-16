@@ -9,6 +9,7 @@ import { quoteRequestSchema, type QuoteRequestInput, type QuoteRequestFormValues
 import { calculateEstimate, conditionLabels, frequencyLabels, defaultPricingConfig, type PricingConfig } from "@/lib/pricing";
 import { services, type ServiceId } from "@/lib/data/services";
 import Button from "@/components/ui/Button";
+import ClaimAccountPrompt from "@/components/account/ClaimAccountPrompt";
 
 const steps = ["Property & Service", "Cleaning Details", "Your Info", "Review & Submit"] as const;
 
@@ -21,13 +22,19 @@ function fieldError(message?: string) {
   );
 }
 
-export default function EstimateWizard({ pricingConfig = defaultPricingConfig }: { pricingConfig?: PricingConfig }) {
+export default function EstimateWizard({
+  pricingConfig = defaultPricingConfig,
+  isLoggedIn = false,
+}: {
+  pricingConfig?: PricingConfig;
+  isLoggedIn?: boolean;
+}) {
   const searchParams = useSearchParams();
   const [step, setStep] = useState(0);
   const [submitState, setSubmitState] = useState<
     | { status: "idle" }
     | { status: "submitting" }
-    | { status: "success"; reference: string; whatsappUrl: string; estimateLabel: string }
+    | { status: "success"; reference: string; whatsappUrl: string; estimateLabel: string; email: string }
     | { status: "error"; message: string }
   >({ status: "idle" });
 
@@ -78,6 +85,15 @@ export default function EstimateWizard({ pricingConfig = defaultPricingConfig }:
   }, []);
 
   const values = watch();
+
+  // Commercial properties don't have a bedroom count — clear it so the
+  // hidden field never submits stale data from an earlier property type.
+  useEffect(() => {
+    if (values.propertyType === "commercial" && values.bedrooms) {
+      setValue("bedrooms", 0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values.propertyType]);
 
   const estimate = useMemo(() => {
     return calculateEstimate({
@@ -137,6 +153,7 @@ export default function EstimateWizard({ pricingConfig = defaultPricingConfig }:
         reference: json.reference,
         whatsappUrl: json.whatsappHandoffUrl,
         estimateLabel: label,
+        email: parsed.email,
       });
     } catch {
       setSubmitState({ status: "error", message: "Network error. Please check your connection and try again." });
@@ -165,6 +182,7 @@ export default function EstimateWizard({ pricingConfig = defaultPricingConfig }:
             Back to home
           </Button>
         </div>
+        {!isLoggedIn && <ClaimAccountPrompt email={submitState.email} />}
       </div>
     );
   }
@@ -248,18 +266,22 @@ export default function EstimateWizard({ pricingConfig = defaultPricingConfig }:
               </select>
             </label>
 
-            <label className="block">
-              <span className="text-sm font-semibold text-navy-900">Bedrooms</span>
-              <input
-                type="number"
-                min={0}
-                className="mt-1.5 w-full rounded-xl border border-surface-200 px-3.5 py-2.5 text-sm"
-                {...register("bedrooms", { valueAsNumber: true })}
-              />
-            </label>
+            {values.propertyType !== "commercial" && (
+              <label className="block">
+                <span className="text-sm font-semibold text-navy-900">Bedrooms</span>
+                <input
+                  type="number"
+                  min={0}
+                  className="mt-1.5 w-full rounded-xl border border-surface-200 px-3.5 py-2.5 text-sm"
+                  {...register("bedrooms", { valueAsNumber: true })}
+                />
+              </label>
+            )}
 
             <label className="block">
-              <span className="text-sm font-semibold text-navy-900">Bathrooms</span>
+              <span className="text-sm font-semibold text-navy-900">
+                {values.propertyType === "commercial" ? "Restrooms" : "Bathrooms"}
+              </span>
               <input
                 type="number"
                 min={0}
@@ -267,6 +289,13 @@ export default function EstimateWizard({ pricingConfig = defaultPricingConfig }:
                 {...register("bathrooms", { valueAsNumber: true })}
               />
             </label>
+
+            {values.propertyType === "commercial" && (
+              <p className="text-sm text-surface-700 sm:col-span-2">
+                Commercial spaces are quoted manually after we review your details — no bedroom
+                count needed.
+              </p>
+            )}
           </fieldset>
         )}
 
@@ -392,7 +421,15 @@ export default function EstimateWizard({ pricingConfig = defaultPricingConfig }:
               <h3 className="font-semibold text-navy-950">Review your request</h3>
               <dl className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                 <div><dt className="text-surface-700">Service</dt><dd className="font-medium text-navy-900">{services.find((s) => s.id === values.service)?.name}</dd></div>
-                <div><dt className="text-surface-700">Property</dt><dd className="font-medium text-navy-900">{values.propertyType}, {Number(values.squareFeet)} sq ft, {Number(values.bedrooms)} bed / {Number(values.bathrooms)} bath</dd></div>
+                <div>
+                  <dt className="text-surface-700">Property</dt>
+                  <dd className="font-medium text-navy-900">
+                    {values.propertyType}, {Number(values.squareFeet)} sq ft
+                    {values.propertyType === "commercial"
+                      ? `, ${Number(values.bathrooms)} restroom${Number(values.bathrooms) === 1 ? "" : "s"}`
+                      : `, ${Number(values.bedrooms)} bed / ${Number(values.bathrooms)} bath`}
+                  </dd>
+                </div>
                 <div><dt className="text-surface-700">ZIP</dt><dd className="font-medium text-navy-900">{values.zip}</dd></div>
                 <div><dt className="text-surface-700">Frequency</dt><dd className="font-medium text-navy-900">{frequencyLabels[values.frequency]}</dd></div>
                 <div><dt className="text-surface-700">Condition</dt><dd className="font-medium text-navy-900">{conditionLabels[values.condition]}</dd></div>

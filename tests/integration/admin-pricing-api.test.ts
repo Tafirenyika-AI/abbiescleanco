@@ -3,15 +3,17 @@ import { promises as fs } from "fs";
 import path from "path";
 import { NextRequest } from "next/server";
 import { GET, PUT } from "@/app/api/admin/pricing/route";
-import { createSessionToken, ADMIN_SESSION_COOKIE } from "@/lib/server/adminAuth";
+import { createAdminSessionToken, ADMIN_SESSION_COOKIE } from "@/lib/server/adminAuth";
 import { defaultPricingConfig } from "@/lib/pricing";
 
 const mockPricingFile = path.join(process.cwd(), ".data", "pricing-config.json");
 
+// No DATABASE_URL in the test environment, so requireAdmin() resolves via
+// the single demo admin profile (full permissions) — see adminUsers.ts.
 function makeRequest(method: "GET" | "PUT", body?: unknown, withAuth = true) {
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (withAuth) {
-    headers.cookie = `${ADMIN_SESSION_COOKIE}=${createSessionToken("admin@abbiescleanco.com")}`;
+    headers.cookie = `${ADMIN_SESSION_COOKIE}=${createAdminSessionToken("demo-admin")}`;
   }
   return new NextRequest("http://localhost/api/admin/pricing", {
     method,

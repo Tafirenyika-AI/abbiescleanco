@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createSessionToken, ADMIN_SESSION_COOKIE } from "@/lib/server/adminAuth";
+import { createAdminSessionToken, ADMIN_SESSION_COOKIE } from "@/lib/server/adminAuth";
+import { verifyAdminCredentials } from "@/lib/server/adminUsers";
 import { checkRateLimit } from "@/lib/server/rateLimit";
 
 const loginSchema = z.object({
@@ -15,15 +16,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Too many attempts. Please try again later." }, { status: 429 });
   }
 
-  const demoEmail = process.env.ADMIN_DEMO_EMAIL;
-  const demoPassword = process.env.ADMIN_DEMO_PASSWORD;
-  if (!demoEmail || !demoPassword) {
-    return NextResponse.json(
-      { ok: false, error: "Admin login is not configured. Set ADMIN_DEMO_EMAIL / ADMIN_DEMO_PASSWORD (see .env.example)." },
-      { status: 503 }
-    );
-  }
-
   let body: unknown;
   try {
     body = await req.json();
@@ -36,12 +28,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Enter a valid email and password" }, { status: 400 });
   }
 
-  const { email, password } = parsed.data;
-  if (email.toLowerCase() !== demoEmail.toLowerCase() || password !== demoPassword) {
+  const admin = await verifyAdminCredentials(parsed.data.email, parsed.data.password);
+  if (!admin) {
     return NextResponse.json({ ok: false, error: "Invalid credentials" }, { status: 401 });
   }
 
-  const token = createSessionToken(email);
+  const token = createAdminSessionToken(admin.id);
   const res = NextResponse.json({ ok: true });
   res.cookies.set(ADMIN_SESSION_COOKIE, token, {
     httpOnly: true,

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { cookies } from "next/headers";
 import Section, { Eyebrow } from "@/components/ui/Section";
 import EstimateWizard from "@/components/estimate/EstimateWizard";
 import { getPricingConfig } from "@/lib/server/pricingStore";
+import { verifyCustomerSessionToken, CUSTOMER_SESSION_COOKIE } from "@/lib/server/customerAuth";
 
 export const metadata: Metadata = {
   title: "Get a Free Cleaning Estimate — Spokane Valley, WA",
@@ -17,6 +19,8 @@ export const dynamic = "force-dynamic";
 
 export default async function EstimatePage() {
   const pricingConfig = await getPricingConfig();
+  const cookieStore = await cookies();
+  const isLoggedIn = Boolean(verifyCustomerSessionToken(cookieStore.get(CUSTOMER_SESSION_COOKIE)?.value));
 
   return (
     <Section>
@@ -33,7 +37,7 @@ export default async function EstimatePage() {
 
       <div className="mx-auto mt-10 max-w-2xl">
         <Suspense fallback={<div className="text-center text-surface-700">Loading estimator…</div>}>
-          <EstimateWizard pricingConfig={pricingConfig} />
+          <EstimateWizard pricingConfig={pricingConfig} isLoggedIn={isLoggedIn} />
         </Suspense>
       </div>
     </Section>

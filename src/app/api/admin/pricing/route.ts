@@ -1,20 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifySessionToken, ADMIN_SESSION_COOKIE } from "@/lib/server/adminAuth";
+import { requireAdmin } from "@/lib/server/requireAdmin";
 import { pricingConfigSchema } from "@/lib/validation/pricingConfig";
 import { getPricingConfig, savePricingConfig } from "@/lib/server/pricingStore";
 
-// Reads the session cookie straight off the request instead of importing
-// `cookies()` from next/headers — that API depends on Next's request-scoped
-// context, which only exists when Next itself invokes the handler. Reading
-// from `req.cookies` works identically in real traffic and lets these
-// handlers be called directly in integration tests.
-function requireAdmin(req: NextRequest) {
-  return verifySessionToken(req.cookies.get(ADMIN_SESSION_COOKIE)?.value);
-}
-
 export async function GET(req: NextRequest) {
-  const session = requireAdmin(req);
-  if (!session) {
+  const admin = await requireAdmin(req, "MANAGE_PRICING");
+  if (!admin) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
   const config = await getPricingConfig();
@@ -22,8 +13,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const session = requireAdmin(req);
-  if (!session) {
+  const admin = await requireAdmin(req, "MANAGE_PRICING");
+  if (!admin) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 

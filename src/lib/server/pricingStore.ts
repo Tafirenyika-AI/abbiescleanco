@@ -85,20 +85,33 @@ export async function getPricingConfig(): Promise<PricingConfig> {
   }
 }
 
+// Add-ons are global in this app (the estimator offers the same list
+// regardless of which service is selected — see getPricingConfig(), which
+// already reads ServiceAddon rows unfiltered by service). The schema still
+// requires each ServiceAddon to belong to a ServiceCatalogItem, so rather
+// than replicating every add-on under all 9 services (which previously blew
+// up a single admin save into 100+ sequential queries and exceeded the
+// pooled connection's transaction timeout), they're anchored to one
+// dedicated placeholder service that's never shown anywhere.
+const GLOBAL_ADDON_SERVICE_SLUG = "__global_addons__";
+
 export async function savePricingConfig(config: PricingConfig): Promise<void> {
   if (isDatabaseConfigured && prisma) {
-    await prisma.$transaction(async (tx) => {
-      for (const service of serviceCatalog) {
+    const db = prisma; // narrow once so TS doesn't lose the non-null guard inside closures below
+    // Per-service catalog + pricing rule upserts are independent of each
+    // other, so run them concurrently instead of one long transaction.
+    await Promise.all(
+      serviceCatalog.map(async (service) => {
         const rule = config.services[service.id];
-        if (!rule) continue;
+        if (!rule) return;
 
-        const catalogItem = await tx.serviceCatalogItem.upsert({
+        const catalogItem = await db.serviceCatalogItem.upsert({
           where: { slug: service.id },
           update: {},
           create: { slug: service.id, name: service.name, description: service.shortDescription },
         });
 
-        await tx.pricingRule.upsert({
+        await db.pricingRule.upsert({
           where: { id: `admin-${service.id}` },
           update: {
             baseLow: rule.baseLow,
@@ -126,38 +139,44 @@ export async function savePricingConfig(config: PricingConfig): Promise<void> {
             manualQuoteAboveSqFt: rule.manualQuoteAboveSqFt,
           },
         });
+      })
+    );
 
-        const keptKeys = config.addOns.map((a) => a.key);
-        await tx.serviceAddon.updateMany({
-          where: { serviceId: catalogItem.id, key: { notIn: keptKeys } },
-          data: { isActive: false },
-        });
+    const globalService = await db.serviceCatalogItem.upsert({
+      where: { slug: GLOBAL_ADDON_SERVICE_SLUG },
+      update: {},
+      create: { slug: GLOBAL_ADDON_SERVICE_SLUG, name: "(internal) global add-ons", description: "", isActive: false },
+    });
 
-        for (const addOn of config.addOns) {
-          await tx.serviceAddon.upsert({
-            where: { serviceId_key: { serviceId: catalogItem.id, key: addOn.key } },
-            update: { label: addOn.label, priceLow: addOn.low, priceHigh: addOn.high, isActive: true },
-            create: { serviceId: catalogItem.id, key: addOn.key, label: addOn.label, priceLow: addOn.low, priceHigh: addOn.high },
-          });
-        }
-      }
-
-      await tx.businessSetting.upsert({
+    const keptKeys = config.addOns.map((a) => a.key);
+    await Promise.all([
+      db.serviceAddon.updateMany({
+        where: { serviceId: globalService.id, key: { notIn: keptKeys } },
+        data: { isActive: false },
+      }),
+      ...config.addOns.map((addOn) =>
+        db.serviceAddon.upsert({
+          where: { serviceId_key: { serviceId: globalService.id, key: addOn.key } },
+          update: { label: addOn.label, priceLow: addOn.low, priceHigh: addOn.high, isActive: true },
+          create: { serviceId: globalService.id, key: addOn.key, label: addOn.label, priceLow: addOn.low, priceHigh: addOn.high },
+        })
+      ),
+      db.businessSetting.upsert({
         where: { key: "recurring_discounts_enabled" },
         update: { value: config.recurringDiscountsEnabled },
         create: { key: "recurring_discounts_enabled", value: config.recurringDiscountsEnabled },
-      });
-      await tx.businessSetting.upsert({
+      }),
+      db.businessSetting.upsert({
         where: { key: "recurring_discount_rates" },
         update: { value: config.recurringDiscountRates },
         create: { key: "recurring_discount_rates", value: config.recurringDiscountRates },
-      });
-      await tx.businessSetting.upsert({
+      }),
+      db.businessSetting.upsert({
         where: { key: "condition_multiplier" },
         update: { value: config.conditionMultiplier },
         create: { key: "condition_multiplier", value: config.conditionMultiplier },
-      });
-    });
+      }),
+    ]);
     return;
   }
 

@@ -99,13 +99,29 @@ enum AutomationEventStatus {
 
 // ---------- Core people & access ----------
 
+// Fixed set of fine-grained admin permissions, ticked per user in the admin
+// panel rather than inferred from a single role string. `role` stays as a
+// coarse label (shown in the UI, e.g. "Owner" vs "Staff"); `permissions` is
+// what actually gates access to each admin section.
+enum AdminPermission {
+  MANAGE_LEADS
+  MANAGE_PRICING
+  MANAGE_CONTENT // services, FAQs, gallery, testimonials, business settings
+  MANAGE_REVIEWS
+  MANAGE_BOOKINGS
+  MANAGE_USERS // create/edit other admin accounts
+  VIEW_REPORTS
+}
+
 model AdminUser {
   id           String   @id @default(cuid())
   email        String   @unique
   passwordHash String
   name         String
-  role         String   @default("admin") // admin | staff — role-based access
+  role         String   @default("admin") // display label, e.g. "Owner", "Staff"
+  permissions  AdminPermission[] @default([])
   isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   deletedAt    DateTime?
@@ -117,14 +133,18 @@ model AdminUser {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
+  id                   String   @id @default(cuid())
+  email                String   @unique
+  name                 String?
+  passwordHash         String?  // null until the customer sets a password (accounts can start as guest leads)
+  resetToken           String?  @unique
+  resetTokenExpiresAt  DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  deletedAt            DateTime?
 
-  customer Customer?
+  customer      Customer?
+  notifications Notification[]
 
   @@map("users")
 }
@@ -236,6 +256,7 @@ model QuoteRequest {
   preferredDate  DateTime?
   preferredTimeWindow String?
   addOns         String[] // AddOnKey[] stored as strings
+  attachments    String[] // customer-provided reference photos/videos (URLs), optional
 
   estimateLow    Int?
   estimateHigh   Int?
@@ -537,19 +558,65 @@ model Review {
   id         String   @id @default(cuid())
   customerId String?
   customer   Customer? @relation(fields: [customerId], references: [id])
+  leadId     String?  // optional link to the completed job this review is about
 
   authorName String
   location   String?
   quote      String
-  rating     Int?     // 1-5, optional
+  rating     Int      @default(5) // 1-5
+  // A review is honest customer feedback the moment it's submitted; isPublished
+  // gates whether it appears anywhere public, isFeatured gates whether it's
+  // one of the small set highlighted on the homepage — curation, never editing
+  // or fabricating what was said.
   isPublished Boolean @default(false)
+  isFeatured  Boolean @default(false)
   source     String   @default("direct") // direct | google
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
 
+  @@index([isPublished, isFeatured])
   @@map("reviews")
+}
+
+model Faq {
+  id        String  @id @default(cuid())
+  question  String
+  answer    String
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("faqs")
+}
+
+enum NotificationType {
+  LEAD_STATUS_CHANGED
+  QUOTE_READY
+  BOOKING_CONFIRMED
+  BOOKING_REMINDER
+  REVIEW_REQUESTED
+  GENERAL
+}
+
+model Notification {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  type    NotificationType @default(GENERAL)
+  title   String
+  body    String
+  link    String? // in-app path to navigate to, e.g. "/account/quotes/ACM-26-XXXXXX"
+  isRead  Boolean          @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@map("notifications")
 }
 
 model GalleryItem {
