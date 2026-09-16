@@ -7,6 +7,7 @@ import { getPricingConfig } from "@/lib/server/pricingStore";
 import { sendEmail, customerConfirmationEmail, businessNotificationEmail } from "@/lib/server/email";
 import { sendSms } from "@/lib/server/sms";
 import { checkRateLimit } from "@/lib/server/rateLimit";
+import { notifyAdmins } from "@/lib/server/notificationStore";
 import { business, whatsappLink } from "@/lib/data/business";
 
 export async function POST(req: NextRequest) {
@@ -108,6 +109,13 @@ export async function POST(req: NextRequest) {
       `Abbie's Clean Method: We received your ${service.name} request (${reference}). We'll follow up shortly to confirm details. Reply STOP to opt out.`
     );
   }
+
+  await notifyAdmins(
+    "NEW_LEAD",
+    `New lead: ${input.firstName} ${input.lastName}`,
+    `${service.name} — ${estimateLabel}`,
+    "/admin/leads"
+  );
 
   const whatsappSummary = [
     `Hi Abbie's Clean Method! I just requested an estimate.`,

@@ -88,7 +88,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { href: "/admin/users", label: "Admin users", icon: ShieldCheck, permission: "MANAGE_USERS", built: true },
       { href: "/admin/settings", label: "Settings", icon: Settings, permission: "MANAGE_CONTENT", built: true },
-      { href: "/admin/audit-log", label: "Audit log", icon: ScrollText, permission: "MANAGE_USERS", built: false },
+      { href: "/admin/audit-log", label: "Audit log", icon: ScrollText, permission: "MANAGE_USERS", built: true },
     ],
   },
 ];

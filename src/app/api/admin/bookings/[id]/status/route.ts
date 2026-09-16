@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/server/requireAdmin";
-import { updateBookingStatus, BOOKING_STATUSES } from "@/lib/server/bookingStore";
+import { updateBookingStatus, getBookingById, BOOKING_STATUSES } from "@/lib/server/bookingStore";
+import { notifyAdmins } from "@/lib/server/notificationStore";
 
 const schema = z.object({ status: z.enum(BOOKING_STATUSES), note: z.string().trim().max(500).optional() });
 
@@ -21,5 +22,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const result = await updateBookingStatus(id, parsed.data.status, admin.id, parsed.data.note);
   if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: 400 });
+
+  if (parsed.data.status === "CANCELLED") {
+    const booking = await getBookingById(id);
+    if (booking) {
+      await notifyAdmins("BOOKING_CANCELLED", `Booking cancelled: ${booking.reference}`, booking.customerName, `/admin/bookings/${id}`);
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }

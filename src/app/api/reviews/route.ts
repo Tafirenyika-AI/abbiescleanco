@@ -4,6 +4,7 @@ import { submitReview } from "@/lib/server/reviews";
 import { sendEmail } from "@/lib/server/email";
 import { checkRateLimit } from "@/lib/server/rateLimit";
 import { business } from "@/lib/data/business";
+import { notifyAdmins } from "@/lib/server/notificationStore";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -30,6 +31,13 @@ export async function POST(req: NextRequest) {
   }
 
   await submitReview(parsed.data);
+
+  await notifyAdmins(
+    "REVIEW_RECEIVED",
+    `New review: ${parsed.data.rating}★ from ${parsed.data.authorName}`,
+    parsed.data.quote.slice(0, 120),
+    "/admin/reviews"
+  );
 
   // Reviews are never auto-published — this just lets the business know one came in.
   await sendEmail({

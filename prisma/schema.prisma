@@ -737,3 +737,36 @@ model Expense {
   @@index([date])
   @@map("expenses")
 }
+
+// ---------- Admin notification center ----------
+// Business-wide, not per-admin-user — a small team sees the same feed,
+// and "read" is shared (marking it read clears it for everyone). That's
+// a deliberate simplification, not an oversight, for a 1-3 person admin team.
+
+enum AdminNotificationType {
+  NEW_LEAD
+  QUOTE_ACCEPTED
+  QUOTE_DECLINED
+  BOOKING_REQUESTED
+  BOOKING_CANCELLED
+  PAYMENT_RECEIVED
+  PAYMENT_FAILED
+  REVIEW_RECEIVED
+  ADMIN_USER_CHANGED
+  PRICING_CHANGED
+  GENERAL
+}
+
+model AdminNotification {
+  id     String                @id @default(cuid())
+  type   AdminNotificationType @default(GENERAL)
+  title  String
+  body   String
+  link   String?
+  isRead Boolean               @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([isRead])
+  @@map("admin_notifications")
+}

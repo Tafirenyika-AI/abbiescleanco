@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, Search, Bell, Plus, ChevronRight, ExternalLink, UserCircle, Settings, LogOut } from "lucide-react";
+import { Menu, Search, Bell, Plus, ChevronRight, ExternalLink, UserCircle, Settings, LogOut, CheckCheck } from "lucide-react";
 import { allNavItems, findNavItem } from "@/lib/admin/nav";
+import type { AdminNotificationItem } from "@/lib/server/notificationStore";
 import SignOutButton from "./SignOutButton";
 
 const quickCreateItems = [
@@ -16,35 +17,55 @@ const quickCreateItems = [
   { label: "Add Expense", href: "/admin/expenses" },
 ];
 
-function useNotificationSummary() {
-  const [total, setTotal] = useState<number | null>(null);
-  const [items, setItems] = useState<{ id: string; label: string; href: string }[]>([]);
+function useNotifications() {
+  const [notifications, setNotifications] = useState<AdminNotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/admin/notifications/summary")
+  function load() {
+    fetch("/api/admin/notifications")
       .then((res) => res.json())
       .then((json) => {
-        if (cancelled || !json.ok) return;
-        setTotal(json.total);
-        setItems(json.items);
+        if (!json.ok) return;
+        setNotifications(json.notifications.slice(0, 8));
+        setUnreadCount(json.unreadCount);
       })
-      .catch(() => {
-        if (!cancelled) setTotal(0);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .catch(() => {});
+  }
+
+  useEffect(() => {
+    load();
   }, []);
 
-  return { total, items };
+  async function markRead(id: string) {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+    setUnreadCount((prev) => Math.max(0, prev - 1));
+    await fetch(`/api/admin/notifications/${id}/read`, { method: "PATCH" });
+  }
+
+  async function markAllRead() {
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    setUnreadCount(0);
+    await fetch("/api/admin/notifications/mark-all-read", { method: "PATCH" });
+  }
+
+  return { notifications, unreadCount, markRead, markAllRead };
+}
+
+function relativeTime(iso: string) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.round(diffMs / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
 }
 
 export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { adminName: string; adminRole: string; onOpenMenu: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const activeItem = findNavItem(pathname);
-  const { total: notificationTotal, items: notificationItems } = useNotificationSummary();
+  const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -122,24 +143,45 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
         <summary className="flex size-9 cursor-pointer list-none items-center justify-center rounded-lg text-admin-text-muted hover:bg-admin-bg [&::-webkit-details-marker]:hidden">
           <span className="relative">
             <Bell className="size-5" aria-hidden />
-            {!!notificationTotal && (
+            {!!unreadCount && (
               <span className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-admin-error text-[10px] font-bold text-white">
-                {notificationTotal > 9 ? "9+" : notificationTotal}
+                {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
           </span>
         </summary>
-        <div className="absolute right-0 top-full z-20 mt-1.5 w-72 rounded-xl border border-admin-border bg-admin-card p-2 shadow-lg">
-          <p className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Needs attention</p>
-          {notificationItems.length === 0 ? (
+        <div className="absolute right-0 top-full z-20 mt-1.5 w-80 rounded-xl border border-admin-border bg-admin-card p-2 shadow-lg">
+          <div className="flex items-center justify-between px-2 py-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Notifications</p>
+            {unreadCount > 0 && (
+              <button type="button" onClick={markAllRead} className="flex items-center gap-1 text-xs font-semibold text-admin-teal-hover hover:underline">
+                <CheckCheck className="size-3.5" aria-hidden /> Mark all read
+              </button>
+            )}
+          </div>
+          {notifications.length === 0 ? (
             <p className="px-2 py-3 text-sm text-admin-text-muted">You&apos;re all caught up.</p>
           ) : (
-            notificationItems.map((item) => (
-              <Link key={item.id} href={item.href} className="block rounded-lg px-2.5 py-2 text-sm text-admin-text hover:bg-admin-bg">
-                {item.label}
-              </Link>
-            ))
+            <div className="max-h-96 overflow-y-auto">
+              {notifications.map((n) => (
+                <Link
+                  key={n.id}
+                  href={n.link ?? "/admin/notifications"}
+                  onClick={() => !n.isRead && markRead(n.id)}
+                  className={`block rounded-lg px-2.5 py-2 text-sm hover:bg-admin-bg ${n.isRead ? "text-admin-text-muted" : "text-admin-text"}`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    {!n.isRead && <span className="size-1.5 shrink-0 rounded-full bg-admin-teal" aria-hidden />}
+                    <span className="font-medium">{n.title}</span>
+                  </span>
+                  <span className="mt-0.5 block truncate text-xs text-admin-text-muted">{n.body} · {relativeTime(n.createdAt)}</span>
+                </Link>
+              ))}
+            </div>
           )}
+          <Link href="/admin/notifications" className="mt-1 block rounded-lg px-2.5 py-2 text-center text-xs font-semibold text-admin-teal-hover hover:bg-admin-bg">
+            View all
+          </Link>
         </div>
       </details>
 
