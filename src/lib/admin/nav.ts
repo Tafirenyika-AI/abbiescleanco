@@ -64,7 +64,7 @@ export const navGroups: NavGroup[] = [
   {
     label: "Finance",
     items: [
-      { href: "/admin/payments", label: "Payments", icon: CreditCard, permission: "VIEW_REPORTS", built: false },
+      { href: "/admin/payments", label: "Payments", icon: CreditCard, permission: "VIEW_REPORTS", built: true },
       { href: "/admin/expenses", label: "Expenses", icon: Receipt, permission: "VIEW_REPORTS", built: false },
       { href: "/admin/reports", label: "Reports", icon: BarChart3, permission: "VIEW_REPORTS", built: true },
     ],

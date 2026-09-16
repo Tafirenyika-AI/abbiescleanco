@@ -12,7 +12,7 @@ const quickCreateItems = [
   { label: "New Quote", href: "/admin/quotes/new" },
   { label: "New Booking", href: null },
   { label: "New Customer", href: null },
-  { label: "Record Payment", href: null },
+  { label: "Record Payment", href: "/admin/payments" },
   { label: "Add Expense", href: null },
 ];
 
