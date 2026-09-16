@@ -43,6 +43,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local-only fallback for admin image uploads (production uses Vercel Blob)
+/public/uploads
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

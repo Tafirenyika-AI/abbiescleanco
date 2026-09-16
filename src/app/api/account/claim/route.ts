@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { claimAccountSchema } from "@/lib/validation/account";
-import { claimAccountFromLead, AccountsUnavailableError } from "@/lib/server/accounts";
+import { claimAccountFromLead, getProfile, AccountsUnavailableError } from "@/lib/server/accounts";
 import { createCustomerSessionToken, CUSTOMER_SESSION_COOKIE } from "@/lib/server/customerAuth";
 import { checkRateLimit } from "@/lib/server/rateLimit";
+import { sendEmail, welcomeEmail } from "@/lib/server/email";
 
 /**
  * Turns a just-submitted guest quote request into a real account — offered
@@ -33,6 +34,10 @@ export async function POST(req: NextRequest) {
     if (!result.ok) {
       return NextResponse.json({ ok: false, error: result.error }, { status: 400 });
     }
+
+    const profile = await getProfile(result.userId);
+    const { subject, html } = welcomeEmail({ firstName: profile?.customer?.firstName || "there" });
+    await sendEmail({ to: parsed.data.email, subject, html });
 
     const token = createCustomerSessionToken(result.userId);
     const res = NextResponse.json({ ok: true });

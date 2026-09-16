@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import type { ServiceContent } from "@/lib/server/servicesContent";
+import ImageUploadField from "./ImageUploadField";
 
 function toLines(arr: string[]) {
   return arr.join("\n");
@@ -76,11 +77,7 @@ function ServiceRow({ service }: { service: ServiceContent }) {
           <span className="text-xs font-medium text-surface-700">Short description (card teaser)</span>
           <textarea rows={2} value={form.shortDescription} onChange={(e) => setForm((f) => ({ ...f, shortDescription: e.target.value }))} className="mt-1 w-full rounded-lg border border-surface-200 px-2.5 py-1.5 text-sm" />
         </label>
-        <label className="block">
-          <span className="text-xs font-medium text-surface-700">Image path</span>
-          <input value={form.image} onChange={(e) => setForm((f) => ({ ...f, image: e.target.value }))} className="mt-1 w-full rounded-lg border border-surface-200 px-2.5 py-1.5 text-sm font-mono" />
-          <span className="mt-0.5 block text-[11px] text-surface-500">Must reference an existing file under /public/images — no upload yet.</span>
-        </label>
+        <ImageUploadField label="Image" value={form.image} onChange={(url) => setForm((f) => ({ ...f, image: url }))} />
         <label className="block">
           <span className="text-xs font-medium text-surface-700">Image alt text</span>
           <input value={form.imageAlt} onChange={(e) => setForm((f) => ({ ...f, imageAlt: e.target.value }))} className="mt-1 w-full rounded-lg border border-surface-200 px-2.5 py-1.5 text-sm" />

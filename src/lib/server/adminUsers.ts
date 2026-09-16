@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { prisma, isDatabaseConfigured } from "@/lib/db";
 import { ALL_ADMIN_PERMISSIONS, type AdminPermission, type AdminProfile } from "@/lib/permissions";
 
@@ -107,4 +108,29 @@ export async function updateAdminUser(
   if (input.isActive !== undefined) data.isActive = input.isActive;
   if (input.password) data.passwordHash = await bcrypt.hash(input.password, 10);
   return prisma.adminUser.update({ where: { id }, data });
+}
+
+/** Always succeeds from the caller's perspective (never reveals whether an admin account exists). */
+export async function requestAdminPasswordReset(email: string): Promise<string | null> {
+  if (!isDatabaseConfigured || !prisma) return null;
+  const admin = await prisma.adminUser.findUnique({ where: { email: email.toLowerCase() } });
+  if (!admin || !admin.isActive || admin.deletedAt) return null;
+
+  const token = crypto.randomBytes(32).toString("base64url");
+  const resetTokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+  await prisma.adminUser.update({ where: { id: admin.id }, data: { resetToken: token, resetTokenExpiresAt } });
+  return token;
+}
+
+export async function resetAdminPassword(token: string, newPassword: string): Promise<boolean> {
+  if (!isDatabaseConfigured || !prisma) return false;
+  const admin = await prisma.adminUser.findUnique({ where: { resetToken: token } });
+  if (!admin || !admin.resetTokenExpiresAt || admin.resetTokenExpiresAt < new Date()) return false;
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await prisma.adminUser.update({
+    where: { id: admin.id },
+    data: { passwordHash, resetToken: null, resetTokenExpiresAt: null },
+  });
+  return true;
 }

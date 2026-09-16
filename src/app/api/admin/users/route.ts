@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/server/requireAdmin";
 import { createAdminUserSchema } from "@/lib/validation/adminUser";
 import { listAdminUsers, createAdminUser } from "@/lib/server/adminUsers";
 import { isDatabaseConfigured } from "@/lib/db";
+import { sendEmail, adminInviteEmail } from "@/lib/server/email";
 
 export async function GET(req: NextRequest) {
   const admin = await requireAdmin(req, "MANAGE_USERS");
@@ -37,6 +38,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const created = await createAdminUser(parsed.data);
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const { subject, html } = adminInviteEmail({ name: parsed.data.name, loginUrl: `${siteUrl}/admin/login` });
+    await sendEmail({ to: parsed.data.email, subject, html });
     return NextResponse.json({ ok: true, id: created.id });
   } catch (err) {
     const message = err instanceof Error && err.message.includes("Unique constraint")

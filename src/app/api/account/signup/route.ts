@@ -3,6 +3,7 @@ import { signUpSchema } from "@/lib/validation/account";
 import { signUp, AccountsUnavailableError } from "@/lib/server/accounts";
 import { createCustomerSessionToken, CUSTOMER_SESSION_COOKIE } from "@/lib/server/customerAuth";
 import { checkRateLimit } from "@/lib/server/rateLimit";
+import { sendEmail, welcomeEmail } from "@/lib/server/email";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -28,6 +29,9 @@ export async function POST(req: NextRequest) {
     if (!result.ok) {
       return NextResponse.json({ ok: false, error: result.error }, { status: 400 });
     }
+
+    const { subject, html } = welcomeEmail({ firstName: parsed.data.firstName });
+    await sendEmail({ to: parsed.data.email, subject, html });
 
     const token = createCustomerSessionToken(result.userId);
     const res = NextResponse.json({ ok: true });

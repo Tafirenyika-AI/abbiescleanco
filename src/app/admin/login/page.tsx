@@ -83,6 +83,10 @@ export default function AdminLoginPage() {
               {loading ? "Signing in…" : "Sign in"}
             </button>
           </form>
+
+          <Link href="/admin/forgot-password" className="mt-4 block text-center text-sm text-slate-500 hover:text-slate-300">
+            Forgot password?
+          </Link>
         </div>
 
         <Link href="/" className="mt-6 block text-center text-sm text-slate-500 hover:text-slate-300">

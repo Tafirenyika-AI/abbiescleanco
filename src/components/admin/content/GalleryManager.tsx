@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 import type { GalleryItemContent } from "@/lib/server/content";
+import ImageUploadField from "./ImageUploadField";
 
 function Row({ item, onDeleted }: { item: GalleryItemContent; onDeleted: (id: string) => void }) {
   const [form, setForm] = useState({
@@ -35,15 +36,12 @@ function Row({ item, onDeleted }: { item: GalleryItemContent; onDeleted: (id: st
   return (
     <div className="rounded-2xl border border-surface-200 bg-white p-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <label className="block">
-          <span className="text-xs font-medium text-surface-700">Image path</span>
-          <input
-            value={form.imageUrl}
-            onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
-            onBlur={() => save({ imageUrl: form.imageUrl })}
-            className="mt-1 w-full rounded-lg border border-surface-200 px-2.5 py-1.5 text-sm font-mono"
-          />
-        </label>
+        <ImageUploadField
+          label="Image"
+          value={form.imageUrl}
+          onChange={(url) => setForm((f) => ({ ...f, imageUrl: url }))}
+          onCommit={(url) => save({ imageUrl: url })}
+        />
         <label className="block">
           <span className="text-xs font-medium text-surface-700">Alt text</span>
           <input
@@ -135,13 +133,9 @@ export default function GalleryManager({ initialItems }: { initialItems: Gallery
     <div className="space-y-4">
       <div className="rounded-2xl border border-dashed border-surface-300 p-4">
         <p className="text-sm font-semibold text-navy-950">Add a gallery image</p>
-        <p className="mt-0.5 text-xs text-surface-500">Must reference an existing file under /public/images — no upload yet.</p>
-        <input
-          placeholder="/images/example.jpg"
-          value={newImageUrl}
-          onChange={(e) => setNewImageUrl(e.target.value)}
-          className="mt-2 w-full rounded-lg border border-surface-200 px-2.5 py-1.5 text-sm font-mono"
-        />
+        <div className="mt-2">
+          <ImageUploadField label="Image" value={newImageUrl} onChange={setNewImageUrl} />
+        </div>
         <input
           placeholder="Alt text"
           value={newAltText}

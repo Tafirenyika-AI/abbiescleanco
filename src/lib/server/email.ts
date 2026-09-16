@@ -101,6 +101,48 @@ export function businessNotificationEmail(params: {
   };
 }
 
+export function welcomeEmail(params: { firstName: string }) {
+  return {
+    subject: `Welcome to ${business.name}`,
+    html: `
+      <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
+        <h2 style="color:#0b1f33">Welcome, ${escapeHtml(params.firstName)}!</h2>
+        <p>Your account with ${escapeHtml(business.name)} is set up. You can sign in any time to track estimate requests, view your booking history, and update your details.</p>
+        <p>Questions in the meantime? Call or text us at ${business.phoneDisplay}.</p>
+        <p style="margin-top:24px;color:#4a5a6a;font-size:14px">${business.name} · ${business.city}, ${business.region}</p>
+      </div>
+    `,
+  };
+}
+
+export function adminInviteEmail(params: { name: string; loginUrl: string }) {
+  return {
+    subject: `You've been added as an admin — ${business.name}`,
+    html: `
+      <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
+        <h2 style="color:#0b1f33">Hi ${escapeHtml(params.name)},</h2>
+        <p>An administrator account was created for you on the ${escapeHtml(business.name)} dashboard.</p>
+        <p><a href="${params.loginUrl}" style="color:#0d8f83">${params.loginUrl}</a></p>
+        <p>Sign in with the email address and password your admin set for you. If you don't know your password, use "Forgot password?" on the sign-in page.</p>
+      </div>
+    `,
+  };
+}
+
+export function adminPasswordResetEmail(params: { resetUrl: string }) {
+  return {
+    subject: "Reset your admin password",
+    html: `
+      <div style="font-family:sans-serif;color:#0f2438;max-width:480px;margin:0 auto">
+        <h2>Reset your admin password</h2>
+        <p>Click the link below to choose a new password. This link expires in 1 hour.</p>
+        <p><a href="${params.resetUrl}" style="color:#0d8f83">${params.resetUrl}</a></p>
+        <p style="color:#4a5a6a;font-size:13px">If you didn't request this, you can safely ignore this email.</p>
+      </div>
+    `,
+  };
+}
+
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
 }

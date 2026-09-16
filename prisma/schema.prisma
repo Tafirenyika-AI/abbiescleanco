@@ -122,6 +122,8 @@ model AdminUser {
   permissions  AdminPermission[] @default([])
   isActive     Boolean  @default(true)
   lastLoginAt  DateTime?
+  resetToken           String?  @unique
+  resetTokenExpiresAt  DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   deletedAt    DateTime?
