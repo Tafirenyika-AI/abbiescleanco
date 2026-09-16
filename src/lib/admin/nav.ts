@@ -49,7 +49,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { href: "/admin/leads", label: "Leads", icon: Users, permission: "MANAGE_LEADS", built: true },
       { href: "/admin/quotes", label: "Quotes", icon: FileSignature, permission: "MANAGE_LEADS", built: false },
-      { href: "/admin/customers", label: "Customers", icon: UserSquare2, permission: "MANAGE_LEADS", built: false },
+      { href: "/admin/customers", label: "Customers", icon: UserSquare2, permission: "MANAGE_LEADS", built: true },
     ],
   },
   {
