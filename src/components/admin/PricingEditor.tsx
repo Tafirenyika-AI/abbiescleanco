@@ -7,6 +7,7 @@ import { pricingConfigSchema } from "@/lib/validation/pricingConfig";
 import type { PricingConfig, ServicePricing, Condition, Frequency } from "@/lib/pricing";
 import { conditionLabels, frequencyLabels } from "@/lib/pricing";
 import Button from "@/components/ui/Button";
+import TestEstimateTool from "@/components/admin/pricing/TestEstimateTool";
 
 const serviceFieldMeta: { key: keyof ServicePricing; label: string; hint?: string; step?: string }[] = [
   { key: "baseLow", label: "Base price — low ($)" },
@@ -254,6 +255,8 @@ export default function PricingEditor({ initialConfig }: { initialConfig: Pricin
           ))}
         </div>
       </section>
+
+      <TestEstimateTool config={config} />
 
       {fieldErrors.length > 0 && (
         <div className="rounded-xl bg-red-50 p-4 text-sm text-red-700">
