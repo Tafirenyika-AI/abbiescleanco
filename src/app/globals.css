@@ -28,6 +28,23 @@
   --color-surface-100: #eef2f5;
   --color-surface-200: #e2e8ee;
   --color-surface-700: #4a5a6a;
+
+  /* Admin workspace — a distinct "clean operations" palette from the
+     marketing site's, used only under /admin */
+  --color-admin-navy: #0b1739;
+  --color-admin-sidebar: #0d172a;
+  --color-admin-teal: #0f9d8a;
+  --color-admin-teal-hover: #0b7f70;
+  --color-admin-aqua: #37cdb4;
+  --color-admin-bg: #f5f8fc;
+  --color-admin-card: #ffffff;
+  --color-admin-text: #14213d;
+  --color-admin-text-muted: #64748b;
+  --color-admin-border: #e2e8f0;
+  --color-admin-success: #16a34a;
+  --color-admin-warning: #f59e0b;
+  --color-admin-error: #dc2626;
+  --color-admin-info: #2563eb;
 }
 
 @theme inline {
@@ -54,6 +71,21 @@
   --color-surface-100: var(--color-surface-100);
   --color-surface-200: var(--color-surface-200);
   --color-surface-700: var(--color-surface-700);
+
+  --color-admin-navy: var(--color-admin-navy);
+  --color-admin-sidebar: var(--color-admin-sidebar);
+  --color-admin-teal: var(--color-admin-teal);
+  --color-admin-teal-hover: var(--color-admin-teal-hover);
+  --color-admin-aqua: var(--color-admin-aqua);
+  --color-admin-bg: var(--color-admin-bg);
+  --color-admin-card: var(--color-admin-card);
+  --color-admin-text: var(--color-admin-text);
+  --color-admin-text-muted: var(--color-admin-text-muted);
+  --color-admin-border: var(--color-admin-border);
+  --color-admin-success: var(--color-admin-success);
+  --color-admin-warning: var(--color-admin-warning);
+  --color-admin-error: var(--color-admin-error);
+  --color-admin-info: var(--color-admin-info);
 
   --font-sans: var(--font-inter);
   --font-display: var(--font-fraunces);
