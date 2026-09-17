@@ -11,6 +11,7 @@ export const ADMIN_NOTIFICATION_TYPES = [
   "REVIEW_RECEIVED",
   "ADMIN_USER_CHANGED",
   "PRICING_CHANGED",
+  "NEW_MESSAGE",
   "GENERAL",
 ] as const;
 export type AdminNotificationTypeValue = (typeof ADMIN_NOTIFICATION_TYPES)[number];
@@ -26,6 +27,7 @@ export const adminNotificationTypeLabels: Record<AdminNotificationTypeValue, str
   REVIEW_RECEIVED: "Review received",
   ADMIN_USER_CHANGED: "Admin user changed",
   PRICING_CHANGED: "Pricing changed",
+  NEW_MESSAGE: "New message",
   GENERAL: "General",
 };
 

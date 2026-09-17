@@ -122,3 +122,13 @@ export async function updateCustomerNotes(
 ) {
   await db().customer.update({ where: { id }, data });
 }
+
+export async function deleteCustomer(id: string, adminUserId: string): Promise<boolean> {
+  const before = await db().customer.findUnique({ where: { id } });
+  if (!before || before.deletedAt) return false;
+  await db().customer.update({ where: { id }, data: { deletedAt: new Date() } });
+  await db().auditLog.create({
+    data: { adminUserId, action: "customer.deleted", entityType: "customer", entityId: id, before: { email: before.email } },
+  });
+  return true;
+}

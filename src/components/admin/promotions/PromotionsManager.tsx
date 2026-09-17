@@ -1,12 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Megaphone, Loader2 } from "lucide-react";
+import { Plus, Megaphone, Loader2, Pencil, Trash2 } from "lucide-react";
 import type { PromoCodeItem, DiscountType } from "@/lib/server/promoCodeStore";
 import Card from "@/components/admin/ui/Card";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
 import { useToast } from "@/components/admin/ui/Toast";
 import { formatDate } from "@/lib/adminDate";
+
+/** dollars in the UI, cents everywhere in the DB/API — same convention as every other money field in this app. */
+function toStoredValue(discountType: DiscountType, displayValue: number): number {
+  return discountType === "FIXED" ? Math.round(displayValue * 100) : Math.round(displayValue);
+}
+function toDisplayValue(discountType: DiscountType, storedValue: number): number {
+  return discountType === "FIXED" ? storedValue / 100 : storedValue;
+}
 
 export default function PromotionsManager({ promoCodes: initialPromoCodes }: { promoCodes: PromoCodeItem[] }) {
   const { showToast } = useToast();
@@ -20,6 +29,15 @@ export default function PromotionsManager({ promoCodes: initialPromoCodes }: { p
   const [maxRedemptions, setMaxRedemptions] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDescription, setEditDescription] = useState("");
+  const [editDiscountType, setEditDiscountType] = useState<DiscountType>("PERCENT");
+  const [editDiscountValue, setEditDiscountValue] = useState("");
+  const [editExpiresAt, setEditExpiresAt] = useState("");
+  const [editMaxRedemptions, setEditMaxRedemptions] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
   async function submit() {
     if (!code || !discountValue) return;
     setSaving(true);
@@ -30,7 +48,7 @@ export default function PromotionsManager({ promoCodes: initialPromoCodes }: { p
         code,
         description: description || undefined,
         discountType,
-        discountValue: Number(discountValue),
+        discountValue: toStoredValue(discountType, Number(discountValue)),
         expiresAt: expiresAt || undefined,
         maxRedemptions: maxRedemptions ? Number(maxRedemptions) : undefined,
       }),
@@ -63,6 +81,52 @@ export default function PromotionsManager({ promoCodes: initialPromoCodes }: { p
     }
     setPromoCodes((prev) => prev.map((p) => (p.id === id ? { ...p, active } : p)));
     showToast(active ? "Activated" : "Deactivated", "success");
+  }
+
+  function startEdit(p: PromoCodeItem) {
+    setEditingId(p.id);
+    setEditDescription(p.description ?? "");
+    setEditDiscountType(p.discountType);
+    setEditDiscountValue(String(toDisplayValue(p.discountType, p.discountValue)));
+    setEditExpiresAt(p.expiresAt ? p.expiresAt.slice(0, 10) : "");
+    setEditMaxRedemptions(p.maxRedemptions ? String(p.maxRedemptions) : "");
+  }
+
+  async function saveEdit(id: string) {
+    setSavingEdit(true);
+    const res = await fetch(`/api/admin/promo-codes/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        description: editDescription || "",
+        discountType: editDiscountType,
+        discountValue: toStoredValue(editDiscountType, Number(editDiscountValue)),
+        expiresAt: editExpiresAt || null,
+        maxRedemptions: editMaxRedemptions ? Number(editMaxRedemptions) : null,
+      }),
+    });
+    const json = await res.json();
+    setSavingEdit(false);
+    if (!res.ok || !json.ok) {
+      showToast(json.error || "Couldn't save changes", "error");
+      return;
+    }
+    showToast("Promo code updated", "success");
+    setEditingId(null);
+    window.location.reload();
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    const id = deleteTarget;
+    setDeleteTarget(null);
+    const res = await fetch(`/api/admin/promo-codes/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      showToast("Couldn't delete promo code", "error");
+      return;
+    }
+    setPromoCodes((prev) => prev.filter((p) => p.id !== id));
+    showToast("Promo code deleted", "success");
   }
 
   return (
@@ -176,37 +240,131 @@ export default function PromotionsManager({ promoCodes: initialPromoCodes }: { p
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Redeemed</th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Expires</th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Active</th>
+                <th scope="col" className="p-3.5 font-semibold text-admin-text">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {promoCodes.map((p) => (
-                <tr key={p.id} className="border-t border-admin-border">
-                  <td className="p-3.5 font-mono text-admin-text">{p.code}</td>
-                  <td className="p-3.5 text-admin-text-muted">{p.description ?? "—"}</td>
-                  <td className="p-3.5 text-admin-text">
-                    {p.discountType === "PERCENT" ? `${p.discountValue}%` : `$${(p.discountValue / 100).toFixed(2)}`}
-                  </td>
-                  <td className="p-3.5 text-admin-text-muted">
-                    {p.redemptionCount}{p.maxRedemptions ? ` / ${p.maxRedemptions}` : ""}
-                  </td>
-                  <td className="p-3.5 text-admin-text-muted">{p.expiresAt ? formatDate(p.expiresAt) : "—"}</td>
-                  <td className="p-3.5">
-                    <button
-                      type="button"
-                      onClick={() => toggleActive(p.id, !p.active)}
-                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        p.active ? "bg-admin-success/10 text-admin-success" : "bg-admin-bg text-admin-text-muted"
-                      }`}
-                    >
-                      {p.active ? "Active" : "Inactive"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {promoCodes.map((p) =>
+                editingId === p.id ? (
+                  <tr key={p.id} className="border-t border-admin-border bg-admin-bg">
+                    <td className="p-3.5 font-mono text-admin-text">{p.code}</td>
+                    <td className="p-3.5" colSpan={5}>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+                        <input
+                          value={editDescription}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                          placeholder="Description"
+                          className="rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text"
+                        />
+                        <select
+                          value={editDiscountType}
+                          onChange={(e) => setEditDiscountType(e.target.value as DiscountType)}
+                          className="rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text"
+                        >
+                          <option value="PERCENT">Percent off</option>
+                          <option value="FIXED">Fixed ($) off</option>
+                        </select>
+                        <input
+                          type="number"
+                          min="1"
+                          value={editDiscountValue}
+                          onChange={(e) => setEditDiscountValue(e.target.value)}
+                          placeholder={editDiscountType === "PERCENT" ? "% off" : "$ off"}
+                          className="rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text"
+                        />
+                        <input
+                          type="date"
+                          value={editExpiresAt}
+                          onChange={(e) => setEditExpiresAt(e.target.value)}
+                          className="rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text"
+                        />
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="1"
+                          value={editMaxRedemptions}
+                          onChange={(e) => setEditMaxRedemptions(e.target.value)}
+                          placeholder="Max redemptions (optional)"
+                          className="w-48 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => saveEdit(p.id)}
+                          disabled={savingEdit}
+                          className="flex items-center gap-1.5 rounded-lg bg-admin-teal px-3 py-1.5 text-xs font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
+                        >
+                          {savingEdit ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : null} Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingId(null)}
+                          className="rounded-lg border border-admin-border px-3 py-1.5 text-xs font-semibold text-admin-text hover:bg-admin-bg"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={p.id} className="border-t border-admin-border">
+                    <td className="p-3.5 font-mono text-admin-text">{p.code}</td>
+                    <td className="p-3.5 text-admin-text-muted">{p.description ?? "—"}</td>
+                    <td className="p-3.5 text-admin-text">
+                      {p.discountType === "PERCENT" ? `${p.discountValue}%` : `$${(p.discountValue / 100).toFixed(2)}`}
+                    </td>
+                    <td className="p-3.5 text-admin-text-muted">
+                      {p.redemptionCount}{p.maxRedemptions ? ` / ${p.maxRedemptions}` : ""}
+                    </td>
+                    <td className="p-3.5 text-admin-text-muted">{p.expiresAt ? formatDate(p.expiresAt) : "—"}</td>
+                    <td className="p-3.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleActive(p.id, !p.active)}
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          p.active ? "bg-admin-success/10 text-admin-success" : "bg-admin-bg text-admin-text-muted"
+                        }`}
+                      >
+                        {p.active ? "Active" : "Inactive"}
+                      </button>
+                    </td>
+                    <td className="p-3.5">
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(p)}
+                          aria-label="Edit promo code"
+                          className="flex size-8 items-center justify-center rounded-lg text-admin-text-muted hover:bg-admin-bg hover:text-admin-text"
+                        >
+                          <Pencil className="size-4" aria-hidden />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(p.id)}
+                          aria-label="Delete promo code"
+                          className="flex size-8 items-center justify-center rounded-lg text-admin-text-muted hover:bg-red-50 hover:text-admin-error"
+                        >
+                          <Trash2 className="size-4" aria-hidden />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              )}
             </tbody>
           </table>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete this promo code?"
+        description="Quotes that already used it keep their discount — this just removes the code so it can't be used again."
+        confirmLabel="Delete"
+        tone="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

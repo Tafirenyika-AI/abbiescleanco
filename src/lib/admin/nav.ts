@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Settings,
   ScrollText,
+  Mail,
   type LucideIcon,
 } from "lucide-react";
 import type { AdminPermission } from "@/lib/permissions";
@@ -48,6 +49,7 @@ export const navGroups: NavGroup[] = [
     label: "Sales",
     items: [
       { href: "/admin/leads", label: "Leads", icon: Users, permission: "MANAGE_LEADS", built: true },
+      { href: "/admin/messages", label: "Messages", icon: Mail, permission: "MANAGE_LEADS", built: true },
       { href: "/admin/quotes", label: "Quotes", icon: FileSignature, permission: "MANAGE_LEADS", built: true },
       { href: "/admin/customers", label: "Customers", icon: UserSquare2, permission: "MANAGE_LEADS", built: true },
     ],

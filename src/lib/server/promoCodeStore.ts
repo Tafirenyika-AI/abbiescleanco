@@ -82,6 +82,33 @@ export async function setPromoCodeActive(id: string, active: boolean): Promise<{
   return { ok: true };
 }
 
+export async function updatePromoCode(
+  id: string,
+  data: { description?: string; discountType?: DiscountType; discountValue?: number; expiresAt?: string | null; maxRedemptions?: number | null }
+): Promise<{ ok: boolean; error?: string }> {
+  const existing = await db().promoCode.findUnique({ where: { id } });
+  if (!existing) return { ok: false, error: "Promo code not found" };
+  await db().promoCode.update({
+    where: { id },
+    data: {
+      description: data.description !== undefined ? data.description || null : undefined,
+      discountType: data.discountType,
+      discountValue: data.discountValue,
+      expiresAt: data.expiresAt !== undefined ? (data.expiresAt ? new Date(data.expiresAt) : null) : undefined,
+      maxRedemptions: data.maxRedemptions !== undefined ? data.maxRedemptions : undefined,
+    },
+  });
+  return { ok: true };
+}
+
+/** Existing quotes keep their already-applied discount amount; only the link back to this code is cleared (ON DELETE SET NULL). */
+export async function deletePromoCode(id: string): Promise<boolean> {
+  const existing = await db().promoCode.findUnique({ where: { id } });
+  if (!existing) return false;
+  await db().promoCode.delete({ where: { id } });
+  return true;
+}
+
 /** Checks a customer-typed code against active/date/redemption-limit rules — doesn't mutate anything. */
 export async function validatePromoCode(rawCode: string): Promise<PromoCodeItem | null> {
   if (!isDatabaseConfigured || !prisma || !rawCode.trim()) return null;

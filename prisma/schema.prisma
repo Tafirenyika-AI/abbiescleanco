@@ -782,6 +782,7 @@ enum AdminNotificationType {
   REVIEW_RECEIVED
   ADMIN_USER_CHANGED
   PRICING_CHANGED
+  NEW_MESSAGE
   GENERAL
 }
 
@@ -797,4 +798,29 @@ model AdminNotification {
 
   @@index([isRead])
   @@map("admin_notifications")
+}
+
+enum ContactMessageStatus {
+  NEW
+  READ
+  RESPONDED
+  ARCHIVED
+}
+
+/** Every submission through the public Contact form -- previously only emailed, never stored, so nothing survived if the email was missed. */
+model ContactMessage {
+  id       String               @id @default(cuid())
+  name     String
+  email    String
+  phone    String?
+  message  String
+  isUrgent Boolean              @default(false)
+  status   ContactMessageStatus @default(NEW)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("contact_messages")
 }

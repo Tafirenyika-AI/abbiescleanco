@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Phone, Mail, Loader2, CheckCircle2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Phone, Mail, Loader2, CheckCircle2, Trash2 } from "lucide-react";
 import type { CustomerDetail } from "@/lib/server/customerStore";
 import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
 import { useToast } from "@/components/admin/ui/Toast";
 import { formatDate, formatDateTime } from "@/lib/adminDate";
 
@@ -158,6 +160,7 @@ function PaymentsTab({ customer }: { customer: CustomerDetail }) {
 }
 
 function NotesTab({ customer }: { customer: CustomerDetail }) {
+  const router = useRouter();
   const { showToast } = useToast();
   const [form, setForm] = useState({
     notes: customer.notes ?? "",
@@ -165,6 +168,8 @@ function NotesTab({ customer }: { customer: CustomerDetail }) {
     accessInstructions: customer.accessInstructions ?? "",
   });
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   async function save() {
     setSaving(true);
@@ -179,6 +184,19 @@ function NotesTab({ customer }: { customer: CustomerDetail }) {
       return;
     }
     showToast("Saved", "success");
+  }
+
+  async function confirmDeleteCustomer() {
+    setDeleting(true);
+    const res = await fetch(`/api/admin/customers/${customer.id}`, { method: "DELETE" });
+    setDeleting(false);
+    setConfirmDelete(false);
+    if (!res.ok) {
+      showToast("Couldn't delete customer", "error");
+      return;
+    }
+    showToast("Customer deleted", "success");
+    router.push("/admin/customers");
   }
 
   return (
@@ -231,7 +249,7 @@ function NotesTab({ customer }: { customer: CustomerDetail }) {
           <p className="mt-2 text-sm text-admin-text-muted">No preferences on file.</p>
         )}
       </Card>
-      <div className="sm:col-span-2">
+      <div className="flex items-center justify-between sm:col-span-2">
         <button
           type="button"
           onClick={save}
@@ -241,7 +259,24 @@ function NotesTab({ customer }: { customer: CustomerDetail }) {
           {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <CheckCircle2 className="size-4" aria-hidden />}
           Save notes
         </button>
+        <button
+          type="button"
+          onClick={() => setConfirmDelete(true)}
+          className="inline-flex items-center gap-2 rounded-lg border border-admin-error/30 px-4 py-2 text-sm font-semibold text-admin-error hover:bg-red-50"
+        >
+          <Trash2 className="size-4" aria-hidden />
+          Delete customer
+        </button>
       </div>
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete this customer?"
+        description="Their leads, bookings, and payment history stay on record, but they'll no longer appear in your customer list. This can't be undone from here."
+        confirmLabel={deleting ? "Deleting…" : "Delete"}
+        tone="danger"
+        onConfirm={confirmDeleteCustomer}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }

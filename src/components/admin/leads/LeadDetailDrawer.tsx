@@ -149,6 +149,12 @@ export default function LeadDetailDrawer({
                 <dt className="text-admin-text-muted">Preliminary estimate</dt>
                 <dd className="text-admin-text">{lead.estimate.requiresManualQuote ? "Manual quote" : `$${lead.estimate.totalLow}–$${lead.estimate.totalHigh}`}</dd>
               </div>
+              {lead.input.promoCode && (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-admin-text-muted">Promo code entered</dt>
+                  <dd className="font-mono font-semibold text-admin-text">{lead.input.promoCode}</dd>
+                </div>
+              )}
             </dl>
             {lead.input.additionalInstructions && (
               <p className="mt-2 rounded-lg bg-admin-bg p-2.5 text-sm text-admin-text">{lead.input.additionalInstructions}</p>

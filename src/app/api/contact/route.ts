@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { contactSchema } from "@/lib/validation/contact";
 import { sendEmail } from "@/lib/server/email";
 import { checkRateLimit } from "@/lib/server/rateLimit";
+import { createContactMessage } from "@/lib/server/contactMessageStore";
+import { notifyAdmins } from "@/lib/server/notificationStore";
 import { business } from "@/lib/data/business";
 
 export async function POST(req: NextRequest) {
@@ -27,6 +29,21 @@ export async function POST(req: NextRequest) {
   if (input.companyWebsite) {
     return NextResponse.json({ ok: true });
   }
+
+  await createContactMessage({
+    name: input.name,
+    email: input.email,
+    phone: input.phone || undefined,
+    message: input.message,
+    isUrgent: input.isUrgent,
+  });
+
+  await notifyAdmins(
+    "NEW_MESSAGE",
+    `New message: ${input.name}${input.isUrgent ? " (urgent)" : ""}`,
+    input.message.slice(0, 140),
+    "/admin/messages"
+  );
 
   await sendEmail({
     to: business.email,
