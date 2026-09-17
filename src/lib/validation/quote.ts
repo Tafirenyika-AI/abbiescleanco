@@ -52,11 +52,15 @@ export const quoteRequestSchema = z.object({
   policiesAccepted: z.literal(true, {
     error: "Please accept the service policies to continue",
   }),
-  // Honeypot field — real users never see or fill this input. Deliberately NOT
-  // constrained to empty here: the route handler checks it after parsing so a
-  // filled value can get a normal-looking 200 response instead of a
-  // validation-error 400 that would tip off a bot that it's being screened.
-  companyWebsite: z.string().max(200).optional().or(z.literal("")),
+  // Honeypot field — real users never see or fill this input. Named to avoid
+  // any autofill-recognizable pattern (a field literally named "companyWebsite"
+  // got silently filled by browser/password-manager autofill for a real user,
+  // even while visually hidden, since autofill keys off the field name/type
+  // rather than visibility). Deliberately NOT constrained to empty here: the
+  // route handler checks it after parsing so a filled value can get a
+  // normal-looking 200 response instead of a validation-error 400 that would
+  // tip off a bot that it's being screened.
+  _gotcha: z.string().max(200).optional().or(z.literal("")),
   // Attribution
   source: z.string().trim().max(50).optional(),
   campaign: z.string().trim().max(100).optional(),

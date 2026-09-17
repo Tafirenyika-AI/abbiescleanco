@@ -15,7 +15,7 @@ export default function ContactForm() {
     formState: { errors },
   } = useForm<ContactFormValues>({
     resolver: zodResolver(contactSchema),
-    defaultValues: { name: "", email: "", phone: "", message: "", isUrgent: false, emailConsent: true, companyWebsite: "" },
+    defaultValues: { name: "", email: "", phone: "", message: "", isUrgent: false, emailConsent: true, _gotcha: "" },
   });
 
   async function onSubmit(data: ContactFormValues) {
@@ -45,7 +45,7 @@ export default function ContactForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-      <input type="text" tabIndex={-1} autoComplete="off" className="sr-only" aria-hidden="true" {...register("companyWebsite")} />
+      <input type="text" tabIndex={-1} autoComplete="off" className="sr-only" aria-hidden="true" {...register("_gotcha")} />
 
       <label className="block">
         <span className="text-sm font-semibold text-navy-900">Name</span>

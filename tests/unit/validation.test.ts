@@ -21,7 +21,7 @@ const validQuote = {
   smsConsent: false,
   emailConsent: true,
   policiesAccepted: true,
-  companyWebsite: "",
+  _gotcha: "",
 };
 
 describe("quoteRequestSchema", () => {
@@ -50,7 +50,7 @@ describe("quoteRequestSchema", () => {
     // tips a bot off. The API route checks this field after parsing and
     // returns an innocuous-looking success response instead — see
     // src/app/api/quote/route.ts and the corresponding integration test.
-    const result = quoteRequestSchema.safeParse({ ...validQuote, companyWebsite: "http://spam.example" });
+    const result = quoteRequestSchema.safeParse({ ...validQuote, _gotcha: "http://spam.example" });
     expect(result.success).toBe(true);
   });
 

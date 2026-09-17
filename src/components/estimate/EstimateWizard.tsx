@@ -48,7 +48,7 @@ export default function EstimateWizard({
         status: "success";
         reference: string;
         whatsappUrl: string;
-        estimateLabel: string;
+        estimateLabel: string | null;
         email: string;
         leadId?: string;
         serviceId?: ServiceId;
@@ -89,7 +89,7 @@ export default function EstimateWizard({
       smsConsent: false,
       emailConsent: true,
       policiesAccepted: true as const,
-      companyWebsite: "",
+      _gotcha: "",
       source: "website",
     },
   });
@@ -165,9 +165,13 @@ export default function EstimateWizard({
         setSubmitState({ status: "error", message: json.error || "Something went wrong. Please try again." });
         return;
       }
-      const label = json.estimate?.requiresManualQuote
-        ? "Manual quote required"
-        : `$${json.estimate?.totalLow}–$${json.estimate?.totalHigh}`;
+      // The honeypot-rejected path deliberately omits `estimate`/`leadId` (see
+      // /api/quote) -- render a plain confirmation rather than "$undefined".
+      const label = !json.estimate
+        ? null
+        : json.estimate.requiresManualQuote
+          ? "Manual quote required"
+          : `$${json.estimate.totalLow}–$${json.estimate.totalHigh}`;
       setSubmitState({
         status: "success",
         reference: json.reference,
@@ -192,7 +196,9 @@ export default function EstimateWizard({
           Your reference number is <strong>{submitState.reference}</strong>. We&apos;ve sent a
           confirmation to your email.
         </p>
-        <p className="mt-1 text-surface-700">Preliminary estimate: {submitState.estimateLabel}</p>
+        {submitState.estimateLabel && (
+          <p className="mt-1 text-surface-700">Preliminary estimate: {submitState.estimateLabel}</p>
+        )}
         <p className="mt-4 text-sm text-surface-700">
           This request is pending — our team will follow up to confirm final pricing and your
           preferred date.
@@ -243,7 +249,7 @@ export default function EstimateWizard({
           autoComplete="off"
           className="sr-only"
           aria-hidden="true"
-          {...register("companyWebsite")}
+          {...register("_gotcha")}
         />
 
         {step === 0 && (

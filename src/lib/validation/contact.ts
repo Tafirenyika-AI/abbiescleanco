@@ -13,7 +13,7 @@ export const contactSchema = z.object({
   isUrgent: z.boolean().default(false),
   emailConsent: z.boolean().default(true),
   // See quote.ts for why this isn't constrained to empty at the schema level.
-  companyWebsite: z.string().max(200).optional().or(z.literal("")),
+  _gotcha: z.string().max(200).optional().or(z.literal("")),
 });
 
 export type ContactInput = z.infer<typeof contactSchema>;

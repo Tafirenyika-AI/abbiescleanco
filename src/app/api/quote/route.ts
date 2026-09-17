@@ -37,9 +37,12 @@ export async function POST(req: NextRequest) {
   }
   const input = parsed.data;
 
-  // Honeypot: bots fill every field, including this hidden one.
-  if (input.companyWebsite) {
-    return NextResponse.json({ ok: true, reference: "REJECTED" }, { status: 200 });
+  // Honeypot: bots fill every field, including this hidden one. Still returns a
+  // normal-looking 200 (not a 400) so a bot can't tell it was caught -- but
+  // deliberately omits `estimate`/`leadId`, so the client must handle this as
+  // a distinct case rather than assuming every `ok:true` response has them.
+  if (input._gotcha) {
+    return NextResponse.json({ ok: true, reference: "REJECTED", rejected: true }, { status: 200 });
   }
 
   const service = getService(input.service);

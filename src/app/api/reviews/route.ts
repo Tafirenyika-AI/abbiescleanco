@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Honeypot: bots fill every field, including this hidden one. Look successful, do nothing.
-  if (parsed.data.companyWebsite) {
+  if (parsed.data._gotcha) {
     return NextResponse.json({ ok: true });
   }
 

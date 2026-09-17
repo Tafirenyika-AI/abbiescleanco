@@ -10,7 +10,7 @@ export default function ReviewForm() {
   const [authorName, setAuthorName] = useState("");
   const [location, setLocation] = useState("");
   const [quote, setQuote] = useState("");
-  const [companyWebsite, setCompanyWebsite] = useState("");
+  const [_gotcha, setGotcha] = useState("");
   const [state, setState] = useState<"idle" | "submitting" | "done" | "error">("idle");
   const [error, setError] = useState("");
 
@@ -22,7 +22,7 @@ export default function ReviewForm() {
       const res = await fetch("/api/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ authorName, location, quote, rating, companyWebsite }),
+        body: JSON.stringify({ authorName, location, quote, rating, _gotcha }),
       });
       const json = await res.json();
       if (!res.ok || !json.ok) {
@@ -63,8 +63,8 @@ export default function ReviewForm() {
         autoComplete="off"
         className="sr-only"
         aria-hidden="true"
-        value={companyWebsite}
-        onChange={(e) => setCompanyWebsite(e.target.value)}
+        value={_gotcha}
+        onChange={(e) => setGotcha(e.target.value)}
       />
 
       <div className="mt-5">

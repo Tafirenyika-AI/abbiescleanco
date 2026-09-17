@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   }
   const input = parsed.data;
 
-  if (input.companyWebsite) {
+  if (input._gotcha) {
     return NextResponse.json({ ok: true });
   }
 

@@ -33,7 +33,7 @@ const validQuote = {
   smsConsent: false,
   emailConsent: true,
   policiesAccepted: true,
-  companyWebsite: "",
+  _gotcha: "",
 };
 
 describe("POST /api/quote", () => {
@@ -58,7 +58,7 @@ describe("POST /api/quote", () => {
   });
 
   it("silently rejects a filled honeypot field", async () => {
-    const res = await POST(makeRequest({ ...validQuote, companyWebsite: "http://spam.example" }, "203.0.113.12"));
+    const res = await POST(makeRequest({ ...validQuote, _gotcha: "http://spam.example" }, "203.0.113.12"));
     const json = await res.json();
     expect(res.status).toBe(200);
     expect(json.reference).toBe("REJECTED");
