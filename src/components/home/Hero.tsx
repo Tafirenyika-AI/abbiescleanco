@@ -1,27 +1,37 @@
 import Image from "next/image";
-import { ShieldCheck, Sparkles, Leaf, Clock3 } from "lucide-react";
+import { ShieldCheck, Sparkles, Leaf } from "lucide-react";
 import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import { business, whatsappLink } from "@/lib/data/business";
 
 export default function Hero() {
   return (
-    <section className="relative overflow-hidden bg-navy-950" aria-labelledby="hero-heading">
-      <div className="pointer-events-none absolute inset-0 opacity-40" aria-hidden>
-        <div className="absolute -top-24 -right-24 size-96 rounded-full bg-teal-500/20 blur-3xl" />
-        <div className="absolute bottom-0 left-0 size-72 rounded-full bg-warm-500/10 blur-3xl" />
-      </div>
+    <section className="relative isolate flex min-h-[78vh] items-end overflow-hidden bg-navy-950 sm:min-h-[92vh]" aria-labelledby="hero-heading">
+      <Image
+        src="/images/hero-living-room.jpg"
+        alt="Bright, freshly cleaned living room in a Spokane Valley home"
+        fill
+        priority
+        quality={90}
+        sizes="100vw"
+        className="object-cover"
+      />
+      {/* Two stacked gradients so the left-anchored headline stays legible regardless of what's bright in the photo underneath. */}
+      <div className="absolute inset-0 bg-gradient-to-t from-navy-950 via-navy-950/45 to-transparent" aria-hidden />
+      <div className="absolute inset-0 bg-gradient-to-r from-navy-950/85 via-navy-950/25 to-transparent" aria-hidden />
 
-      <Container className="relative grid grid-cols-1 items-center gap-10 py-16 sm:py-20 lg:grid-cols-2 lg:py-28">
-        <div>
-          <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-teal-300">
+      <Container className="relative py-12 sm:py-20">
+        <div className="max-w-2xl">
+          <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-teal-300 ring-1 ring-white/15 backdrop-blur-sm">
             <Sparkles className="size-4" aria-hidden />
             Serving {business.city}, {business.region}
           </p>
-          <h1 id="hero-heading" className="mt-5 text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
-            Come home to clean.
+          <h1 id="hero-heading" className="mt-5 text-5xl font-semibold leading-[1.05] text-white sm:text-6xl lg:text-7xl">
+            Your home,
+            <br />
+            <span className="text-teal-300">spotless.</span>
           </h1>
-          <p className="mt-5 max-w-xl text-lg leading-relaxed text-surface-200">
+          <p className="mt-5 max-w-xl text-lg leading-relaxed text-surface-100">
             Thoughtful, dependable home cleaning throughout Spokane Valley — personalized to your
             space, schedule, and priorities.
           </p>
@@ -41,45 +51,16 @@ export default function Hero() {
             </Button>
           </div>
 
-          <ul className="mt-9 flex flex-wrap gap-x-8 gap-y-3 text-sm text-surface-200">
+          <ul className="mt-9 flex flex-wrap gap-x-8 gap-y-3 text-sm text-surface-100">
             <li className="flex items-center gap-2">
-              <ShieldCheck className="size-4 text-teal-400" aria-hidden />
+              <ShieldCheck className="size-4 text-teal-300" aria-hidden />
               Locally owned &amp; operated
             </li>
             <li className="flex items-center gap-2">
-              <Leaf className="size-4 text-teal-400" aria-hidden />
+              <Leaf className="size-4 text-teal-300" aria-hidden />
               Eco-conscious product options
             </li>
           </ul>
-        </div>
-
-        <div className="relative pb-6 pr-6 sm:pb-8 sm:pr-8">
-          <div className="relative aspect-[4/3] overflow-hidden rounded-3xl shadow-2xl ring-1 ring-white/10">
-            <Image
-              src="/images/hero-living-room.jpg"
-              alt="Bright, freshly cleaned living room in a Spokane Valley home"
-              fill
-              priority
-              quality={90}
-              sizes="(min-width: 1024px) 44vw, 90vw"
-              className="object-cover"
-            />
-          </div>
-
-          <div className="absolute -top-4 right-0 hidden items-center gap-2.5 rounded-2xl border border-white/10 bg-navy-900/90 px-4 py-3 shadow-xl backdrop-blur-md sm:flex">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-teal-500/15 text-teal-300">
-              <Clock3 className="size-4.5" aria-hidden />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-white">Preliminary estimate</p>
-              <p className="text-xs text-surface-200">Ready in about 2 minutes</p>
-            </div>
-          </div>
-
-          <div className="absolute -bottom-6 -left-6 hidden rounded-2xl bg-white p-4 shadow-xl sm:block">
-            <p className="font-display text-sm font-semibold text-navy-950">&ldquo;Professional, dependable, and takes genuine pride in her work.&rdquo;</p>
-            <p className="mt-1 text-xs text-surface-700">— Jackie Roman, Spokane Valley</p>
-          </div>
         </div>
       </Container>
     </section>
