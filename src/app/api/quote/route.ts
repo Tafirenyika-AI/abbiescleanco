@@ -8,6 +8,7 @@ import { sendEmail, customerConfirmationEmail, businessNotificationEmail } from 
 import { sendSms } from "@/lib/server/sms";
 import { checkRateLimit } from "@/lib/server/rateLimit";
 import { notifyAdmins } from "@/lib/server/notificationStore";
+import { scheduleQuoteFollowUps } from "@/lib/server/automationStore";
 import { business, whatsappLink } from "@/lib/data/business";
 
 export async function POST(req: NextRequest) {
@@ -72,7 +73,9 @@ export async function POST(req: NextRequest) {
     pricingConfig
   );
 
-  const { reference } = await createLead(input, estimate);
+  const { id: leadId, reference } = await createLead(input, estimate);
+
+  await scheduleQuoteFollowUps(leadId);
 
   const estimateLabel = estimate.requiresManualQuote
     ? "Manual quote required — we'll follow up after reviewing your property details."

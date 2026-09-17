@@ -19,7 +19,7 @@ const navLinks = [
   { href: "/contact", label: "Contact" },
 ];
 
-export default function SiteHeader() {
+export default function SiteHeader({ logoUrl }: { logoUrl?: string | null }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -63,14 +63,21 @@ export default function SiteHeader() {
       <TopBar />
       <Container className="flex items-center justify-between py-3">
         <Link href="/" className="flex items-center gap-2.5" aria-label={`${"Abbie's Clean Method"} — Home`}>
-          <Image
-            src="/images/logo.png"
-            alt="Abbie's Clean Method logo"
-            width={44}
-            height={44}
-            className="rounded-full"
-            priority
-          />
+          {logoUrl ? (
+            // Admin-uploaded logo can be any host — plain <img> avoids requiring
+            // every possible source in next.config's remotePatterns.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoUrl} alt="Abbie's Clean Method logo" width={44} height={44} className="size-11 rounded-full object-cover" />
+          ) : (
+            <Image
+              src="/images/logo.png"
+              alt="Abbie's Clean Method logo"
+              width={44}
+              height={44}
+              className="rounded-full"
+              priority
+            />
+          )}
           <span className="font-display text-lg font-semibold text-navy-950 sm:text-xl">
             Abbie&apos;s Clean Method
           </span>

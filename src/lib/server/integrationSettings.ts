@@ -20,6 +20,7 @@ export interface IntegrationSettings {
   twilioAuthToken?: string;
   twilioFromNumber?: string;
   stripeSecretKey?: string;
+  stripeWebhookSecret?: string;
   googleMapsApiKey?: string;
   turnstileSecretKey?: string;
   turnstileSiteKey?: string;
@@ -31,6 +32,7 @@ const SECRET_FIELDS: (keyof IntegrationSettings)[] = [
   "twilioAccountSid",
   "twilioAuthToken",
   "stripeSecretKey",
+  "stripeWebhookSecret",
   "googleMapsApiKey",
   "turnstileSecretKey",
 ];
@@ -57,6 +59,7 @@ export async function getIntegrationStatus(): Promise<Record<keyof IntegrationSe
     twilioAuthToken: "TWILIO_AUTH_TOKEN",
     twilioFromNumber: "TWILIO_FROM_NUMBER",
     stripeSecretKey: "STRIPE_SECRET_KEY",
+    stripeWebhookSecret: "STRIPE_WEBHOOK_SECRET",
     googleMapsApiKey: "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY",
     turnstileSecretKey: "TURNSTILE_SECRET_KEY",
     turnstileSiteKey: "NEXT_PUBLIC_TURNSTILE_SITE_KEY",

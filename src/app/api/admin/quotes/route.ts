@@ -17,6 +17,7 @@ const createSchema = z.object({
   deposit: z.coerce.number().int().min(0).optional(),
   expiresAt: z.string().trim().optional(),
   notes: z.string().trim().max(2000).optional(),
+  promoCodeId: z.string().trim().optional(),
 });
 
 export async function GET(req: NextRequest) {

@@ -50,7 +50,7 @@ export default async function HomePage() {
     <>
       <Hero />
       <TrustIndicators />
-      <ServicesOverview services={servicesContent} />
+      <ServicesOverview services={servicesContent} pricingConfig={pricingConfig} />
       <EstimateTeaser pricingConfig={pricingConfig} services={servicesContent} />
       <WhyChooseUs />
       <GalleryPreview items={galleryItems} />

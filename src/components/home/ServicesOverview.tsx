@@ -3,10 +3,11 @@ import Button from "@/components/ui/Button";
 import Reveal from "@/components/ui/Reveal";
 import ServiceCard from "@/components/services/ServiceCard";
 import type { ServiceContent } from "@/lib/server/servicesContent";
+import { getServicePriceLabel, type PricingConfig } from "@/lib/pricing";
 
 const FEATURED_IDS = ["standard-cleaning", "deep-cleaning", "move-in-cleaning", "move-out-cleaning", "bathroom-deep-cleaning", "kitchen-deep-cleaning"];
 
-export default function ServicesOverview({ services }: { services: ServiceContent[] }) {
+export default function ServicesOverview({ services, pricingConfig }: { services: ServiceContent[]; pricingConfig: PricingConfig }) {
   const active = services.filter((s) => s.isActive);
   const featured = FEATURED_IDS.map((id) => active.find((s) => s.id === id)).filter((s): s is ServiceContent => Boolean(s));
   if (featured.length === 0) return null;
@@ -28,18 +29,18 @@ export default function ServicesOverview({ services }: { services: ServiceConten
       {/* Mobile: swipeable, app-like carousel. Desktop: an editorial layout with one featured service. */}
       <div className="mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 sm:hidden [&>*]:w-[82vw] [&>*]:max-w-sm">
         {featured.map((service) => (
-          <ServiceCard key={service.id} service={service} priority={service.id === hero.id} />
+          <ServiceCard key={service.id} service={service} priceLabel={getServicePriceLabel(service.id, pricingConfig)} priority={service.id === hero.id} />
         ))}
       </div>
 
       <div className="mt-10 hidden sm:block">
         <Reveal>
-          <ServiceCard service={hero} featured priority />
+          <ServiceCard service={hero} priceLabel={getServicePriceLabel(hero.id, pricingConfig)} featured priority />
         </Reveal>
         <div className="mt-5 grid grid-cols-2 gap-5 lg:grid-cols-3">
           {rest.map((service, i) => (
             <Reveal key={service.id} delayMs={i * 80}>
-              <ServiceCard service={service} />
+              <ServiceCard service={service} priceLabel={getServicePriceLabel(service.id, pricingConfig)} />
             </Reveal>
           ))}
         </div>

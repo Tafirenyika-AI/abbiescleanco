@@ -5,6 +5,8 @@ import Reveal from "@/components/ui/Reveal";
 import ServiceCard from "@/components/services/ServiceCard";
 import ServicesFilterGrid from "@/components/services/ServicesFilterGrid";
 import { getServicesContent } from "@/lib/server/servicesContent";
+import { getPricingConfig } from "@/lib/server/pricingStore";
+import { getServicePriceLabel } from "@/lib/pricing";
 
 export const metadata: Metadata = {
   title: "Cleaning Services in Spokane Valley, WA",
@@ -18,7 +20,7 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 export default async function ServicesPage() {
-  const allServices = await getServicesContent();
+  const [allServices, pricingConfig] = await Promise.all([getServicesContent(), getPricingConfig()]);
   const active = allServices.filter((s) => s.isActive);
   const [first, ...rest] = active;
 
@@ -41,11 +43,11 @@ export default async function ServicesPage() {
       <Section>
         {first && (
           <Reveal>
-            <ServiceCard service={first} featured priority />
+            <ServiceCard service={first} priceLabel={getServicePriceLabel(first.id, pricingConfig)} featured priority />
           </Reveal>
         )}
         <div className="mt-8">
-          <ServicesFilterGrid services={rest} />
+          <ServicesFilterGrid services={rest} pricingConfig={pricingConfig} />
         </div>
       </Section>
 

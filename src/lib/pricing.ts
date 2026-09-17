@@ -113,6 +113,14 @@ export const defaultPricingConfig: PricingConfig = {
   recurringDiscountRates: defaultRecurringDiscountRates,
 };
 
+/** A short "starting at" price label for a service card — the full calculator (calculateEstimate) accounts for size/condition/add-ons; this is just the headline range. */
+export function getServicePriceLabel(serviceId: ServiceId, config: PricingConfig = defaultPricingConfig): string {
+  const sp = config.services[serviceId];
+  if (!sp || (sp.baseLow === 0 && sp.baseHigh === 0)) return "Custom quote";
+  if (sp.baseLow === sp.baseHigh) return `From $${sp.baseLow}`;
+  return `$${sp.baseLow}–$${sp.baseHigh}`;
+}
+
 export interface EstimateInput {
   service: ServiceId;
   propertyType: PropertyType;

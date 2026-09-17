@@ -60,6 +60,9 @@ export const quoteRequestSchema = z.object({
   // Attribution
   source: z.string().trim().max(50).optional(),
   campaign: z.string().trim().max(100).optional(),
+
+  // Optional promo code, validated server-side when the quote is built (not at submit time)
+  promoCode: z.string().trim().max(30).optional().or(z.literal("")),
 });
 
 export type QuoteRequestInput = z.infer<typeof quoteRequestSchema>;

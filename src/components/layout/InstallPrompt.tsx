@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Share, PlusSquare, Download } from "lucide-react";
+import { X, Share, PlusSquare, Download, Monitor, Smartphone } from "lucide-react";
 
 const DISMISS_KEY = "acm-install-prompt-dismissed-at";
 const DISMISS_DAYS = 14;
@@ -30,9 +30,16 @@ function isStandalone(): boolean {
   );
 }
 
+/** True phone/tablet, as opposed to desktop/laptop Chrome or Edge (which also fire beforeinstallprompt but aren't "mobile"). */
+function isMobileDevice(): boolean {
+  const uaData = (navigator as unknown as { userAgentData?: { mobile?: boolean } }).userAgentData;
+  if (uaData?.mobile !== undefined) return uaData.mobile;
+  return /android|iphone|ipad|ipod|mobile/i.test(window.navigator.userAgent);
+}
+
 export default function InstallPrompt() {
   const [visible, setVisible] = useState(false);
-  const [mode, setMode] = useState<"android" | "ios" | null>(null);
+  const [mode, setMode] = useState<"ios" | "mobile" | "desktop" | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
@@ -54,7 +61,7 @@ export default function InstallPrompt() {
     function onBeforeInstallPrompt(e: Event) {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setMode("android");
+      setMode(isMobileDevice() ? "mobile" : "desktop");
       setVisible(true);
     }
     window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
@@ -80,10 +87,13 @@ export default function InstallPrompt() {
 
   if (!visible || !mode) return null;
 
+  const title = mode === "desktop" ? "Install Abbie's Clean Method" : "Add Abbie's Clean Method to your Home Screen";
+  const Icon = mode === "desktop" ? Monitor : Smartphone;
+
   return (
     <div
       role="dialog"
-      aria-label="Add to home screen"
+      aria-label={mode === "desktop" ? "Install app" : "Add to home screen"}
       className="fixed inset-x-3 bottom-20 z-40 rounded-2xl border border-surface-200 bg-white p-4 shadow-lg sm:inset-x-auto sm:right-4 sm:w-80 md:bottom-4"
     >
       <button
@@ -97,11 +107,13 @@ export default function InstallPrompt() {
 
       <div className="flex items-start gap-3 pr-6">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-600">
-          <Download className="size-5" aria-hidden />
+          <Icon className="size-5" aria-hidden />
         </span>
         <div>
-          <p className="text-sm font-semibold text-navy-950">Add Abbie&apos;s Clean Method to your Home Screen</p>
-          {mode === "android" ? (
+          <p className="text-sm font-semibold text-navy-950">{title}</p>
+          {mode === "desktop" ? (
+            <p className="mt-1 text-xs text-surface-700">Opens in its own window, pinned to your taskbar/dock — no browser tabs, no app store.</p>
+          ) : mode === "mobile" ? (
             <p className="mt-1 text-xs text-surface-700">Get one-tap access next time — no app store needed.</p>
           ) : (
             <p className="mt-1 flex flex-wrap items-center gap-1 text-xs text-surface-700">
@@ -112,13 +124,16 @@ export default function InstallPrompt() {
         </div>
       </div>
 
-      {mode === "android" && (
+      {(mode === "mobile" || mode === "desktop") && (
         <button
           type="button"
           onClick={install}
           className="mt-3 w-full rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-navy-950 hover:bg-teal-400"
         >
-          Add to Home Screen
+          <span className="inline-flex items-center justify-center gap-1.5">
+            <Download className="size-4" aria-hidden />
+            {mode === "desktop" ? "Install" : "Add to Home Screen"}
+          </span>
         </button>
       )}
     </div>

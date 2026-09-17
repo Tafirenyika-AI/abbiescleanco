@@ -41,3 +41,25 @@ export async function setSocialLinks(links: SocialLinks): Promise<void> {
     create: { key: "social_links", value: links as Prisma.InputJsonValue },
   });
 }
+
+export interface BrandingSettings {
+  logoUrl: string | null;
+}
+
+const defaultBranding: BrandingSettings = { logoUrl: null };
+
+/** logoUrl null means "use the static /images/logo.png shipped with the site". */
+export async function getBranding(): Promise<BrandingSettings> {
+  if (!isDatabaseConfigured || !prisma) return { ...defaultBranding };
+  const row = await prisma.businessSetting.findUnique({ where: { key: "branding" } });
+  return { ...defaultBranding, ...(row?.value as Partial<BrandingSettings> | undefined) };
+}
+
+export async function setBranding(branding: BrandingSettings): Promise<void> {
+  if (!isDatabaseConfigured || !prisma) throw new Error("Requires DATABASE_URL to be configured.");
+  await prisma.businessSetting.upsert({
+    where: { key: "branding" },
+    update: { value: branding as unknown as Prisma.InputJsonValue },
+    create: { key: "branding", value: branding as unknown as Prisma.InputJsonValue },
+  });
+}

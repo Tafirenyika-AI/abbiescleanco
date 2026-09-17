@@ -41,7 +41,7 @@ export const navGroups: NavGroup[] = [
     label: "Overview",
     items: [
       { href: "/admin", label: "Dashboard", icon: LayoutDashboard, built: true },
-      { href: "/admin/activity", label: "Activity", icon: Activity, built: false },
+      { href: "/admin/activity", label: "Activity", icon: Activity, built: true },
     ],
   },
   {
@@ -73,8 +73,8 @@ export const navGroups: NavGroup[] = [
     label: "Growth",
     items: [
       { href: "/admin/reviews", label: "Reviews", icon: Star, permission: "MANAGE_REVIEWS", built: true },
-      { href: "/admin/promotions", label: "Promotions", icon: Megaphone, permission: "MANAGE_PRICING", built: false },
-      { href: "/admin/automations", label: "Automations", icon: Zap, permission: "MANAGE_CONTENT", built: false },
+      { href: "/admin/promotions", label: "Promotions", icon: Megaphone, permission: "MANAGE_PRICING", built: true },
+      { href: "/admin/automations", label: "Automations", icon: Zap, permission: "MANAGE_CONTENT", built: true },
     ],
   },
   {

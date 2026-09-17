@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Phone, Mail, Loader2 } from "lucide-react";
+import { ArrowLeft, Phone, Mail, Loader2, CreditCard, Copy, ExternalLink, Star } from "lucide-react";
 import type { BookingDetail, BookingStatusValue } from "@/lib/server/bookingStore";
 import { BOOKING_STATUSES, bookingStatusLabels } from "@/lib/server/bookingStore";
 import Card from "@/components/admin/ui/Card";
@@ -43,6 +43,15 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
   const [arrivalWindow, setArrivalWindow] = useState(booking.arrivalWindow ?? "");
   const [conflicts, setConflicts] = useState<{ reference: string; customerName: string; scheduledStart: string | null }[] | null>(null);
   const [savingSchedule, setSavingSchedule] = useState(false);
+
+  const [payAmount, setPayAmount] = useState("");
+  const [payKind, setPayKind] = useState<"deposit" | "full_payment">("full_payment");
+  const [emailToCustomer, setEmailToCustomer] = useState(true);
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [paymentLinkUrl, setPaymentLinkUrl] = useState("");
+  const [paymentLinkError, setPaymentLinkError] = useState("");
+  const [sendingReviewRequest, setSendingReviewRequest] = useState(false);
+  const [reviewRequestSent, setReviewRequestSent] = useState(false);
 
   async function setStatus(status: BookingStatusValue) {
     const res = await fetch(`/api/admin/bookings/${booking.id}/status`, {
@@ -103,6 +112,50 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
       router.refresh();
     } finally {
       setSavingSchedule(false);
+    }
+  }
+
+  async function generatePaymentLink() {
+    if (!payAmount) return;
+    setGeneratingLink(true);
+    setPaymentLinkError("");
+    setPaymentLinkUrl("");
+    try {
+      const res = await fetch("/api/admin/payments/checkout-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingId: booking.id,
+          amount: Math.round(Number(payAmount) * 100),
+          kind: payKind,
+          emailToCustomer,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        setPaymentLinkError(json.error || "Couldn't generate a payment link");
+        return;
+      }
+      setPaymentLinkUrl(json.url);
+      showToast(emailToCustomer ? "Payment link emailed to the customer" : "Payment link created", "success");
+    } finally {
+      setGeneratingLink(false);
+    }
+  }
+
+  async function sendReviewRequest() {
+    setSendingReviewRequest(true);
+    try {
+      const res = await fetch(`/api/admin/bookings/${booking.id}/review-request`, { method: "POST" });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        showToast(json.error || "Couldn't send review request", "error");
+        return;
+      }
+      setReviewRequestSent(true);
+      showToast("Review request sent", "success");
+    } finally {
+      setSendingReviewRequest(false);
     }
   }
 
@@ -210,6 +263,51 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
 
         <div className="space-y-4">
           <Card>
+            <h2 className="flex items-center gap-1.5 font-semibold text-admin-text"><CreditCard className="size-4" aria-hidden /> Request payment</h2>
+            <p className="mt-1 text-xs text-admin-text-muted">Creates a secure Stripe Checkout link — card, Apple Pay, and Google Pay are all accepted automatically.</p>
+            <div className="mt-3 space-y-2">
+              <div className="flex gap-2">
+                <label className="flex-1 block">
+                  <span className="text-xs font-medium text-admin-text-muted">Amount ($)</span>
+                  <input type="number" min="0.50" step="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-medium text-admin-text-muted">Kind</span>
+                  <select value={payKind} onChange={(e) => setPayKind(e.target.value as typeof payKind)} className="mt-1 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text">
+                    <option value="full_payment">Full payment</option>
+                    <option value="deposit">Deposit</option>
+                  </select>
+                </label>
+              </div>
+              <label className="flex items-center gap-2 text-sm text-admin-text">
+                <input type="checkbox" checked={emailToCustomer} onChange={(e) => setEmailToCustomer(e.target.checked)} />
+                Email the link to {booking.customerName || "the customer"}
+              </label>
+              <button
+                type="button"
+                onClick={generatePaymentLink}
+                disabled={!payAmount || generatingLink}
+                className="flex items-center gap-2 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
+              >
+                {generatingLink ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <CreditCard className="size-4" aria-hidden />}
+                Generate payment link
+              </button>
+              {paymentLinkError && <p className="text-sm text-red-600">{paymentLinkError}</p>}
+              {paymentLinkUrl && (
+                <div className="flex items-center gap-2 rounded-lg bg-admin-bg p-2.5">
+                  <input readOnly value={paymentLinkUrl} className="flex-1 truncate bg-transparent text-xs text-admin-text-muted" />
+                  <button type="button" onClick={() => navigator.clipboard?.writeText(paymentLinkUrl).catch(() => {})} aria-label="Copy link" className="flex size-7 items-center justify-center rounded text-admin-text-muted hover:bg-white">
+                    <Copy className="size-3.5" aria-hidden />
+                  </button>
+                  <a href={paymentLinkUrl} target="_blank" rel="noreferrer" aria-label="Open link" className="flex size-7 items-center justify-center rounded text-admin-text-muted hover:bg-white">
+                    <ExternalLink className="size-3.5" aria-hidden />
+                  </a>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <Card>
             <h2 className="font-semibold text-admin-text">Assigned cleaner</h2>
             <div className="mt-2 flex gap-2">
               <input value={staff} onChange={(e) => setStaff(e.target.value)} placeholder="Unassigned" className="flex-1 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
@@ -227,6 +325,24 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
               ))}
             </div>
           </Card>
+
+          {booking.status === "COMPLETED" && (
+            <Card>
+              <h2 className="flex items-center gap-1.5 font-semibold text-admin-text"><Star className="size-4" aria-hidden /> Review request</h2>
+              <p className="mt-1 text-sm text-admin-text-muted">
+                Only send this after confirming the customer is happy — it&apos;s never sent automatically.
+              </p>
+              <button
+                type="button"
+                onClick={sendReviewRequest}
+                disabled={sendingReviewRequest || reviewRequestSent}
+                className="mt-3 flex items-center gap-2 rounded-lg bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
+              >
+                {sendingReviewRequest ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+                {reviewRequestSent ? "Sent" : "Send review request"}
+              </button>
+            </Card>
+          )}
 
           <Card>
             <button type="button" onClick={() => setConfirmDelete(true)} className="w-full rounded-lg border border-admin-error/30 px-3 py-2 text-sm font-semibold text-admin-error hover:bg-red-50">

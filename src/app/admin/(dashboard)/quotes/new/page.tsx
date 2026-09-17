@@ -35,6 +35,7 @@ export default async function NewQuotePage({ searchParams }: { searchParams: Pro
       serviceName={serviceName}
       quote={null}
       suggestedUnitPrice={suggestedUnitPrice}
+      leadPromoCode={lead.input.promoCode ?? null}
     />
   );
 }

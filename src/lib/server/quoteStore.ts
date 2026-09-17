@@ -1,5 +1,6 @@
 import { prisma, isDatabaseConfigured } from "@/lib/db";
 import { generateReference } from "@/lib/reference";
+import { redeemPromoCode } from "@/lib/server/promoCodeStore";
 
 function db() {
   if (!isDatabaseConfigured || !prisma) throw new Error("Quotes require DATABASE_URL to be configured.");
@@ -106,7 +107,7 @@ export async function getQuoteById(id: string): Promise<QuoteDetail | null> {
 
 export async function createQuote(
   leadId: string,
-  data: { items: QuoteItemInput[]; discount?: number; tax?: number; deposit?: number; expiresAt?: string; notes?: string }
+  data: { items: QuoteItemInput[]; discount?: number; tax?: number; deposit?: number; expiresAt?: string; notes?: string; promoCodeId?: string }
 ): Promise<{ id: string }> {
   const { subtotal, total } = computeTotals(data.items, data.discount ?? 0, data.tax ?? 0);
   const quote = await db().quote.create({
@@ -120,11 +121,13 @@ export async function createQuote(
       total,
       expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
       notes: data.notes,
+      promoCodeId: data.promoCodeId,
       items: {
         create: data.items.map((i) => ({ label: i.label, quantity: i.quantity, unitPrice: i.unitPrice, total: i.quantity * i.unitPrice })),
       },
     },
   });
+  if (data.promoCodeId) await redeemPromoCode(data.promoCodeId);
   return { id: quote.id };
 }
 

@@ -75,6 +75,7 @@ export default function EstimateWizard({
       email: "",
       preferredContactMethod: "EMAIL",
       additionalInstructions: "",
+      promoCode: "",
       smsConsent: false,
       emailConsent: true,
       policiesAccepted: true as const,
@@ -411,6 +412,15 @@ export default function EstimateWizard({
                 placeholder="Access instructions, special requests, anything else we should know"
                 className="mt-1.5 w-full rounded-xl border border-surface-200 px-3.5 py-2.5 text-sm"
                 {...register("additionalInstructions")}
+              />
+            </label>
+            <label className="block">
+              <span className="text-sm font-semibold text-navy-900">Promo code (optional)</span>
+              <input
+                type="text"
+                placeholder="e.g. SPRING10"
+                className="mt-1.5 w-full rounded-xl border border-surface-200 px-3.5 py-2.5 text-sm uppercase"
+                {...register("promoCode")}
               />
             </label>
             <label className="flex items-center gap-2.5 sm:col-span-2">

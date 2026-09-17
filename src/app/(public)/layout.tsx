@@ -6,6 +6,7 @@ import SiteFooter from "@/components/layout/SiteFooter";
 import MobileActionBar from "@/components/layout/MobileActionBar";
 import InstallPrompt from "@/components/layout/InstallPrompt";
 import { business } from "@/lib/data/business";
+import { getBranding } from "@/lib/server/siteSettings";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -68,7 +69,8 @@ const localBusinessSchema = {
   url: siteUrl,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const branding = await getBranding();
   return (
     <html lang="en" className={`${inter.variable} ${fraunces.variable} h-full antialiased`}>
       <head>
@@ -88,7 +90,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Skip to main content
         </a>
-        <SiteHeader />
+        <SiteHeader logoUrl={branding.logoUrl} />
         <main id="main-content" className="flex-1 has-mobile-actionbar">
           {children}
         </main>

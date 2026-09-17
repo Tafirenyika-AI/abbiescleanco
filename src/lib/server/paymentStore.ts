@@ -16,6 +16,7 @@ export interface PaymentListItem {
   createdAt: string;
   customerName: string;
   bookingReference: string | null;
+  proofUrl: string | null;
 }
 
 export async function listPayments(): Promise<PaymentListItem[]> {
@@ -33,6 +34,7 @@ export async function listPayments(): Promise<PaymentListItem[]> {
     createdAt: p.createdAt.toISOString(),
     customerName: p.customer ? `${p.customer.firstName} ${p.customer.lastName}`.trim() : "—",
     bookingReference: p.booking?.reference ?? null,
+    proofUrl: p.proofUrl,
   }));
 }
 
@@ -56,7 +58,7 @@ export async function listBookingsAwaitingPayment(): Promise<RecordablePayment[]
     .map((b) => ({ bookingId: b.id, reference: b.reference, customerName: b.customer ? `${b.customer.firstName} ${b.customer.lastName}`.trim() : "—" }));
 }
 
-export async function recordPayment(data: { bookingId: string; amount: number; kind: string; status: PaymentStatusValue }): Promise<{ ok: boolean; error?: string }> {
+export async function recordPayment(data: { bookingId: string; amount: number; kind: string; status: PaymentStatusValue; proofUrl?: string }): Promise<{ ok: boolean; error?: string }> {
   const booking = await db().booking.findUnique({ where: { id: data.bookingId } });
   if (!booking) return { ok: false, error: "Booking not found" };
 
@@ -67,6 +69,7 @@ export async function recordPayment(data: { bookingId: string; amount: number; k
       amount: data.amount,
       kind: data.kind,
       status: data.status,
+      proofUrl: data.proofUrl,
     },
   });
   return { ok: true };
@@ -77,4 +80,58 @@ export async function updatePaymentStatus(id: string, status: PaymentStatusValue
   if (!existing) return { ok: false, error: "Payment not found" };
   await db().payment.update({ where: { id }, data: { status } });
   return { ok: true };
+}
+
+export async function setPaymentProof(id: string, proofUrl: string): Promise<{ ok: boolean; error?: string }> {
+  const existing = await db().payment.findUnique({ where: { id } });
+  if (!existing) return { ok: false, error: "Payment not found" };
+  await db().payment.update({ where: { id }, data: { proofUrl } });
+  return { ok: true };
+}
+
+/** Created the moment an admin generates a Stripe Checkout link — the webhook flips it to PAID/FAILED once Stripe confirms. */
+export async function createPendingStripePayment(data: {
+  bookingId: string;
+  amount: number;
+  kind: string;
+  stripePaymentIntentId: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const booking = await db().booking.findUnique({ where: { id: data.bookingId } });
+  if (!booking) return { ok: false, error: "Booking not found" };
+
+  await db().payment.create({
+    data: {
+      customerId: booking.customerId,
+      bookingId: booking.id,
+      amount: data.amount,
+      kind: data.kind,
+      status: "PENDING",
+      stripePaymentIntentId: data.stripePaymentIntentId,
+    },
+  });
+  return { ok: true };
+}
+
+export interface StripePaymentUpdateResult {
+  id: string;
+  bookingId: string | null;
+  amount: number;
+  customerName: string;
+  customerEmail: string | null;
+}
+
+/** Used by the Stripe webhook — looks the payment up by the PaymentIntent id set when the Checkout link was created. */
+export async function markPaymentByIntentId(paymentIntentId: string, status: PaymentStatusValue, proofUrl?: string | null): Promise<StripePaymentUpdateResult | null> {
+  if (!isDatabaseConfigured || !prisma) return null;
+  const existing = await prisma.payment.findFirst({ where: { stripePaymentIntentId: paymentIntentId }, include: { customer: true } });
+  if (!existing) return null;
+
+  await prisma.payment.update({ where: { id: existing.id }, data: { status, ...(proofUrl ? { proofUrl } : {}) } });
+  return {
+    id: existing.id,
+    bookingId: existing.bookingId,
+    amount: existing.amount,
+    customerName: existing.customer ? `${existing.customer.firstName} ${existing.customer.lastName}`.trim() : "",
+    customerEmail: existing.customer?.email ?? null,
+  };
 }

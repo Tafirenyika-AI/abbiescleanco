@@ -98,6 +98,7 @@ export async function createLead(input: QuoteRequestInput, estimate: EstimateRes
         campaign: input.campaign,
         preferredContactMethod: input.preferredContactMethod,
         additionalInstructions: input.additionalInstructions || null,
+        promoCode: input.promoCode || null,
         quoteRequest: {
           create: {
             propertyType: input.propertyType,
@@ -117,11 +118,13 @@ export async function createLead(input: QuoteRequestInput, estimate: EstimateRes
             emailConsent: input.emailConsent,
           },
         },
-        automationEvents: { create: { type: "NEW_LEAD", status: "PENDING" } },
+        // Sent synchronously right after this in /api/quote — recorded as SENT immediately rather
+        // than PENDING, since there's no separate processing step for this particular event type.
+        automationEvents: { create: { type: "NEW_LEAD", status: "SENT", processedAt: new Date() } },
       },
     });
 
-    return { reference: lead.reference, persisted: "database" as const };
+    return { id: lead.id, reference: lead.reference, persisted: "database" as const };
   }
 
   const leads = await readMockLeads();
@@ -139,7 +142,7 @@ export async function createLead(input: QuoteRequestInput, estimate: EstimateRes
   });
   await writeMockLeads(leads);
 
-  return { reference, persisted: "mock-json" as const };
+  return { id: reference, reference, persisted: "mock-json" as const };
 }
 
 function mapLead(
@@ -174,6 +177,7 @@ function mapLead(
       policiesAccepted: true,
       addOns: (l.quoteRequest?.addOns ?? []) as QuoteRequestInput["addOns"],
       additionalInstructions: l.additionalInstructions ?? undefined,
+      promoCode: l.promoCode ?? undefined,
     } as QuoteRequestInput,
     estimate: {
       requiresManualQuote: l.quoteRequest?.requiresManualQuote ?? false,

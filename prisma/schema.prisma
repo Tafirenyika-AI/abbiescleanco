@@ -230,6 +230,7 @@ model Lead {
   additionalInstructions String?
 
   lostReason   String?
+  promoCode    String? // as typed by the customer on the estimate form; validity is checked when a quote is built, not at submit time
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -295,6 +296,9 @@ model Quote {
   expiresAt  DateTime?
   notes      String?
 
+  promoCodeId String?
+  promoCode   PromoCode? @relation(fields: [promoCodeId], references: [id])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
@@ -305,6 +309,26 @@ model Quote {
 
   @@index([status])
   @@map("quotes")
+}
+
+model PromoCode {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  description     String?
+  discountType    String    @default("PERCENT") // PERCENT | FIXED
+  discountValue   Int       // percent 1-100, or cents when FIXED
+  active          Boolean   @default(true)
+  startsAt        DateTime?
+  expiresAt       DateTime?
+  maxRedemptions  Int?
+  redemptionCount Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  quotes Quote[]
+
+  @@map("promo_codes")
 }
 
 model QuoteItem {
@@ -482,6 +506,7 @@ model Payment {
   currency      String        @default("USD")
   kind          String        @default("deposit") // deposit | full_payment
   stripePaymentIntentId String?
+  proofUrl      String? // receipt/screenshot the admin attached, or the Stripe-hosted receipt URL
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

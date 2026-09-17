@@ -1,5 +1,6 @@
 import { prisma, isDatabaseConfigured } from "@/lib/db";
 import { generateReference } from "@/lib/reference";
+import { scheduleBookingConfirmationAndReminders, schedulePostServiceThankYou } from "@/lib/server/automationStore";
 
 function db() {
   if (!isDatabaseConfigured || !prisma) throw new Error("Bookings require DATABASE_URL to be configured.");
@@ -145,6 +146,7 @@ export async function createBookingFromQuote(
       statusHistory: { create: { toStatus: "CONFIRMED", note: "Created from an accepted quote" } },
     },
   });
+  await scheduleBookingConfirmationAndReminders(booking.id, new Date(data.scheduledStart));
   return { ok: true, id: booking.id };
 }
 
@@ -159,6 +161,14 @@ export async function updateBookingStatus(id: string, status: BookingStatusValue
   await db().auditLog.create({
     data: { adminUserId, action: "booking.status_changed", entityType: "booking", entityId: id, before: { status: existing.status }, after: { status } },
   });
+
+  if (status === "CONFIRMED" && existing.status !== "CONFIRMED" && existing.scheduledStart) {
+    await scheduleBookingConfirmationAndReminders(id, existing.scheduledStart);
+  }
+  if (status === "COMPLETED" && existing.status !== "COMPLETED") {
+    await schedulePostServiceThankYou(id);
+  }
+
   return { ok: true };
 }
 

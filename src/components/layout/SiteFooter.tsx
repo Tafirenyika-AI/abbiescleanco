@@ -4,18 +4,23 @@ import { Phone, Mail, MapPin } from "lucide-react";
 import Container from "@/components/ui/Container";
 import { business, telHref, mailtoHref, whatsappLink } from "@/lib/data/business";
 import { services } from "@/lib/data/services";
-import { getSocialLinks } from "@/lib/server/siteSettings";
+import { getSocialLinks, getBranding } from "@/lib/server/siteSettings";
 
 export default async function SiteFooter() {
   const year = new Date().getFullYear();
-  const social = await getSocialLinks();
+  const [social, branding] = await Promise.all([getSocialLinks(), getBranding()]);
 
   return (
     <footer className="bg-navy-950 text-surface-200">
       <Container className="grid grid-cols-1 gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <Image src="/images/logo.png" alt="" width={40} height={40} className="rounded-full" aria-hidden />
+            {branding.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={branding.logoUrl} alt="" width={40} height={40} className="size-10 rounded-full object-cover" aria-hidden />
+            ) : (
+              <Image src="/images/logo.png" alt="" width={40} height={40} className="rounded-full" aria-hidden />
+            )}
             <span className="font-display text-lg font-semibold text-white">Abbie&apos;s Clean Method</span>
           </div>
           <p className="mt-4 text-sm leading-relaxed">{business.tagline}</p>

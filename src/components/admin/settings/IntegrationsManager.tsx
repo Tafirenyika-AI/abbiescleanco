@@ -17,7 +17,8 @@ const fields: FieldMeta[] = [
   { key: "twilioAccountSid", label: "Twilio Account SID", isSecret: true, wired: true, help: "SMS notifications when a customer opts in." },
   { key: "twilioAuthToken", label: "Twilio Auth Token", isSecret: true, wired: true, help: "" },
   { key: "twilioFromNumber", label: "Twilio From Number", isSecret: false, wired: true, help: "e.g. +16505551234" },
-  { key: "stripeSecretKey", label: "Stripe Secret Key", isSecret: true, wired: false, help: "Not used by any code path yet — Phase 4 (deposits/payments)." },
+  { key: "stripeSecretKey", label: "Stripe Secret Key", isSecret: true, wired: true, help: "Powers admin-generated payment links (Checkout) — Apple Pay/Google Pay are offered automatically, no extra setup." },
+  { key: "stripeWebhookSecret", label: "Stripe Webhook Signing Secret", isSecret: true, wired: true, help: "From the webhook endpoint in your Stripe dashboard — confirms payments were really completed." },
   { key: "googleMapsApiKey", label: "Google Maps API Key", isSecret: true, wired: false, help: "Not used yet — ZIP is free-text today." },
   { key: "turnstileSiteKey", label: "Turnstile Site Key", isSecret: false, wired: false, help: "Not wired into any form yet." },
   { key: "turnstileSecretKey", label: "Turnstile Secret Key", isSecret: true, wired: false, help: "Not wired into any form yet." },
@@ -64,7 +65,7 @@ export default function IntegrationsManager({ initialStatus }: { initialStatus: 
 
   return (
     <div>
-      <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 p-3.5 text-sm text-slate-800">
+      <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 p-3.5 text-sm text-admin-text">
         <ShieldAlert className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden />
         <p>
           These are stored in the database, not a dedicated secrets vault — reasonable for a small
@@ -78,20 +79,20 @@ export default function IntegrationsManager({ initialStatus }: { initialStatus: 
         {fields.map((field) => {
           const current = status[field.key];
           return (
-            <div key={field.key} className="rounded-2xl border border-slate-200 bg-admin-card p-4">
+            <div key={field.key} className="rounded-2xl border border-admin-border bg-admin-card p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">{field.label}</p>
-                  {field.help && <p className="text-xs text-slate-500">{field.help}</p>}
+                  <p className="text-sm font-semibold text-admin-text">{field.label}</p>
+                  {field.help && <p className="text-xs text-admin-text-muted">{field.help}</p>}
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                  {!field.wired && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-500">Not wired into code yet</span>}
+                  {!field.wired && <span className="rounded-full bg-admin-bg px-2 py-0.5 text-admin-text-muted">Not wired into code yet</span>}
                   {current?.configured ? (
                     <span className="rounded-full bg-admin-teal/10 px-2 py-0.5 text-admin-teal-hover">
                       Configured ({current.source === "database" ? "here" : "env var"})
                     </span>
                   ) : (
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-500">Not set</span>
+                    <span className="rounded-full bg-admin-bg px-2 py-0.5 text-admin-text-muted">Not set</span>
                   )}
                 </div>
               </div>
@@ -102,7 +103,7 @@ export default function IntegrationsManager({ initialStatus }: { initialStatus: 
                   placeholder={current?.value || (current?.configured ? "•••• saved — enter a new value to replace" : "Not set")}
                   value={drafts[field.key] || ""}
                   onChange={(e) => setDrafts((prev) => ({ ...prev, [field.key]: e.target.value }))}
-                  className="flex-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
+                  className="flex-1 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm"
                 />
                 <button
                   type="button"

@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, CreditCard, Loader2 } from "lucide-react";
+import { Plus, CreditCard, Loader2, Receipt, ExternalLink } from "lucide-react";
 import type { PaymentListItem, PaymentStatusValue } from "@/lib/server/paymentStore";
 import { PAYMENT_STATUSES } from "@/lib/server/paymentStore";
 import Card from "@/components/admin/ui/Card";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import { useToast } from "@/components/admin/ui/Toast";
 import { formatDate } from "@/lib/adminDate";
+import ImageUploadField from "@/components/admin/content/ImageUploadField";
 
 export default function PaymentsView({
   payments: initialPayments,
@@ -23,7 +24,9 @@ export default function PaymentsView({
   const [amount, setAmount] = useState("");
   const [kind, setKind] = useState<"deposit" | "full_payment">("full_payment");
   const [status, setStatus] = useState<PaymentStatusValue>("PAID");
+  const [proofUrl, setProofUrl] = useState("");
   const [saving, setSaving] = useState(false);
+  const [attachingProofFor, setAttachingProofFor] = useState<string | null>(null);
 
   const totalPaid = payments.filter((p) => p.status === "PAID").reduce((sum, p) => sum + p.amount, 0);
   const totalPending = payments.filter((p) => p.status === "PENDING").reduce((sum, p) => sum + p.amount, 0);
@@ -34,7 +37,7 @@ export default function PaymentsView({
     const res = await fetch("/api/admin/payments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bookingId, amount: Math.round(Number(amount) * 100), kind, status }),
+      body: JSON.stringify({ bookingId, amount: Math.round(Number(amount) * 100), kind, status, proofUrl: proofUrl || undefined }),
     });
     setSaving(false);
     if (!res.ok) {
@@ -45,7 +48,23 @@ export default function PaymentsView({
     setFormOpen(false);
     setBookingId("");
     setAmount("");
+    setProofUrl("");
     window.location.reload();
+  }
+
+  async function attachProof(id: string, url: string) {
+    const res = await fetch(`/api/admin/payments/${id}/proof`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ proofUrl: url }),
+    });
+    if (!res.ok) {
+      showToast("Couldn't attach receipt", "error");
+      return;
+    }
+    setPayments((prev) => prev.map((p) => (p.id === id ? { ...p, proofUrl: url } : p)));
+    setAttachingProofFor(null);
+    showToast("Receipt attached", "success");
   }
 
   async function changeStatus(id: string, next: PaymentStatusValue) {
@@ -122,6 +141,9 @@ export default function PaymentsView({
               </select>
             </label>
           </div>
+          <div className="mt-3 max-w-sm">
+            <ImageUploadField label="Proof of payment (optional — receipt or screenshot)" value={proofUrl} onChange={setProofUrl} />
+          </div>
           <button type="button" onClick={submit} disabled={!bookingId || !amount || saving} className="mt-3 flex items-center gap-2 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
             {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null} Save
           </button>
@@ -145,6 +167,7 @@ export default function PaymentsView({
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Amount</th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Date</th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Status</th>
+                <th scope="col" className="p-3.5 font-semibold text-admin-text">Receipt</th>
               </tr>
             </thead>
             <tbody>
@@ -166,6 +189,30 @@ export default function PaymentsView({
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
+                  </td>
+                  <td className="p-3.5">
+                    {p.proofUrl ? (
+                      <a
+                        href={p.proofUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-admin-teal hover:text-admin-teal-hover"
+                      >
+                        <Receipt className="size-3.5" aria-hidden /> View <ExternalLink className="size-3" aria-hidden />
+                      </a>
+                    ) : attachingProofFor === p.id ? (
+                      <div className="w-40">
+                        <ImageUploadField label="" value="" onChange={() => {}} onCommit={(url) => attachProof(p.id, url)} />
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setAttachingProofFor(p.id)}
+                        className="text-xs font-semibold text-admin-text-muted hover:text-admin-text"
+                      >
+                        Attach
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

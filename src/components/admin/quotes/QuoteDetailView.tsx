@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, Loader2, Send, Copy, MessageCircle, CalendarPlus } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Loader2, Send, Copy, MessageCircle, CalendarPlus, Tag } from "lucide-react";
 import type { QuoteDetail, QuoteStatusValue } from "@/lib/server/quoteStore";
+import type { PromoCodeItem } from "@/lib/server/promoCodeStore";
 import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
@@ -34,6 +35,7 @@ export default function QuoteDetailView({
   serviceName,
   quote,
   suggestedUnitPrice,
+  leadPromoCode,
 }: {
   mode: "create" | "edit";
   leadId: string;
@@ -43,6 +45,7 @@ export default function QuoteDetailView({
   serviceName: string;
   quote: QuoteDetail | null;
   suggestedUnitPrice?: number; // cents
+  leadPromoCode?: string | null;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -70,9 +73,33 @@ export default function QuoteDetailView({
   const [bookingStaff, setBookingStaff] = useState("");
   const [bookingConflicts, setBookingConflicts] = useState<{ reference: string; customerName: string; scheduledStart: string | null }[] | null>(null);
   const [creatingBooking, setCreatingBooking] = useState(false);
+  const [validPromo, setValidPromo] = useState<PromoCodeItem | null>(null);
+  const [promoApplied, setPromoApplied] = useState(false);
+
+  useEffect(() => {
+    if (mode !== "create" || !leadPromoCode) return;
+    let cancelled = false;
+    fetch(`/api/admin/promo-codes/validate?code=${encodeURIComponent(leadPromoCode)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (!cancelled && json.ok && json.valid) setValidPromo(json.promo);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, leadPromoCode]);
 
   const subtotal = items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
   const total = Math.max(0, subtotal - discount + tax);
+
+  function applyPromo() {
+    if (!validPromo) return;
+    const discountDollars =
+      validPromo.discountType === "PERCENT" ? (subtotal / 100) * (validPromo.discountValue / 100) : validPromo.discountValue / 100;
+    setDiscount(Math.round(discountDollars * 100) / 100);
+    setPromoApplied(true);
+  }
 
   function updateItem(index: number, patch: Partial<LineItem>) {
     setItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
@@ -92,6 +119,7 @@ export default function QuoteDetailView({
       deposit: Math.round(deposit * 100),
       expiresAt: expiresAt || undefined,
       notes: notes || undefined,
+      promoCodeId: mode === "create" && promoApplied && validPromo ? validPromo.id : undefined,
     };
   }
 
@@ -308,6 +336,24 @@ export default function QuoteDetailView({
               <button type="button" onClick={addItem} className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-admin-border px-3 py-1.5 text-xs font-semibold text-admin-text hover:bg-admin-bg">
                 <Plus className="size-3.5" aria-hidden /> Add line item
               </button>
+            )}
+
+            {validPromo && !promoApplied && (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-admin-teal/10 p-3">
+                <p className="flex items-center gap-2 text-sm text-admin-text">
+                  <Tag className="size-4 text-admin-teal" aria-hidden />
+                  Customer entered promo code <strong className="font-mono">{validPromo.code}</strong> —{" "}
+                  {validPromo.discountType === "PERCENT" ? `${validPromo.discountValue}% off` : `$${(validPromo.discountValue / 100).toFixed(2)} off`}
+                </p>
+                <button type="button" onClick={applyPromo} className="rounded-full bg-admin-teal px-3 py-1.5 text-xs font-semibold text-white hover:bg-admin-teal-hover">
+                  Apply to discount
+                </button>
+              </div>
+            )}
+            {promoApplied && validPromo && (
+              <p className="mt-4 flex items-center gap-1.5 text-sm text-admin-success">
+                <Tag className="size-4" aria-hidden /> Promo code {validPromo.code} applied
+              </p>
             )}
 
             <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">

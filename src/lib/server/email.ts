@@ -183,6 +183,41 @@ export function quoteEmail(params: {
   };
 }
 
+export function paymentLinkEmail(params: { firstName: string; amountLabel: string; description: string; url: string }) {
+  return {
+    subject: `Payment request from ${business.name} — ${params.amountLabel}`,
+    html: `
+      <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
+        <h2 style="color:#0b1f33">Hi ${escapeHtml(params.firstName)},</h2>
+        <p>${escapeHtml(params.description)}</p>
+        <p style="font-size:20px;font-weight:bold">${params.amountLabel}</p>
+        <p style="margin:24px 0">
+          <a href="${params.url}" style="display:inline-block;background:#0d8f83;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">Pay now</a>
+        </p>
+        <p style="color:#4a5a6a;font-size:13px">Secure payment powered by Stripe. Card, Apple Pay, and Google Pay are all accepted.</p>
+        <p>Questions? Call or text us at ${business.phoneDisplay}.</p>
+        <p style="margin-top:24px;color:#4a5a6a;font-size:14px">${business.name} · ${business.city}, ${business.region}</p>
+      </div>
+    `,
+  };
+}
+
+export function paymentReceiptEmail(params: { firstName: string; amountLabel: string; description: string; receiptUrl?: string | null }) {
+  return {
+    subject: `Payment received — ${params.amountLabel} — ${business.name}`,
+    html: `
+      <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
+        <h2 style="color:#0b1f33">Thanks, ${escapeHtml(params.firstName)}!</h2>
+        <p>We've received your payment for ${escapeHtml(params.description)}.</p>
+        <p style="font-size:20px;font-weight:bold">${params.amountLabel}</p>
+        ${params.receiptUrl ? `<p><a href="${params.receiptUrl}" style="color:#0d8f83">View your receipt</a></p>` : ""}
+        <p>Questions? Call or text us at ${business.phoneDisplay}.</p>
+        <p style="margin-top:24px;color:#4a5a6a;font-size:14px">${business.name} · ${business.city}, ${business.region}</p>
+      </div>
+    `,
+  };
+}
+
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
 }

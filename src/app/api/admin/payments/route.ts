@@ -4,12 +4,14 @@ import { requireAdmin } from "@/lib/server/requireAdmin";
 import { listPayments, recordPayment, PAYMENT_STATUSES } from "@/lib/server/paymentStore";
 import { getBookingById } from "@/lib/server/bookingStore";
 import { notifyAdmins } from "@/lib/server/notificationStore";
+import { sendEmail, paymentReceiptEmail } from "@/lib/server/email";
 
 const schema = z.object({
   bookingId: z.string().min(1),
   amount: z.coerce.number().int().min(1), // cents
   kind: z.enum(["deposit", "full_payment"]),
   status: z.enum(PAYMENT_STATUSES),
+  proofUrl: z.string().trim().max(2000).optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -43,6 +45,15 @@ export async function POST(req: NextRequest) {
       booking?.customerName ?? "",
       "/admin/payments"
     );
+    if (parsed.data.status === "PAID" && booking?.customerEmail) {
+      const { subject, html } = paymentReceiptEmail({
+        firstName: booking.customerName.split(" ")[0] || "there",
+        amountLabel: `$${(parsed.data.amount / 100).toFixed(2)}`,
+        description: `your ${parsed.data.kind === "deposit" ? "deposit" : "payment"} (${booking.reference})`,
+        receiptUrl: parsed.data.proofUrl,
+      });
+      await sendEmail({ to: booking.customerEmail, subject, html });
+    }
   }
 
   return NextResponse.json({ ok: true });
