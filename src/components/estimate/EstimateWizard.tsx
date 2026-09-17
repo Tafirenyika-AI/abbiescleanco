@@ -10,6 +10,7 @@ import { calculateEstimate, conditionLabels, frequencyLabels, defaultPricingConf
 import { services as defaultServices, type ServiceId } from "@/lib/data/services";
 import Button from "@/components/ui/Button";
 import ClaimAccountPrompt from "@/components/account/ClaimAccountPrompt";
+import BookNowPicker from "@/components/estimate/BookNowPicker";
 
 const steps = ["Property & Service", "Cleaning Details", "Your Info", "Review & Submit"] as const;
 
@@ -43,7 +44,16 @@ export default function EstimateWizard({
   const [submitState, setSubmitState] = useState<
     | { status: "idle" }
     | { status: "submitting" }
-    | { status: "success"; reference: string; whatsappUrl: string; estimateLabel: string; email: string }
+    | {
+        status: "success";
+        reference: string;
+        whatsappUrl: string;
+        estimateLabel: string;
+        email: string;
+        leadId?: string;
+        serviceId?: ServiceId;
+        requiresManualQuote: boolean;
+      }
     | { status: "error"; message: string }
   >({ status: "idle" });
 
@@ -164,6 +174,9 @@ export default function EstimateWizard({
         whatsappUrl: json.whatsappHandoffUrl,
         estimateLabel: label,
         email: parsed.email,
+        leadId: json.leadId,
+        serviceId: json.serviceId,
+        requiresManualQuote: !!json.estimate?.requiresManualQuote,
       });
     } catch {
       setSubmitState({ status: "error", message: "Network error. Please check your connection and try again." });
@@ -184,6 +197,10 @@ export default function EstimateWizard({
           This request is pending — our team will follow up to confirm final pricing and your
           preferred date.
         </p>
+        {!submitState.requiresManualQuote && submitState.leadId && submitState.serviceId && (
+          <BookNowPicker leadId={submitState.leadId} serviceId={submitState.serviceId} />
+        )}
+
         <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
           <Button href={submitState.whatsappUrl} external size="lg">
             Continue on WhatsApp

@@ -29,3 +29,28 @@ export function formatTime(iso: string) {
 export function formatCalendarDate(iso: string) {
   return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", year: "numeric", month: "short", day: "numeric" }).format(new Date(iso));
 }
+
+/**
+ * Inverse of the above: given a wall-clock time as it would read on the business's
+ * own clock (e.g. "9:00 AM" on a given date), returns the correct UTC instant,
+ * accounting for DST. Two-pass Intl trick (no timezone library needed) — construct
+ * a guess treating the wall time as UTC, see what that instant actually reads as in
+ * Pacific, then shift the guess by the difference.
+ */
+export function pacificWallTimeToUtc(year: number, month: number, day: number, hour: number, minute: number): Date {
+  const guess = new Date(Date.UTC(year, month - 1, day, hour, minute));
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: BUSINESS_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(guess);
+  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  const shownHour = Number(map.hour) === 24 ? 0 : Number(map.hour);
+  const shownAsUtc = Date.UTC(Number(map.year), Number(map.month) - 1, Number(map.day), shownHour, Number(map.minute));
+  const diff = guess.getTime() - shownAsUtc;
+  return new Date(guess.getTime() + diff);
+}

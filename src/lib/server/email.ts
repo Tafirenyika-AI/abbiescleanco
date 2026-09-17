@@ -202,6 +202,27 @@ export function paymentLinkEmail(params: { firstName: string; amountLabel: strin
   };
 }
 
+export function bookingRequestReceivedEmail(params: {
+  firstName: string;
+  reference: string;
+  serviceName: string;
+  scheduledStartLabel: string;
+}) {
+  return {
+    subject: `We've got your booking request — ${params.reference}`,
+    html: `
+      <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
+        <h2 style="color:#0b1f33">Thanks, ${escapeHtml(params.firstName)}!</h2>
+        <p>We received your request for <strong>${escapeHtml(params.serviceName)}</strong> on <strong>${escapeHtml(params.scheduledStartLabel)}</strong>.</p>
+        <p><strong>Reference number:</strong> ${escapeHtml(params.reference)}</p>
+        <p>This time slot is being held for you, but not confirmed yet — a member of our team will review it shortly and confirm your appointment.</p>
+        <p>Questions in the meantime? Call or text us at ${business.phoneDisplay}.</p>
+        <p style="margin-top:24px;color:#4a5a6a;font-size:14px">${business.name} · ${business.city}, ${business.region}</p>
+      </div>
+    `,
+  };
+}
+
 export function paymentReceiptEmail(params: { firstName: string; amountLabel: string; description: string; receiptUrl?: string | null }) {
   return {
     subject: `Payment received — ${params.amountLabel} — ${business.name}`,

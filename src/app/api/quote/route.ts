@@ -130,8 +130,10 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
+    leadId,
     reference,
     estimate,
+    serviceId: input.service,
     whatsappHandoffUrl: whatsappLink(whatsappSummary),
   });
 }

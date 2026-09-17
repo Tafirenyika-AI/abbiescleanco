@@ -11,7 +11,7 @@ import EmptyState from "@/components/admin/ui/EmptyState";
 import { formatDateTime } from "@/lib/adminDate";
 
 const statusTone: Record<BookingStatusValue, "neutral" | "info" | "success" | "error" | "warning"> = {
-  REQUESTED: "neutral",
+  REQUESTED: "warning",
   CONFIRMED: "info",
   SCHEDULED: "info",
   IN_PROGRESS: "warning",

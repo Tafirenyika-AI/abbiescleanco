@@ -200,3 +200,82 @@ export async function deleteBooking(id: string): Promise<boolean> {
   await db().booking.update({ where: { id }, data: { deletedAt: new Date() } });
   return true;
 }
+
+export interface SelfServiceBookingResult {
+  id: string;
+  reference: string;
+  customerEmail: string;
+  customerName: string;
+  serviceName: string;
+}
+
+/**
+ * A customer books themselves into an open slot, skipping the "wait for an admin to build a
+ * quote" step. Lands as REQUESTED (not CONFIRMED) -- the business still reviews and confirms
+ * it, same as every other booking, just without making the customer wait to pick a time.
+ */
+export async function createSelfServiceBooking(
+  leadId: string,
+  data: { addressLine1: string; addressLine2?: string; scheduledStart: string; scheduledEnd: string }
+): Promise<{ ok: true } & SelfServiceBookingResult | { ok: false; error: string }> {
+  const lead = await db().lead.findFirst({
+    where: { id: leadId, deletedAt: null },
+    include: { customer: true, address: true, service: true, quoteRequest: true, bookings: true },
+  });
+  if (!lead) return { ok: false, error: "Request not found" };
+  if (!lead.customerId || !lead.addressId || !lead.customer) return { ok: false, error: "This request is missing contact details" };
+  if (lead.quoteRequest?.requiresManualQuote) return { ok: false, error: "This service needs a manual quote — we'll be in touch to confirm pricing first" };
+  if (lead.bookings.some((b) => b.status !== "CANCELLED")) return { ok: false, error: "This request already has a booking" };
+
+  const start = new Date(data.scheduledStart);
+  const end = new Date(data.scheduledEnd);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+    return { ok: false, error: "Invalid time slot" };
+  }
+  const conflicts = await findConflicts(start, end);
+  if (conflicts.length > 0) return { ok: false, error: "That time was just booked — please pick another" };
+
+  await db().address.update({
+    where: { id: lead.addressId },
+    data: { line1: data.addressLine1, line2: data.addressLine2 || null },
+  });
+
+  const estimateLow = lead.quoteRequest?.estimateLow ?? 0;
+  const estimateHigh = lead.quoteRequest?.estimateHigh ?? 0;
+  const subtotalCents = Math.round(((estimateLow + estimateHigh) / 2) * 100);
+
+  const quote = await db().quote.create({
+    data: {
+      quoteNumber: generateReference("Q"),
+      leadId: lead.id,
+      status: "ACCEPTED",
+      subtotal: subtotalCents,
+      total: subtotalCents,
+      notes: "Auto-generated from a self-service booking request.",
+      items: { create: [{ label: lead.service.name, quantity: 1, unitPrice: subtotalCents, total: subtotalCents }] },
+    },
+  });
+
+  const booking = await db().booking.create({
+    data: {
+      reference: generateReference("B"),
+      leadId: lead.id,
+      quoteId: quote.id,
+      customerId: lead.customerId,
+      addressId: lead.addressId,
+      status: "REQUESTED",
+      scheduledStart: start,
+      scheduledEnd: end,
+      statusHistory: { create: { toStatus: "REQUESTED", note: "Self-service booking request" } },
+    },
+  });
+
+  return {
+    ok: true,
+    id: booking.id,
+    reference: booking.reference,
+    customerEmail: lead.customer.email,
+    customerName: `${lead.customer.firstName} ${lead.customer.lastName}`.trim(),
+    serviceName: lead.service.name,
+  };
+}
