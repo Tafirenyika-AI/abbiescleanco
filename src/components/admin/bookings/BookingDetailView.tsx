@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Phone, Mail, Loader2, CreditCard, Copy, ExternalLink, Star } from "lucide-react";
+import { ArrowLeft, ArrowRight, Phone, Mail, Loader2, CreditCard, Copy, ExternalLink, Star } from "lucide-react";
 import type { BookingDetail, BookingStatusValue } from "@/lib/server/bookingStore";
-import { BOOKING_STATUSES, bookingStatusLabels } from "@/lib/server/bookingStore";
+import { bookingStatusLabels } from "@/lib/server/bookingStore";
 import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
@@ -21,6 +21,26 @@ const statusTone: Record<BookingStatusValue, "neutral" | "info" | "success" | "e
   CANCELLED: "error",
   RESCHEDULED: "warning",
 };
+
+/** The single logical next step from each status — shown as the primary action so "Update status" guides you forward instead of listing all 6 other statuses as equal options. */
+const nextStatus: Partial<Record<BookingStatusValue, BookingStatusValue>> = {
+  REQUESTED: "CONFIRMED",
+  CONFIRMED: "IN_PROGRESS",
+  SCHEDULED: "IN_PROGRESS",
+  IN_PROGRESS: "COMPLETED",
+  RESCHEDULED: "CONFIRMED",
+};
+const nextStatusActionLabel: Partial<Record<BookingStatusValue, string>> = {
+  REQUESTED: "Confirm booking",
+  CONFIRMED: "Start job",
+  SCHEDULED: "Start job",
+  IN_PROGRESS: "Mark completed",
+  RESCHEDULED: "Re-confirm booking",
+};
+// RESCHEDULED is deliberately excluded here — it's only ever set as a side effect of the
+// dedicated "Reschedule" form below (which also changes the date/time), never as a bare
+// status flip with no date change, since that would produce a nonsensical state.
+const OTHER_SELECTABLE_STATUSES: BookingStatusValue[] = ["REQUESTED", "CONFIRMED", "SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
 
 function toDateInput(iso: string | null) {
   return iso ? iso.slice(0, 10) : "";
@@ -317,13 +337,40 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
 
           <Card>
             <h2 className="font-semibold text-admin-text">Update status</h2>
-            <div className="mt-2 flex flex-col gap-1.5">
-              {BOOKING_STATUSES.filter((s) => s !== booking.status).map((s) => (
-                <button key={s} type="button" onClick={() => setStatus(s)} className="rounded-lg border border-admin-border px-3 py-2 text-left text-sm font-medium text-admin-text hover:bg-admin-bg">
-                  Mark {bookingStatusLabels[s].toLowerCase()}
-                </button>
-              ))}
-            </div>
+            <p className="mt-1 text-sm text-admin-text-muted">
+              Currently <span className="font-semibold text-admin-text">{bookingStatusLabels[booking.status]}</span>
+            </p>
+
+            {nextStatus[booking.status] && (
+              <button
+                type="button"
+                onClick={() => setStatus(nextStatus[booking.status]!)}
+                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-admin-teal px-3 py-2.5 text-sm font-semibold text-white hover:bg-admin-teal-hover"
+              >
+                {nextStatusActionLabel[booking.status]} <ArrowRight className="size-4" aria-hidden />
+              </button>
+            )}
+
+            {booking.status !== "CANCELLED" && booking.status !== "COMPLETED" && (
+              <button
+                type="button"
+                onClick={() => setStatus("CANCELLED")}
+                className="mt-2 w-full rounded-lg border border-admin-error/30 px-3 py-2 text-sm font-semibold text-admin-error hover:bg-red-50"
+              >
+                Cancel booking
+              </button>
+            )}
+
+            <details className="mt-3">
+              <summary className="cursor-pointer text-xs font-medium text-admin-text-muted hover:text-admin-text">Set a different status</summary>
+              <div className="mt-2 flex flex-col gap-1.5">
+                {OTHER_SELECTABLE_STATUSES.filter((s) => s !== booking.status).map((s) => (
+                  <button key={s} type="button" onClick={() => setStatus(s)} className="rounded-lg border border-admin-border px-3 py-2 text-left text-sm font-medium text-admin-text hover:bg-admin-bg">
+                    Mark {bookingStatusLabels[s].toLowerCase()}
+                  </button>
+                ))}
+              </div>
+            </details>
           </Card>
 
           {booking.status === "COMPLETED" && (

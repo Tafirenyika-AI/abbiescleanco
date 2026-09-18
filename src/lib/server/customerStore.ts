@@ -19,6 +19,40 @@ export interface CustomerSummary {
   status: "active" | "lead" | "new";
 }
 
+export async function createCustomer(data: { firstName: string; lastName: string; email: string; phone: string }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const existing = await db().customer.findFirst({ where: { email: data.email.toLowerCase(), deletedAt: null } });
+  if (existing) return { ok: false, error: "A customer with that email already exists" };
+
+  const customer = await db().customer.create({
+    data: {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email.toLowerCase(),
+      phone: data.phone,
+      communicationPreference: { create: { smsConsent: false, emailConsent: true } },
+    },
+  });
+  return { ok: true, id: customer.id };
+}
+
+export interface CustomerOption {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+}
+
+/** Lightweight list for search/select UIs (e.g. picking a customer for a new booking) -- not the full aggregated summary. */
+export async function listCustomerOptions(): Promise<CustomerOption[]> {
+  if (!isDatabaseConfigured || !prisma) return [];
+  const customers = await prisma.customer.findMany({
+    where: { deletedAt: null },
+    select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+    orderBy: { firstName: "asc" },
+  });
+  return customers.map((c) => ({ id: c.id, name: `${c.firstName} ${c.lastName}`.trim(), email: c.email, phone: c.phone }));
+}
+
 export async function listCustomers(): Promise<CustomerSummary[]> {
   if (!isDatabaseConfigured || !prisma) return [];
 

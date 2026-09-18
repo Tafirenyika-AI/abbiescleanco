@@ -279,3 +279,94 @@ export async function createSelfServiceBooking(
     serviceName: lead.service.name,
   };
 }
+
+/**
+ * Admin "New Booking" quick-create -- for an existing customer who's calling to book again,
+ * where a fresh estimate/quote review isn't needed. Creates a minimal Lead+Quote behind the
+ * scenes (both required by the data model) alongside the Booking, all in one step, landing
+ * straight at CONFIRMED since the admin is deliberately booking it, not just requesting a slot.
+ */
+export async function createAdminBooking(data: {
+  customerId: string;
+  serviceSlug: string;
+  serviceName: string;
+  amount: number; // cents
+  addressLine1: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  zip: string;
+  scheduledStart: string;
+  scheduledEnd: string;
+}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const customer = await db().customer.findUnique({ where: { id: data.customerId } });
+  if (!customer) return { ok: false, error: "Customer not found" };
+
+  const start = new Date(data.scheduledStart);
+  const end = new Date(data.scheduledEnd);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+    return { ok: false, error: "Invalid date/time" };
+  }
+  const conflicts = await findConflicts(start, end);
+  if (conflicts.length > 0) return { ok: false, error: "That time conflicts with an existing booking" };
+
+  const service = await db().serviceCatalogItem.upsert({
+    where: { slug: data.serviceSlug },
+    update: {},
+    create: { slug: data.serviceSlug, name: data.serviceName, description: "" },
+  });
+
+  const address = await db().address.create({
+    data: {
+      customerId: customer.id,
+      line1: data.addressLine1,
+      line2: data.addressLine2 || null,
+      city: data.city || "Spokane Valley",
+      state: data.state || "WA",
+      zip: data.zip,
+      propertyType: "house",
+    },
+  });
+
+  const lead = await db().lead.create({
+    data: {
+      reference: generateReference(),
+      customerId: customer.id,
+      addressId: address.id,
+      serviceId: service.id,
+      source: "admin",
+      status: "CONFIRMED",
+      preferredContactMethod: "PHONE",
+    },
+  });
+
+  const quote = await db().quote.create({
+    data: {
+      quoteNumber: generateReference("Q"),
+      leadId: lead.id,
+      status: "ACCEPTED",
+      subtotal: data.amount,
+      total: data.amount,
+      notes: "Created directly from New Booking (admin quick-create).",
+      items: { create: [{ label: data.serviceName, quantity: 1, unitPrice: data.amount, total: data.amount }] },
+    },
+  });
+
+  const booking = await db().booking.create({
+    data: {
+      reference: generateReference("B"),
+      leadId: lead.id,
+      quoteId: quote.id,
+      customerId: customer.id,
+      addressId: address.id,
+      status: "CONFIRMED",
+      scheduledStart: start,
+      scheduledEnd: end,
+      statusHistory: { create: { toStatus: "CONFIRMED", note: "Created directly by admin" } },
+    },
+  });
+
+  await scheduleBookingConfirmationAndReminders(booking.id, start);
+
+  return { ok: true, id: booking.id };
+}

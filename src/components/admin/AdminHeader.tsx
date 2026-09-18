@@ -9,10 +9,10 @@ import type { AdminNotificationItem } from "@/lib/server/notificationStore";
 import SignOutButton from "./SignOutButton";
 
 const quickCreateItems = [
-  { label: "New Lead", href: null },
+  { label: "New Lead", href: "/admin/leads/new" },
   { label: "New Quote", href: "/admin/quotes/new" },
-  { label: "New Booking", href: null },
-  { label: "New Customer", href: null },
+  { label: "New Booking", href: "/admin/bookings/new" },
+  { label: "New Customer", href: "/admin/customers/new" },
   { label: "Record Payment", href: "/admin/payments" },
   { label: "Add Expense", href: "/admin/expenses" },
 ];
