@@ -55,7 +55,13 @@ export async function findRecentDuplicate(input: QuoteRequestInput): Promise<str
   return match?.reference ?? null;
 }
 
-export async function createLead(input: QuoteRequestInput, estimate: EstimateResult) {
+/**
+ * `loggedInCustomerId` (from the customer session, never client-supplied) links this new
+ * request to the submitter's existing account instead of always spawning a fresh guest
+ * Customer row -- without this, a logged-in customer's later requests would never show up
+ * in their own /account history, since nothing would tie the new Lead back to their account.
+ */
+export async function createLead(input: QuoteRequestInput, estimate: EstimateResult, loggedInCustomerId?: string) {
   const reference = generateReference();
 
   if (isDatabaseConfigured && prisma) {
@@ -65,17 +71,31 @@ export async function createLead(input: QuoteRequestInput, estimate: EstimateRes
       create: { slug: input.service, name: input.service, description: "" },
     });
 
-    const customer = await prisma.customer.create({
-      data: {
-        firstName: input.firstName,
-        lastName: input.lastName,
-        email: input.email,
-        phone: input.phone,
-        communicationPreference: {
-          create: { smsConsent: input.smsConsent, emailConsent: input.emailConsent },
-        },
-      },
-    });
+    const existingCustomer = loggedInCustomerId
+      ? await prisma.customer.findUnique({ where: { id: loggedInCustomerId } })
+      : null;
+
+    const customer = existingCustomer
+      ? existingCustomer
+      : await prisma.customer.create({
+          data: {
+            firstName: input.firstName,
+            lastName: input.lastName,
+            email: input.email,
+            phone: input.phone,
+            communicationPreference: {
+              create: { smsConsent: input.smsConsent, emailConsent: input.emailConsent },
+            },
+          },
+        });
+
+    if (existingCustomer) {
+      await prisma.communicationPreference.upsert({
+        where: { customerId: existingCustomer.id },
+        update: { smsConsent: input.smsConsent, emailConsent: input.emailConsent },
+        create: { customerId: existingCustomer.id, smsConsent: input.smsConsent, emailConsent: input.emailConsent },
+      });
+    }
 
     const address = await prisma.address.create({
       data: {

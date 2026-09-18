@@ -26,6 +26,7 @@ export interface PublicProfile {
   email: string;
   name: string | null;
   customer: {
+    id: string;
     firstName: string;
     lastName: string;
     phone: string;
@@ -36,7 +37,7 @@ function toPublicProfile(user: {
   id: string;
   email: string;
   name: string | null;
-  customer: { firstName: string; lastName: string; phone: string } | null;
+  customer: { id: string; firstName: string; lastName: string; phone: string } | null;
 }): PublicProfile {
   return { id: user.id, email: user.email, name: user.name, customer: user.customer };
 }

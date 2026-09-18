@@ -10,6 +10,8 @@ import { checkRateLimit } from "@/lib/server/rateLimit";
 import { notifyAdmins } from "@/lib/server/notificationStore";
 import { scheduleQuoteFollowUps } from "@/lib/server/automationStore";
 import { business, whatsappLink } from "@/lib/data/business";
+import { verifyCustomerSessionToken, CUSTOMER_SESSION_COOKIE } from "@/lib/server/customerAuth";
+import { getProfile } from "@/lib/server/accounts";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -45,6 +47,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, reference: "REJECTED", rejected: true }, { status: 200 });
   }
 
+  // If the submitter is already logged in, tie this request to their existing
+  // account instead of creating a disconnected guest record -- otherwise it
+  // would never show up in their own /account history.
+  const customerSession = verifyCustomerSessionToken(req.cookies.get(CUSTOMER_SESSION_COOKIE)?.value);
+  const loggedInProfile = customerSession ? await getProfile(customerSession.userId) : null;
+  const loggedInCustomerId = loggedInProfile?.customer?.id;
+
   const service = getService(input.service);
   if (!service) {
     return NextResponse.json({ ok: false, error: "Unknown service" }, { status: 400 });
@@ -76,7 +85,7 @@ export async function POST(req: NextRequest) {
     pricingConfig
   );
 
-  const { id: leadId, reference } = await createLead(input, estimate);
+  const { id: leadId, reference } = await createLead(input, estimate, loggedInCustomerId);
 
   await scheduleQuoteFollowUps(leadId);
 
