@@ -1,5 +1,5 @@
-import type { Metadata } from "next";
-import { Inter, Fraunces } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "../globals.css";
 import SiteHeader from "@/components/layout/SiteHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
@@ -14,12 +14,12 @@ const inter = Inter({
   display: "swap",
 });
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  subsets: ["latin"],
-  display: "swap",
-  weight: ["500", "600", "700"],
-});
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover", // lets the tab bar and header extend under the iPhone notch/home-indicator safely
+  themeColor: "#0b1f33",
+};
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://abbiescleanco.com";
 
@@ -72,11 +72,13 @@ const localBusinessSchema = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const branding = await getBranding();
   return (
-    <html lang="en" className={`${inter.variable} ${fraunces.variable} h-full antialiased`}>
+    <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="manifest" href="/manifest.webmanifest" />
-        <meta name="theme-color" content="#0b1f33" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Abbie's Clean" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <script
           type="application/ld+json"

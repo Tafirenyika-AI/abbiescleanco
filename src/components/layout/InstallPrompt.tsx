@@ -94,19 +94,19 @@ export default function InstallPrompt() {
     <div
       role="dialog"
       aria-label={mode === "desktop" ? "Install app" : "Add to home screen"}
-      className="fixed inset-x-3 bottom-20 z-40 rounded-2xl border border-surface-200 bg-white p-4 shadow-lg sm:inset-x-auto sm:right-4 sm:w-80 md:bottom-4"
+      className="ios-glass ios-sheet-in fixed inset-x-3 bottom-[calc(5.25rem+env(safe-area-inset-bottom))] z-40 rounded-[28px] p-5 shadow-[0_12px_48px_rgba(11,31,51,0.22)] ring-1 ring-black/[0.06] sm:inset-x-auto sm:right-4 sm:w-96 md:bottom-4"
     >
       <button
         type="button"
         onClick={dismiss}
         aria-label="Dismiss"
-        className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full text-surface-700 hover:bg-surface-100"
+        className="ios-press absolute right-3 top-3 flex size-7 items-center justify-center rounded-full bg-black/[0.06] text-navy-800/70"
       >
         <X className="size-4" aria-hidden />
       </button>
 
       <div className="flex items-start gap-3 pr-6">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-600">
+        <span className="flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-teal-100 text-teal-600">
           <Icon className="size-5" aria-hidden />
         </span>
         <div>
@@ -128,7 +128,7 @@ export default function InstallPrompt() {
         <button
           type="button"
           onClick={install}
-          className="mt-3 w-full rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-navy-950 hover:bg-teal-400"
+          className="ios-press mt-4 w-full rounded-full bg-teal-500 px-4 py-3 text-[15px] font-semibold text-navy-950 shadow-[0_6px_16px_rgba(20,179,163,0.3)]"
         >
           <span className="inline-flex items-center justify-center gap-1.5">
             <Download className="size-4" aria-hidden />

@@ -70,7 +70,7 @@ function Row({ item, onDeleted }: { item: GalleryItemContent; onDeleted: (id: st
           />
         </label>
         <label className="block">
-          <span className="text-xs font-medium text-admin-text-muted">Category (kitchen/bathroom/living/hallway/laundry)</span>
+          <span className="text-xs font-medium text-admin-text-muted">Category (kitchen/bathroom/living/hallway/laundry/team)</span>
           <input
             value={form.category}
             onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}

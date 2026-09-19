@@ -43,7 +43,7 @@ export default async function HomePage() {
       alt: g.altText,
       caption: g.caption || "",
       serviceType: g.serviceType || "",
-      category: (g.category || "living") as "kitchen" | "bathroom" | "living" | "hallway" | "laundry",
+      category: (g.category || "living") as "kitchen" | "bathroom" | "living" | "hallway" | "laundry" | "team",
     }));
 
   return (

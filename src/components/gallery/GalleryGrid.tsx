@@ -12,6 +12,7 @@ const categories: { key: string; label: string }[] = [
   { key: "living", label: "Living Spaces" },
   { key: "hallway", label: "Hallway" },
   { key: "laundry", label: "Laundry" },
+  { key: "team", label: "Behind the scenes" },
 ];
 
 // Cycled per tile (not tied to real image dimensions) to give the grid a
@@ -48,16 +49,14 @@ export default function GalleryGrid({ items = defaultGalleryItems }: { items?: G
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Filter gallery by room">
+      <div className="ios-segment" role="group" aria-label="Filter gallery by room">
         {categories.map((c) => (
           <button
             key={c.key}
             type="button"
             onClick={() => setFilter(c.key)}
             aria-pressed={filter === c.key}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              filter === c.key ? "bg-teal-500 text-navy-950" : "bg-surface-100 text-navy-900 hover:bg-surface-200"
-            }`}
+            className="ios-segment-item"
           >
             {c.label}
           </button>

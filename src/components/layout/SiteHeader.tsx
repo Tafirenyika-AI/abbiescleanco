@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, X, Phone, MessageCircle, User } from "lucide-react";
+import { Menu, X, Phone, MessageCircle, User, ChevronRight } from "lucide-react";
 import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import TopBar from "./TopBar";
@@ -59,7 +59,7 @@ export default function SiteHeader({ logoUrl }: { logoUrl?: string | null }) {
   }, [pathname]);
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-sm">
+    <header className="ios-glass sticky top-0 z-50 border-b border-black/[0.06]">
       <TopBar />
       <Container className="flex items-center justify-between py-3">
         <Link href="/" className="flex items-center gap-2.5" aria-label={`${"Abbie's Clean Method"} — Home`}>
@@ -137,25 +137,31 @@ export default function SiteHeader({ logoUrl }: { logoUrl?: string | null }) {
       </Container>
 
       {open && (
-        <div id="mobile-menu" className="border-t border-surface-200 bg-white lg:hidden">
-          <Container className="flex flex-col gap-1 py-4">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="rounded-lg px-3 py-3 text-base font-medium text-navy-900 hover:bg-surface-100"
-              >
-                {link.label}
-              </Link>
-            ))}
+        <div id="mobile-menu" className="ios-sheet-in border-t border-black/[0.06] bg-surface-50/95 lg:hidden">
+          <Container className="py-4">
+            <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-black/[0.05]">
+              {navLinks.map((link, i) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`ios-press flex items-center justify-between px-4 py-3.5 text-[17px] font-medium text-navy-950 active:bg-surface-100 ${i > 0 ? "border-t border-black/[0.06]" : ""}`}
+                >
+                  {link.label}
+                  <ChevronRight className="size-4 text-navy-800/40" aria-hidden />
+                </Link>
+              ))}
+            </div>
             <Link
               href={account ? "/account" : "/account/login"}
-              className="flex items-center gap-2 rounded-lg px-3 py-3 text-base font-medium text-navy-900 hover:bg-surface-100"
+              className="ios-press mt-3 flex items-center justify-between rounded-2xl bg-white px-4 py-3.5 text-[17px] font-medium text-navy-950 ring-1 ring-black/[0.05]"
             >
-              <User className="size-4.5" aria-hidden />
-              {account ? `My account (${account.name.split(" ")[0]})` : "Sign in / Create account"}
+              <span className="flex items-center gap-2.5">
+                <User className="size-5 text-teal-600" aria-hidden />
+                {account ? `My account (${account.name.split(" ")[0]})` : "Sign in / Create account"}
+              </span>
+              <ChevronRight className="size-4 text-navy-800/40" aria-hidden />
             </Link>
-            <Button href="/estimate" size="lg" className="mt-3 w-full">
+            <Button href="/estimate" size="lg" className="mt-4 w-full">
               Get My Free Estimate
             </Button>
           </Container>

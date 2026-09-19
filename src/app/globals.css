@@ -88,18 +88,77 @@
   --color-admin-info: var(--color-admin-info);
 
   --font-sans: var(--font-inter);
-  --font-display: var(--font-fraunces);
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* iOS-style type: SF Pro on Apple devices (via -apple-system), Inter elsewhere. */
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
 }
 
+/* "Large title" treatment: heavy weight, tight tracking, SF Display where available. */
 h1, h2, h3, .font-display {
-  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+}
+
+:root {
+  --ease-ios: cubic-bezier(0.22, 1, 0.36, 1); /* fast-out, soft landing, like UIKit springs */
+}
+
+/* Press feedback: anything tappable gently shrinks while pressed. */
+.ios-press {
+  transition: transform 220ms var(--ease-ios), background-color 150ms ease, box-shadow 220ms var(--ease-ios);
+}
+.ios-press:active {
+  transform: scale(0.97);
+}
+
+/* Frosted-glass surfaces (nav bars, tab bar, sheets). */
+.ios-glass {
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  backdrop-filter: saturate(180%) blur(22px);
+}
+
+/* Segmented control (UISegmentedControl look). */
+.ios-segment {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 11px;
+  background: rgba(118, 118, 128, 0.12);
+}
+.ios-segment-item {
+  border-radius: 9px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-brand-navy-800);
+  transition: background-color 200ms var(--ease-ios), box-shadow 200ms var(--ease-ios), color 200ms;
+}
+.ios-segment-item[aria-selected="true"],
+.ios-segment-item[aria-pressed="true"] {
+  background: #fff;
+  color: var(--color-brand-navy-950);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 3px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Bottom-sheet entrance. */
+@keyframes ios-sheet-up {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.ios-sheet-in {
+  animation: ios-sheet-up 420ms var(--ease-ios) both;
 }
 
 /* Visible focus states for keyboard navigation (WCAG 2.2 AA) */
@@ -120,7 +179,7 @@ h1, h2, h3, .font-display {
 
 /* Sticky mobile action bar spacing so content is never hidden behind it */
 .has-mobile-actionbar {
-  padding-bottom: 4.5rem;
+  padding-bottom: calc(4.75rem + env(safe-area-inset-bottom));
 }
 @media (min-width: 768px) {
   .has-mobile-actionbar {

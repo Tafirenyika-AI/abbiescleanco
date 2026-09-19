@@ -35,10 +35,10 @@ function formatDateTime(iso: string) {
 function Pill({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "success" | "warning" | "error" | "info" }) {
   const tones: Record<string, string> = {
     neutral: "bg-surface-100 text-navy-700",
-    success: "bg-teal-100 text-teal-800",
-    warning: "bg-warm-100 text-warm-800",
+    success: "bg-teal-100 text-teal-600",
+    warning: "bg-warm-100 text-warm-600",
     error: "bg-red-100 text-red-700",
-    info: "bg-navy-100 text-navy-800",
+    info: "bg-navy-900/10 text-navy-800",
   };
   return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${tones[tone]}`}>{children}</span>;
 }
@@ -89,7 +89,7 @@ export default function AccountDashboard({
 
   return (
     <div>
-      <div className="flex flex-wrap gap-1 rounded-full border border-surface-200 bg-surface-50 p-1" role="tablist" aria-label="Account sections">
+      <div className="ios-segment" role="tablist" aria-label="Account sections">
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -97,9 +97,7 @@ export default function AccountDashboard({
             role="tab"
             aria-selected={active === t.key}
             onClick={() => setActive(t.key)}
-            className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-              active === t.key ? "bg-navy-950 text-white shadow-sm" : "text-navy-700 hover:text-navy-950"
-            }`}
+            className="ios-segment-item inline-flex items-center gap-1.5"
           >
             <t.icon className="size-4" aria-hidden />
             {t.label}
@@ -114,7 +112,7 @@ export default function AccountDashboard({
               <EmptyRow label="No estimate requests yet." />
             ) : (
               requests.map((r) => (
-                <div key={r.id} className="rounded-2xl border border-surface-200 bg-white p-4">
+                <div key={r.id} className="rounded-[20px] bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold text-navy-950">{r.serviceName}</p>
                     <Pill tone={leadTone(r.status)}>{titleCase(r.status)}</Pill>
@@ -134,7 +132,7 @@ export default function AccountDashboard({
               <EmptyRow label="No quotes yet — once we build one for you, it'll show up here." />
             ) : (
               quotes.map((q) => (
-                <div key={q.id} className="rounded-2xl border border-surface-200 bg-white p-4">
+                <div key={q.id} className="rounded-[20px] bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold text-navy-950">{q.quoteNumber} — {money(q.total)}</p>
                     <Pill tone={quoteTone(q.status)}>{titleCase(q.status)}</Pill>
@@ -160,7 +158,7 @@ export default function AccountDashboard({
               <EmptyRow label="No bookings yet." />
             ) : (
               bookings.map((b) => (
-                <div key={b.id} className="rounded-2xl border border-surface-200 bg-white p-4">
+                <div key={b.id} className="rounded-[20px] bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold text-navy-950">{b.serviceName}</p>
                     <Pill tone={bookingTone(b.status)}>{titleCase(b.status)}</Pill>
@@ -181,7 +179,7 @@ export default function AccountDashboard({
               <EmptyRow label="No payments on file yet." />
             ) : (
               payments.map((p) => (
-                <div key={p.id} className="rounded-2xl border border-surface-200 bg-white p-4">
+                <div key={p.id} className="rounded-[20px] bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold text-navy-950">{money(p.amount)} — {titleCase(p.kind.replace(/_/g, " "))}</p>
                     <Pill tone={paymentTone(p.status)}>{titleCase(p.status)}</Pill>

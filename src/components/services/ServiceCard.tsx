@@ -33,7 +33,7 @@ export default function ServiceCard({
     <Link
       href={`/services/${service.id}`}
       className={clsx(
-        "group flex w-full shrink-0 snap-start flex-col overflow-hidden rounded-3xl bg-white shadow-md ring-1 ring-navy-950/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl",
+        "ios-press group flex w-full shrink-0 snap-start flex-col overflow-hidden rounded-[28px] bg-white shadow-[0_2px_24px_rgba(11,31,51,0.08)] ring-1 ring-black/[0.05] hover:shadow-[0_8px_36px_rgba(11,31,51,0.14)]",
         featured ? "sm:flex-row" : "h-full"
       )}
     >
