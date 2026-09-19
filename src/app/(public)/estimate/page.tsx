@@ -34,6 +34,9 @@ export default async function EstimatePage() {
           A few quick questions and you&apos;ll have a preliminary estimate and a reference
           number — no obligation.
         </p>
+        <p className="mt-3 text-sm">
+          <a href="/estimate/photos" className="font-semibold text-teal-700 underline">Rather show us? Get an estimate from photos →</a>
+        </p>
       </div>
 
       <div className="mx-auto mt-10 max-w-2xl">

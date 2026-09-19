@@ -13,6 +13,7 @@ export interface MyRequestItem {
   status: string;
   serviceName: string;
   estimateLabel: string;
+  instructions: string;
   createdAt: string;
 }
 
@@ -33,6 +34,7 @@ export async function getMyRequests(customerId: string): Promise<MyRequestItem[]
       : l.quoteRequest?.estimateLow != null && l.quoteRequest?.estimateHigh != null
         ? `$${l.quoteRequest.estimateLow}–$${l.quoteRequest.estimateHigh}`
         : "—",
+    instructions: l.additionalInstructions ?? "",
     createdAt: l.createdAt.toISOString(),
   }));
 }
@@ -50,7 +52,7 @@ export interface MyQuoteItem {
 export async function getMyQuotes(customerId: string): Promise<MyQuoteItem[]> {
   if (!isDatabaseConfigured || !prisma) return [];
   const quotes = await prisma.quote.findMany({
-    where: { lead: { customerId }, deletedAt: null },
+    where: { lead: { customerId }, deletedAt: null, status: { not: "DRAFT" } },
     include: { promoCode: true },
     orderBy: { createdAt: "desc" },
   });

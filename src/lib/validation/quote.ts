@@ -67,6 +67,9 @@ export const quoteRequestSchema = z.object({
 
   // Optional promo code, validated server-side when the quote is built (not at submit time)
   promoCode: z.string().trim().max(30).optional().or(z.literal("")),
+
+  // Set when this request started from the photo estimator; links the photos + assessment to the lead.
+  photoEstimateId: z.string().trim().max(40).optional(),
 });
 
 export type QuoteRequestInput = z.infer<typeof quoteRequestSchema>;

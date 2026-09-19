@@ -1,5 +1,6 @@
 "use client";
 
+import ClientThreadPanel from "@/components/admin/ClientThreadPanel";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -249,6 +250,11 @@ export default function LeadDetailDrawer({
                 Assign
               </span>
             </div>
+          </section>
+
+          <section className="mt-5">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Client notes, photos &amp; videos</h3>
+            <ClientThreadPanel leadId={lead.id} />
           </section>
 
           <section className="mt-5">

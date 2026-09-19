@@ -25,6 +25,7 @@ export interface IntegrationSettings {
   turnstileSecretKey?: string;
   turnstileSiteKey?: string;
   sentryDsn?: string;
+  anthropicApiKey?: string;
 }
 
 const SECRET_FIELDS: (keyof IntegrationSettings)[] = [
@@ -35,6 +36,7 @@ const SECRET_FIELDS: (keyof IntegrationSettings)[] = [
   "stripeWebhookSecret",
   "googleMapsApiKey",
   "turnstileSecretKey",
+  "anthropicApiKey",
 ];
 
 async function getRaw(): Promise<IntegrationSettings> {
@@ -64,6 +66,7 @@ export async function getIntegrationStatus(): Promise<Record<keyof IntegrationSe
     turnstileSecretKey: "TURNSTILE_SECRET_KEY",
     turnstileSiteKey: "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
     sentryDsn: "NEXT_PUBLIC_SENTRY_DSN",
+    anthropicApiKey: "ANTHROPIC_API_KEY",
   };
 
   const result = {} as Record<keyof IntegrationSettings, { configured: boolean; source: "database" | "environment" | "none"; value?: string }>;

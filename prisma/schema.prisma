@@ -179,6 +179,9 @@ model Customer {
   communicationPreference CommunicationPreference?
   messages                Message[]
   reviews                 Review[]
+  attachments             Attachment[]
+  clientNotes             ClientNote[]
+  photoEstimates          PhotoEstimate[]
 
   @@index([email])
   @@index([phone])
@@ -239,6 +242,9 @@ model Lead {
   quoteRequest QuoteRequest?
   quotes       Quote[]
   bookings     Booking[]
+  attachments  Attachment[]
+  clientNotes  ClientNote[]
+  photoEstimates PhotoEstimate[]
   automationEvents AutomationEvent[]
 
   @@index([status])
@@ -449,6 +455,8 @@ model Booking {
   recurringScheduleId String?
   payments          Payment[]
   automationEvents  AutomationEvent[]
+  attachments       Attachment[]
+  clientNotes       ClientNote[]
 
   @@index([status])
   @@index([scheduledStart])
@@ -825,4 +833,75 @@ model ContactMessage {
   @@index([status])
   @@index([createdAt])
   @@map("contact_messages")
+}
+
+// ---------- Client-provided detail: media, notes, photo estimates ----------
+
+model Attachment {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  leadId     String?
+  lead       Lead?    @relation(fields: [leadId], references: [id])
+  bookingId  String?
+  booking    Booking? @relation(fields: [bookingId], references: [id])
+
+  kind       String   // IMAGE | VIDEO
+  url        String
+  mimeType   String
+  sizeBytes  Int      @default(0)
+  caption    String?
+  uploadedBy String   @default("CUSTOMER") // CUSTOMER | STAFF
+
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  @@index([customerId])
+  @@index([leadId])
+  @@index([bookingId])
+  @@map("attachments")
+}
+
+model ClientNote {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  leadId     String?
+  lead       Lead?    @relation(fields: [leadId], references: [id])
+  bookingId  String?
+  booking    Booking? @relation(fields: [bookingId], references: [id])
+
+  body       String
+  author     String   @default("CUSTOMER") // CUSTOMER | STAFF
+  authorName String?
+  kind       String   @default("NOTE") // NOTE | RESCHEDULE_REQUEST | CANCELLATION | QUOTE_QUESTION | QUOTE_DECLINE
+
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+  @@index([bookingId])
+  @@map("client_notes")
+}
+
+model PhotoEstimate {
+  id         String    @id @default(cuid())
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  leadId     String?
+  lead       Lead?     @relation(fields: [leadId], references: [id])
+
+  imageUrls    Json     // string[]
+  areaType     String?
+  analysis     Json     // structured model output (per-photo findings, supplies, notes)
+  serviceId    String?
+  estimateLow  Int?     // whole dollars, computed by our pricing engine (never by the model)
+  estimateHigh Int?
+  hoursLow     Float?
+  hoursHigh    Float?
+  mode         String   @default("ai") // ai | fallback
+
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+  @@map("photo_estimates")
 }

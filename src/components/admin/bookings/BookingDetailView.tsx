@@ -1,5 +1,6 @@
 "use client";
 
+import ClientThreadPanel from "@/components/admin/ClientThreadPanel";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -246,6 +247,11 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
               <a href={`tel:${booking.customerPhone}`} className="flex items-center gap-1.5 rounded-lg border border-admin-border px-3 py-1.5 text-sm text-admin-text hover:bg-admin-bg"><Phone className="size-3.5" aria-hidden /> Call</a>
               <a href={`mailto:${booking.customerEmail}`} className="flex items-center gap-1.5 rounded-lg border border-admin-border px-3 py-1.5 text-sm text-admin-text hover:bg-admin-bg"><Mail className="size-3.5" aria-hidden /> Email</a>
             </div>
+          </Card>
+
+          <Card>
+            <h2 className="font-semibold text-admin-text">Client notes, photos &amp; videos</h2>
+            <div className="mt-3"><ClientThreadPanel bookingId={booking.id} /></div>
           </Card>
 
           <Card>

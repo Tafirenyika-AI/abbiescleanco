@@ -19,6 +19,7 @@ const fields: FieldMeta[] = [
   { key: "twilioFromNumber", label: "Twilio From Number", isSecret: false, wired: true, help: "e.g. +16505551234" },
   { key: "stripeSecretKey", label: "Stripe Secret Key", isSecret: true, wired: true, help: "Powers admin-generated payment links (Checkout) — Apple Pay/Google Pay are offered automatically, no extra setup." },
   { key: "stripeWebhookSecret", label: "Stripe Webhook Signing Secret", isSecret: true, wired: true, help: "From the webhook endpoint in your Stripe dashboard — confirms payments were really completed." },
+  { key: "anthropicApiKey", label: "Anthropic API key (photo estimates)", isSecret: true, wired: true, help: "Powers the AI photo estimate: customers upload room photos and get a condition-based estimate, and your team sees what needs cleaning and what to bring." },
   { key: "googleMapsApiKey", label: "Google Maps API Key", isSecret: true, wired: false, help: "Not used yet — ZIP is free-text today." },
   { key: "turnstileSiteKey", label: "Turnstile Site Key", isSecret: false, wired: false, help: "Not wired into any form yet." },
   { key: "turnstileSecretKey", label: "Turnstile Secret Key", isSecret: true, wired: false, help: "Not wired into any form yet." },

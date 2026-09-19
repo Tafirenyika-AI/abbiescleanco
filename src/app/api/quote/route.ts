@@ -12,6 +12,14 @@ import { scheduleQuoteFollowUps } from "@/lib/server/automationStore";
 import { business, whatsappLink } from "@/lib/data/business";
 import { verifyCustomerSessionToken, CUSTOMER_SESSION_COOKIE } from "@/lib/server/customerAuth";
 import { getProfile } from "@/lib/server/accounts";
+import { linkPhotoEstimateToLead } from "@/lib/server/photoEstimate";
+import { prisma } from "@/lib/db";
+
+async function getLeadCustomerId(leadId: string): Promise<string | null> {
+  if (!prisma) return null;
+  const l = await prisma.lead.findUnique({ where: { id: leadId }, select: { customerId: true } });
+  return l?.customerId ?? null;
+}
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -86,6 +94,11 @@ export async function POST(req: NextRequest) {
   );
 
   const { id: leadId, reference } = await createLead(input, estimate, loggedInCustomerId);
+
+  if (input.photoEstimateId) {
+    const created = await getLeadCustomerId(leadId);
+    if (created) await linkPhotoEstimateToLead(input.photoEstimateId, leadId, created);
+  }
 
   await scheduleQuoteFollowUps(leadId);
 

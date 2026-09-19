@@ -7,6 +7,9 @@ import type { MyRequestItem, MyQuoteItem, MyBookingItem, MyPaymentItem } from "@
 import type { PublicProfile } from "@/lib/server/accounts";
 import { labelForMethod } from "@/lib/paymentMethods";
 import AccountProfileForm from "@/components/account/AccountProfileForm";
+import AccountDetailSheet, { type DetailTarget } from "@/components/account/AccountDetailSheet";
+import { useRouter } from "next/navigation";
+import { ChevronRight } from "lucide-react";
 
 const tabs = [
   { key: "requests", label: "Requests", icon: FileText },
@@ -87,6 +90,8 @@ export default function AccountDashboard({
   payments: MyPaymentItem[];
 }) {
   const [active, setActive] = useState<TabKey>("requests");
+  const [sheet, setSheet] = useState<DetailTarget | null>(null);
+  const router = useRouter();
 
   return (
     <div>
@@ -113,7 +118,7 @@ export default function AccountDashboard({
               <EmptyRow label="No estimate requests yet." />
             ) : (
               requests.map((r) => (
-                <div key={r.id} className="rounded-[20px] bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
+                <button type="button" key={r.id} onClick={() => setSheet({ kind: "request", id: r.id, heading: r.serviceName, status: r.status, instructions: r.instructions })} className="ios-press block w-full rounded-[20px] bg-white p-4 text-left shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold text-navy-950">{r.serviceName}</p>
                     <Pill tone={leadTone(r.status)}>{titleCase(r.status)}</Pill>
@@ -121,7 +126,8 @@ export default function AccountDashboard({
                   <p className="mt-1 text-sm text-surface-700">
                     Ref {r.reference} · {formatDate(r.createdAt)} · Estimate: {r.estimateLabel}
                   </p>
-                </div>
+                  <span className="mt-2 inline-flex items-center gap-0.5 text-xs font-semibold text-teal-700">Manage <ChevronRight className="size-3.5" aria-hidden /></span>
+                </button>
               ))
             )}
           </div>
@@ -133,7 +139,7 @@ export default function AccountDashboard({
               <EmptyRow label="No quotes yet — once we build one for you, it'll show up here." />
             ) : (
               quotes.map((q) => (
-                <div key={q.id} className="rounded-[20px] bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
+                <button type="button" key={q.id} onClick={() => setSheet({ kind: "quote", id: q.id, heading: q.quoteNumber })} className="ios-press block w-full rounded-[20px] bg-white p-4 text-left shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold text-navy-950">{q.quoteNumber} — {money(q.total)}</p>
                     <Pill tone={quoteTone(q.status)}>{titleCase(q.status)}</Pill>
@@ -147,7 +153,8 @@ export default function AccountDashboard({
                       </span>
                     )}
                   </p>
-                </div>
+                  <span className="mt-2 inline-flex items-center gap-0.5 text-xs font-semibold text-teal-700">Manage <ChevronRight className="size-3.5" aria-hidden /></span>
+                </button>
               ))
             )}
           </div>
@@ -159,7 +166,7 @@ export default function AccountDashboard({
               <EmptyRow label="No bookings yet." />
             ) : (
               bookings.map((b) => (
-                <div key={b.id} className="rounded-[20px] bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
+                <button type="button" key={b.id} onClick={() => setSheet({ kind: "booking", id: b.id, heading: b.serviceName })} className="ios-press block w-full rounded-[20px] bg-white p-4 text-left shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold text-navy-950">{b.serviceName}</p>
                     <Pill tone={bookingTone(b.status)}>{titleCase(b.status)}</Pill>
@@ -168,7 +175,8 @@ export default function AccountDashboard({
                     Ref {b.reference} · {b.scheduledStart ? formatDateTime(b.scheduledStart) : "Not yet scheduled"}
                   </p>
                   <p className="mt-0.5 text-sm text-surface-700">{b.address}</p>
-                </div>
+                  <span className="mt-2 inline-flex items-center gap-0.5 text-xs font-semibold text-teal-700">Manage <ChevronRight className="size-3.5" aria-hidden /></span>
+                </button>
               ))
             )}
           </div>
@@ -207,6 +215,15 @@ export default function AccountDashboard({
           </div>
         )}
       </div>
+    {sheet && (
+        <AccountDetailSheet
+          target={sheet}
+          onClose={(changed) => {
+            setSheet(null);
+            if (changed) router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

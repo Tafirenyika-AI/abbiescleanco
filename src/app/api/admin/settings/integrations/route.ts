@@ -16,6 +16,7 @@ const schema = z.object({
   turnstileSecretKey: z.string().trim().max(300).optional(),
   turnstileSiteKey: z.string().trim().max(300).optional(),
   sentryDsn: z.string().trim().max(300).optional(),
+  anthropicApiKey: z.string().trim().max(300).optional(),
 });
 
 export async function GET(req: NextRequest) {
