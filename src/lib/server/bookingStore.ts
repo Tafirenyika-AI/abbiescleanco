@@ -150,16 +150,45 @@ export async function createBookingFromQuote(
   return { ok: true, id: booking.id };
 }
 
-export async function updateBookingStatus(id: string, status: BookingStatusValue, adminUserId: string, note?: string): Promise<{ ok: boolean; error?: string }> {
+/** A job can't be started earlier than this many minutes before its scheduled start... */
+export const EARLY_START_GRACE_MINUTES = 20;
+
+export type UpdateStatusResult = { ok: true } | { ok: false; error: string; code?: "TOO_EARLY"; earliest?: string };
+
+/**
+ * ...unless an admin explicitly approves it with a note (recorded in the booking's
+ * status history and the audit log), e.g. the customer asked for an earlier start.
+ */
+export async function updateBookingStatus(id: string, status: BookingStatusValue, adminUserId: string, note?: string): Promise<UpdateStatusResult> {
   const existing = await db().booking.findUnique({ where: { id } });
   if (!existing) return { ok: false, error: "Booking not found" };
 
+  let approvedEarly = false;
+  if (status === "IN_PROGRESS" && existing.status !== "IN_PROGRESS" && existing.scheduledStart) {
+    const earliest = new Date(existing.scheduledStart.getTime() - EARLY_START_GRACE_MINUTES * 60 * 1000);
+    if (Date.now() < earliest.getTime()) {
+      if (!note?.trim()) {
+        return {
+          ok: false,
+          code: "TOO_EARLY",
+          earliest: earliest.toISOString(),
+          error: `This job can't be started until ${EARLY_START_GRACE_MINUTES} minutes before its scheduled start. Add an approval note to start early, or reschedule it.`,
+        };
+      }
+      approvedEarly = true;
+    }
+  }
+  const historyNote = approvedEarly ? `Started early — approved: ${note!.trim()}` : note;
+
   await db().booking.update({ where: { id }, data: { status } });
   await db().bookingStatusHistory.create({
-    data: { bookingId: id, fromStatus: existing.status, toStatus: status, note, changedBy: adminUserId },
+    data: { bookingId: id, fromStatus: existing.status, toStatus: status, note: historyNote, changedBy: adminUserId },
   });
   await db().auditLog.create({
-    data: { adminUserId, action: "booking.status_changed", entityType: "booking", entityId: id, before: { status: existing.status }, after: { status } },
+    data: {
+      adminUserId, action: approvedEarly ? "booking.started_early" : "booking.status_changed", entityType: "booking", entityId: id,
+      before: { status: existing.status }, after: approvedEarly ? { status, approvalNote: note!.trim() } : { status },
+    },
   });
 
   if (status === "CONFIRMED" && existing.status !== "CONFIRMED" && existing.scheduledStart) {

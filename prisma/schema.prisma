@@ -507,6 +507,8 @@ model Payment {
   kind          String        @default("deposit") // deposit | full_payment
   stripePaymentIntentId String?
   proofUrl      String? // receipt/screenshot the admin attached, or the Stripe-hosted receipt URL
+  method        String? // CARD | ZELLE | VENMO | APPLE_CASH | CHECK | CASH | OTHER (null on older rows)
+  reference     String? // check number, Zelle/Venmo transaction id, etc.
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -17,6 +17,8 @@ export interface PaymentListItem {
   customerName: string;
   bookingReference: string | null;
   proofUrl: string | null;
+  method: string | null;
+  reference: string | null;
 }
 
 export async function listPayments(): Promise<PaymentListItem[]> {
@@ -35,6 +37,8 @@ export async function listPayments(): Promise<PaymentListItem[]> {
     customerName: p.customer ? `${p.customer.firstName} ${p.customer.lastName}`.trim() : "—",
     bookingReference: p.booking?.reference ?? null,
     proofUrl: p.proofUrl,
+    method: p.method,
+    reference: p.reference,
   }));
 }
 
@@ -44,21 +48,24 @@ export interface RecordablePayment {
   customerName: string;
 }
 
-/** Confirmed bookings without a recorded payment yet — the pool of things "Record payment" can attach to. */
+/** Bookings that still have a balance -- stays listed after a deposit so the remainder (possibly by a different method) can be recorded too. */
 export async function listBookingsAwaitingPayment(): Promise<RecordablePayment[]> {
   if (!isDatabaseConfigured || !prisma) return [];
   const bookings = await prisma.booking.findMany({
     where: { deletedAt: null, status: { notIn: ["CANCELLED"] } },
-    include: { customer: true, payments: true },
+    include: { customer: true, payments: true, quote: true },
     orderBy: { createdAt: "desc" },
     take: 100,
   });
   return bookings
-    .filter((b) => !b.payments.some((p) => p.status === "PAID"))
+    .filter((b) => {
+      const paid = b.payments.filter((p) => p.status === "PAID").reduce((sum, p) => sum + p.amount, 0);
+      return b.quote ? paid < b.quote.total : paid === 0;
+    })
     .map((b) => ({ bookingId: b.id, reference: b.reference, customerName: b.customer ? `${b.customer.firstName} ${b.customer.lastName}`.trim() : "—" }));
 }
 
-export async function recordPayment(data: { bookingId: string; amount: number; kind: string; status: PaymentStatusValue; proofUrl?: string }): Promise<{ ok: boolean; error?: string }> {
+export async function recordPayment(data: { bookingId: string; amount: number; kind: string; status: PaymentStatusValue; proofUrl?: string; method?: string; reference?: string }): Promise<{ ok: boolean; error?: string }> {
   const booking = await db().booking.findUnique({ where: { id: data.bookingId } });
   if (!booking) return { ok: false, error: "Booking not found" };
 
@@ -70,6 +77,8 @@ export async function recordPayment(data: { bookingId: string; amount: number; k
       kind: data.kind,
       status: data.status,
       proofUrl: data.proofUrl,
+      method: data.method,
+      reference: data.reference || null,
     },
   });
   return { ok: true };
@@ -107,6 +116,7 @@ export async function createPendingStripePayment(data: {
       kind: data.kind,
       status: "PENDING",
       stripePaymentIntentId: data.stripePaymentIntentId,
+      method: "CARD",
     },
   });
   return { ok: true };

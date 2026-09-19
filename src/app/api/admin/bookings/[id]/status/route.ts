@@ -21,7 +21,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!parsed.success) return NextResponse.json({ ok: false, error: "Validation failed" }, { status: 400 });
 
   const result = await updateBookingStatus(id, parsed.data.status, admin.id, parsed.data.note);
-  if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: 400 });
+  if (!result.ok) {
+    return NextResponse.json({ ok: false, error: result.error, code: result.code, earliest: result.earliest }, { status: result.code === "TOO_EARLY" ? 409 : 400 });
+  }
 
   if (parsed.data.status === "CANCELLED") {
     const booking = await getBookingById(id);

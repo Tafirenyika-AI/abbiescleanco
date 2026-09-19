@@ -101,6 +101,7 @@ export interface MyPaymentItem {
   status: string;
   kind: string;
   proofUrl: string | null;
+  method: string | null;
   bookingReference: string | null;
   createdAt: string;
 }
@@ -118,6 +119,7 @@ export async function getMyPayments(customerId: string): Promise<MyPaymentItem[]
     status: p.status,
     kind: p.kind,
     proofUrl: p.proofUrl,
+    method: p.method,
     bookingReference: p.booking?.reference ?? null,
     createdAt: p.createdAt.toISOString(),
   }));

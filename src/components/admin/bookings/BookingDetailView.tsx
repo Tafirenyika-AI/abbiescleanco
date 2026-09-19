@@ -73,19 +73,46 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
   const [sendingReviewRequest, setSendingReviewRequest] = useState(false);
   const [reviewRequestSent, setReviewRequestSent] = useState(false);
 
-  async function setStatus(status: BookingStatusValue) {
+  const [earlyStart, setEarlyStart] = useState<{ earliest: string } | null>(null);
+  const [earlyNote, setEarlyNote] = useState("");
+  const [startingEarly, setStartingEarly] = useState(false);
+
+  async function setStatus(status: BookingStatusValue, note?: string) {
     const res = await fetch(`/api/admin/bookings/${booking.id}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, note }),
     });
+    if (res.status === 409) {
+      const json = await res.json();
+      if (json.code === "TOO_EARLY") {
+        setEarlyStart({ earliest: json.earliest });
+        return false;
+      }
+    }
     if (!res.ok) {
       showToast("Couldn't update status", "error");
-      return;
+      return false;
     }
     showToast(`Marked ${bookingStatusLabels[status].toLowerCase()}`, "success");
     router.refresh();
+    return true;
   }
+
+  async function confirmEarlyStart() {
+    setStartingEarly(true);
+    const ok = await setStatus("IN_PROGRESS", earlyNote.trim());
+    setStartingEarly(false);
+    if (ok) {
+      setEarlyStart(null);
+      setEarlyNote("");
+    }
+  }
+
+  // Mirrors the server rule (bookingStore.EARLY_START_GRACE_MINUTES) purely to show a hint; the server is what enforces it.
+  const startsEarliestAt = booking.scheduledStart ? new Date(new Date(booking.scheduledStart).getTime() - 20 * 60 * 1000) : null;
+  const [renderedAt] = useState(() => Date.now());
+  const tooEarlyToStart = !!startsEarliestAt && startsEarliestAt.getTime() > renderedAt;
 
   async function saveStaff() {
     setSavingStaff(true);
@@ -350,6 +377,11 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
                 {nextStatusActionLabel[booking.status]} <ArrowRight className="size-4" aria-hidden />
               </button>
             )}
+            {nextStatus[booking.status] === "IN_PROGRESS" && tooEarlyToStart && startsEarliestAt && (
+              <p className="mt-1.5 text-xs text-admin-text-muted">
+                Opens {formatDateTime(startsEarliestAt.toISOString())} (20 min before start). Starting sooner needs an approval note.
+              </p>
+            )}
 
             {booking.status !== "CANCELLED" && booking.status !== "COMPLETED" && (
               <button
@@ -398,6 +430,42 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
           </Card>
         </div>
       </div>
+
+      {earlyStart && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-admin-card p-6 shadow-2xl">
+            <h2 className="text-base font-semibold text-admin-text">Start this job early?</h2>
+            <p className="mt-1 text-sm text-admin-text-muted">
+              Jobs can be started from {formatDateTime(earlyStart.earliest)} (20 minutes before the scheduled start). To start sooner, add a note saying who approved it and why. It&apos;s saved to the booking history and the audit log.
+            </p>
+            <label className="mt-3 block">
+              <span className="text-xs font-medium text-admin-text-muted">Approval note (required)</span>
+              <textarea
+                value={earlyNote}
+                onChange={(e) => setEarlyNote(e.target.value)}
+                rows={3}
+                placeholder="e.g. Customer asked us to come at 8am instead — confirmed by phone"
+                className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text"
+              />
+            </label>
+            <p className="mt-2 text-xs text-admin-text-muted">Need to change the time instead? Cancel and use Reschedule.</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={() => { setEarlyStart(null); setEarlyNote(""); }} className="rounded-lg border border-admin-border px-3.5 py-2 text-sm font-semibold text-admin-text hover:bg-admin-bg">
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!earlyNote.trim() || startingEarly}
+                onClick={confirmEarlyStart}
+                className="flex items-center gap-2 rounded-lg bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
+              >
+                {startingEarly ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+                Approve &amp; start
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         open={confirmDelete}

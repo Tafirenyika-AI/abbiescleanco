@@ -9,6 +9,7 @@ import EmptyState from "@/components/admin/ui/EmptyState";
 import { useToast } from "@/components/admin/ui/Toast";
 import { formatDate } from "@/lib/adminDate";
 import ImageUploadField from "@/components/admin/content/ImageUploadField";
+import { PAYMENT_METHODS, paymentMethodLabels, paymentReferenceLabels, labelForMethod, type PaymentMethodValue } from "@/lib/paymentMethods";
 
 export default function PaymentsView({
   payments: initialPayments,
@@ -25,6 +26,8 @@ export default function PaymentsView({
   const [kind, setKind] = useState<"deposit" | "full_payment">("full_payment");
   const [status, setStatus] = useState<PaymentStatusValue>("PAID");
   const [proofUrl, setProofUrl] = useState("");
+  const [method, setMethod] = useState<PaymentMethodValue>("ZELLE");
+  const [reference, setReference] = useState("");
   const [saving, setSaving] = useState(false);
   const [attachingProofFor, setAttachingProofFor] = useState<string | null>(null);
 
@@ -37,7 +40,7 @@ export default function PaymentsView({
     const res = await fetch("/api/admin/payments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bookingId, amount: Math.round(Number(amount) * 100), kind, status, proofUrl: proofUrl || undefined }),
+      body: JSON.stringify({ bookingId, amount: Math.round(Number(amount) * 100), kind, status, method, reference: reference || undefined, proofUrl: proofUrl || undefined }),
     });
     setSaving(false);
     if (!res.ok) {
@@ -49,6 +52,7 @@ export default function PaymentsView({
     setBookingId("");
     setAmount("");
     setProofUrl("");
+    setReference("");
     window.location.reload();
   }
 
@@ -140,6 +144,18 @@ export default function PaymentsView({
                 <option value="PENDING">Pending</option>
               </select>
             </label>
+            <label className="block">
+              <span className="text-xs font-medium text-admin-text-muted">Payment method</span>
+              <select value={method} onChange={(e) => setMethod(e.target.value as PaymentMethodValue)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text">
+                {PAYMENT_METHODS.map((m) => (
+                  <option key={m} value={m}>{paymentMethodLabels[m]}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-xs font-medium text-admin-text-muted">{paymentReferenceLabels[method]}</span>
+              <input value={reference} onChange={(e) => setReference(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+            </label>
           </div>
           <div className="mt-3 max-w-sm">
             <ImageUploadField label="Proof of payment (optional — receipt or screenshot)" value={proofUrl} onChange={setProofUrl} />
@@ -158,12 +174,13 @@ export default function PaymentsView({
             description="Record a payment against a confirmed booking, or connect a payment processor in Settings."
           />
         ) : (
-          <table className="w-full min-w-[700px] text-left text-sm">
+          <table className="w-full min-w-[820px] text-left text-sm">
             <thead className="bg-admin-bg">
               <tr>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Customer</th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Booking</th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Kind</th>
+                <th scope="col" className="p-3.5 font-semibold text-admin-text">Method</th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Amount</th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Date</th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Status</th>
@@ -176,6 +193,10 @@ export default function PaymentsView({
                   <td className="p-3.5 text-admin-text">{p.customerName}</td>
                   <td className="p-3.5 text-admin-text-muted">{p.bookingReference ?? "—"}</td>
                   <td className="p-3.5 capitalize text-admin-text">{p.kind.replace(/_/g, " ")}</td>
+                  <td className="p-3.5 text-admin-text">
+                    {labelForMethod(p.method)}
+                    {p.reference && <span className="block text-xs text-admin-text-muted">{p.reference}</span>}
+                  </td>
                   <td className="p-3.5 text-admin-text">${(p.amount / 100).toFixed(2)}</td>
                   <td className="p-3.5 text-admin-text-muted">{formatDate(p.createdAt)}</td>
                   <td className="p-3.5">

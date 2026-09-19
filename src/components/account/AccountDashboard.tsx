@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FileText, FileSignature, CalendarClock, CreditCard, Settings, Tag } from "lucide-react";
 import type { MyRequestItem, MyQuoteItem, MyBookingItem, MyPaymentItem } from "@/lib/server/customerHistory";
 import type { PublicProfile } from "@/lib/server/accounts";
+import { labelForMethod } from "@/lib/paymentMethods";
 import AccountProfileForm from "@/components/account/AccountProfileForm";
 
 const tabs = [
@@ -186,6 +187,7 @@ export default function AccountDashboard({
                   </div>
                   <p className="mt-1 flex flex-wrap items-center gap-x-3 text-sm text-surface-700">
                     <span>{formatDate(p.createdAt)}</span>
+                    {p.method && <span>{labelForMethod(p.method)}</span>}
                     {p.bookingReference && <span>Booking {p.bookingReference}</span>}
                     {p.proofUrl && (
                       <Link href={p.proofUrl} target="_blank" className="font-semibold text-teal-700 hover:underline">

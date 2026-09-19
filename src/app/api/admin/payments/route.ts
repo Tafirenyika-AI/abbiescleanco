@@ -5,6 +5,7 @@ import { listPayments, recordPayment, PAYMENT_STATUSES } from "@/lib/server/paym
 import { getBookingById } from "@/lib/server/bookingStore";
 import { notifyAdmins } from "@/lib/server/notificationStore";
 import { sendEmail, paymentReceiptEmail } from "@/lib/server/email";
+import { PAYMENT_METHODS, labelForMethod } from "@/lib/paymentMethods";
 
 const schema = z.object({
   bookingId: z.string().min(1),
@@ -12,6 +13,8 @@ const schema = z.object({
   kind: z.enum(["deposit", "full_payment"]),
   status: z.enum(PAYMENT_STATUSES),
   proofUrl: z.string().trim().max(2000).optional(),
+  method: z.enum(PAYMENT_METHODS).default("CASH"),
+  reference: z.string().trim().max(200).optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -51,6 +54,7 @@ export async function POST(req: NextRequest) {
         amountLabel: `$${(parsed.data.amount / 100).toFixed(2)}`,
         description: `your ${parsed.data.kind === "deposit" ? "deposit" : "payment"} (${booking.reference})`,
         receiptUrl: parsed.data.proofUrl,
+        methodLabel: labelForMethod(parsed.data.method),
       });
       await sendEmail({ to: booking.customerEmail, subject, html });
     }

@@ -223,7 +223,7 @@ export function bookingRequestReceivedEmail(params: {
   };
 }
 
-export function paymentReceiptEmail(params: { firstName: string; amountLabel: string; description: string; receiptUrl?: string | null }) {
+export function paymentReceiptEmail(params: { firstName: string; amountLabel: string; description: string; receiptUrl?: string | null; methodLabel?: string }) {
   return {
     subject: `Payment received — ${params.amountLabel} — ${business.name}`,
     html: `
@@ -231,6 +231,7 @@ export function paymentReceiptEmail(params: { firstName: string; amountLabel: st
         <h2 style="color:#0b1f33">Thanks, ${escapeHtml(params.firstName)}!</h2>
         <p>We've received your payment for ${escapeHtml(params.description)}.</p>
         <p style="font-size:20px;font-weight:bold">${params.amountLabel}</p>
+        ${params.methodLabel ? `<p style="color:#4a5a6a;font-size:14px">Paid via ${escapeHtml(params.methodLabel)}</p>` : ""}
         ${params.receiptUrl ? `<p><a href="${params.receiptUrl}" style="color:#0d8f83">View your receipt</a></p>` : ""}
         <p>Questions? Call or text us at ${business.phoneDisplay}.</p>
         <p style="margin-top:24px;color:#4a5a6a;font-size:14px">${business.name} · ${business.city}, ${business.region}</p>
