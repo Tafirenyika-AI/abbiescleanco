@@ -281,6 +281,70 @@ export async function createSelfServiceBooking(
 }
 
 /**
+ * Admin "Schedule booking" shortcut from a Lead's detail panel -- skips manually building a
+ * Quote first for the common case where the admin just wants to lock in a price and a time.
+ * Unlike self-service booking, this is admin-initiated so it lands straight at CONFIRMED, the
+ * price is whatever the admin enters (not auto-derived from the estimate), and a lead flagged
+ * "requires manual quote" is still allowed through -- that flag exists to make sure a human
+ * reviews pricing before anything is promised, and a human (the admin) is doing exactly that.
+ */
+export async function scheduleBookingFromLead(
+  leadId: string,
+  data: { addressLine1: string; addressLine2?: string; amount: number; scheduledStart: string; scheduledEnd: string }
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const lead = await db().lead.findFirst({
+    where: { id: leadId, deletedAt: null },
+    include: { customer: true, address: true, service: true, bookings: true },
+  });
+  if (!lead) return { ok: false, error: "Lead not found" };
+  if (!lead.customerId || !lead.addressId || !lead.customer) return { ok: false, error: "This lead is missing a customer or address" };
+  if (lead.bookings.some((b) => b.status !== "CANCELLED")) return { ok: false, error: "This lead already has a booking" };
+
+  const start = new Date(data.scheduledStart);
+  const end = new Date(data.scheduledEnd);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+    return { ok: false, error: "Invalid date/time" };
+  }
+  const conflicts = await findConflicts(start, end);
+  if (conflicts.length > 0) return { ok: false, error: "That time conflicts with an existing booking" };
+
+  await db().address.update({
+    where: { id: lead.addressId },
+    data: { line1: data.addressLine1, line2: data.addressLine2 || null },
+  });
+
+  const quote = await db().quote.create({
+    data: {
+      quoteNumber: generateReference("Q"),
+      leadId: lead.id,
+      status: "ACCEPTED",
+      subtotal: data.amount,
+      total: data.amount,
+      notes: "Created directly from the lead via Schedule booking (admin quick-create).",
+      items: { create: [{ label: lead.service.name, quantity: 1, unitPrice: data.amount, total: data.amount }] },
+    },
+  });
+
+  const booking = await db().booking.create({
+    data: {
+      reference: generateReference("B"),
+      leadId: lead.id,
+      quoteId: quote.id,
+      customerId: lead.customerId,
+      addressId: lead.addressId,
+      status: "CONFIRMED",
+      scheduledStart: start,
+      scheduledEnd: end,
+      statusHistory: { create: { toStatus: "CONFIRMED", note: "Scheduled directly from the lead by admin" } },
+    },
+  });
+
+  await scheduleBookingConfirmationAndReminders(booking.id, start);
+
+  return { ok: true, id: booking.id };
+}
+
+/**
  * Admin "New Booking" quick-create -- for an existing customer who's calling to book again,
  * where a fresh estimate/quote review isn't needed. Creates a minimal Lead+Quote behind the
  * scenes (both required by the data model) alongside the Booking, all in one step, landing

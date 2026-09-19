@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { X, Phone, Mail, MessageCircle, Loader2, FileSignature } from "lucide-react";
+import { X, Phone, Mail, MessageCircle, Loader2, FileSignature, CalendarPlus } from "lucide-react";
 import { LEAD_STATUSES, leadStatusLabels, type StoredLead, type LeadStatusValue, type LeadActivityEntry } from "@/lib/leads";
 import { formatDateTime } from "@/lib/adminDate";
 import { services } from "@/lib/data/services";
@@ -26,6 +27,7 @@ export default function LeadDetailDrawer({
   onClose: () => void;
   onUpdated: (lead: StoredLead) => void;
 }) {
+  const router = useRouter();
   const { showToast } = useToast();
   const [activity, setActivity] = useState<LeadActivityEntry[]>([]);
   const [loadingActivity, setLoadingActivity] = useState(true);
@@ -34,6 +36,47 @@ export default function LeadDetailDrawer({
   const [lostReason, setLostReason] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleAddress, setScheduleAddress] = useState("");
+  const [scheduleAddress2, setScheduleAddress2] = useState("");
+  const [scheduleAmount, setScheduleAmount] = useState(
+    !lead.estimate.requiresManualQuote ? String(Math.round((lead.estimate.totalLow + lead.estimate.totalHigh) / 2)) : ""
+  );
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleStart, setScheduleStart] = useState("09:00");
+  const [scheduleEnd, setScheduleEnd] = useState("11:00");
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduleError, setScheduleError] = useState("");
+
+  async function submitSchedule() {
+    setScheduling(true);
+    setScheduleError("");
+    try {
+      const res = await fetch(`/api/admin/leads/${lead.id}/schedule-booking`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          addressLine1: scheduleAddress,
+          addressLine2: scheduleAddress2 || undefined,
+          amount: Math.round(Number(scheduleAmount) * 100),
+          scheduledStart: `${scheduleDate}T${scheduleStart}:00`,
+          scheduledEnd: `${scheduleDate}T${scheduleEnd}:00`,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        setScheduleError(json.error || "Couldn't schedule this booking");
+        return;
+      }
+      showToast("Booking scheduled", "success");
+      router.push(`/admin/bookings/${json.id}`);
+    } finally {
+      setScheduling(false);
+    }
+  }
+
+  const scheduleValid = scheduleAddress.trim() && Number(scheduleAmount) > 0 && scheduleDate && scheduleStart && scheduleEnd;
 
   useEffect(() => {
     let cancelled = false;
@@ -195,11 +238,16 @@ export default function LeadDetailDrawer({
               >
                 <FileSignature className="size-3.5" aria-hidden /> Create quote
               </Link>
-              {["Assign", "Schedule booking"].map((label) => (
-                <span key={label} title="Coming soon" className="cursor-not-allowed rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-500">
-                  {label}
-                </span>
-              ))}
+              <button
+                type="button"
+                onClick={() => setScheduleOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-admin-teal px-3 py-1.5 text-xs font-semibold text-white hover:bg-admin-teal-hover"
+              >
+                <CalendarPlus className="size-3.5" aria-hidden /> Schedule booking
+              </button>
+              <span title="Coming soon" className="cursor-not-allowed rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-500">
+                Assign
+              </span>
             </div>
           </section>
 
@@ -273,6 +321,62 @@ export default function LeadDetailDrawer({
         onConfirm={confirmDeleteLead}
         onCancel={() => setConfirmDelete(false)}
       />
+
+      {scheduleOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-admin-card p-6 shadow-2xl">
+            <h2 className="text-base font-semibold text-admin-text">Schedule this cleaning</h2>
+            <p className="mt-1 text-xs text-admin-text-muted">
+              Creates an accepted quote and a confirmed booking together — skips building a quote by hand.
+            </p>
+            <div className="mt-3 space-y-3">
+              <label className="block">
+                <span className="text-xs font-medium text-admin-text-muted">Street address</span>
+                <input value={scheduleAddress} onChange={(e) => setScheduleAddress(e.target.value)} placeholder="123 Main St" className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-admin-text-muted">Apt / unit (optional)</span>
+                <input value={scheduleAddress2} onChange={(e) => setScheduleAddress2(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-admin-text-muted">Amount ($)</span>
+                <input type="number" min="1" step="0.01" value={scheduleAmount} onChange={(e) => setScheduleAmount(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-admin-text-muted">Date</span>
+                <input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block">
+                  <span className="text-xs font-medium text-admin-text-muted">Start</span>
+                  <input type="time" value={scheduleStart} onChange={(e) => setScheduleStart(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-medium text-admin-text-muted">End</span>
+                  <input type="time" value={scheduleEnd} onChange={(e) => setScheduleEnd(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+                </label>
+              </div>
+            </div>
+
+            {scheduleError && <p className="mt-3 text-sm text-admin-error">{scheduleError}</p>}
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={() => setScheduleOpen(false)} className="rounded-lg border border-admin-border px-3.5 py-2 text-sm font-semibold text-admin-text hover:bg-admin-bg">
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!scheduleValid || scheduling}
+                onClick={submitSchedule}
+                className="flex items-center gap-2 rounded-lg bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
+              >
+                {scheduling ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+                Create booking
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
