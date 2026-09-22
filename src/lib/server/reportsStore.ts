@@ -46,7 +46,7 @@ export async function getReportsSummary(rangeStart: Date, rangeEnd: Date): Promi
 
   const where = { createdAt: { gte: rangeStart, lte: rangeEnd }, deletedAt: null };
 
-  const leads = await prisma.lead.findMany({ where, include: { service: true } });
+  const leads = await prisma.lead.findMany({ where, include: { service: true, quotes: true } });
   const quotes = await prisma.quote.findMany({ where: { createdAt: { gte: rangeStart, lte: rangeEnd }, deletedAt: null } });
   const bookings = await prisma.booking.findMany({ where });
   const expenses = await prisma.expense.findMany({ where: { date: { gte: rangeStart, lte: rangeEnd }, deletedAt: null } });
@@ -85,7 +85,12 @@ export async function getReportsSummary(rangeStart: Date, rangeEnd: Date): Promi
     bookingsCompleted,
     bookingsCancelled,
     totalBookings: bookings.length,
-    conversionRate: leads.length > 0 ? quotesAccepted / leads.length : null,
+    // Real bug found + fixed here: this used to divide quotesAccepted (quotes CREATED in this
+    // window) by leads.length (leads CREATED in this window) -- two different cohorts, since a
+    // quote created this period can belong to a lead created long before it (e.g. an existing
+    // customer books again). That let the "rate" exceed 100%. Conversion is now "of leads created
+    // in this window, how many have an accepted quote (created any time)" -- a real percentage.
+    conversionRate: leads.length > 0 ? leads.filter((l) => l.quotes.some((q) => q.status === "ACCEPTED")).length / leads.length : null,
     cancellationRate: bookings.length > 0 ? bookingsCancelled / bookings.length : null,
     totalExpenses,
     netRevenue: acceptedValue - totalExpenses,

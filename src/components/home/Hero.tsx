@@ -1,10 +1,34 @@
 import Image from "next/image";
-import { ShieldCheck, Sparkles, Leaf } from "lucide-react";
+import { ShieldCheck, Sparkles, Leaf, CalendarClock } from "lucide-react";
 import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import { business, whatsappLink } from "@/lib/data/business";
+import { getAvailableSlots } from "@/lib/server/bookingAvailability";
+import { getPricingConfig } from "@/lib/server/pricingStore";
 
-export default function Hero() {
+/** Real next open slot for the most-requested service, scanned a couple weeks out. Cached by the homepage's own ISR window (60s) -- a friendly heads-up, not a booking guarantee. */
+async function nextOpening() {
+  try {
+    const config = await getPricingConfig();
+    for (let i = 0; i < 14; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      const dateISO = d.toISOString().slice(0, 10);
+      const slots = await getAvailableSlots("standard-cleaning", dateISO, config);
+      if (slots.length > 0) {
+        const label = new Date(slots[0].startISO).toLocaleString("en-US", { timeZone: "America/Los_Angeles", weekday: "short", month: "short", day: "numeric" });
+        return { dateLabel: label, timeLabel: slots[0].label };
+      }
+    }
+  } catch {
+    // Availability lookup is best-effort decoration on the homepage -- never block the hero on it.
+  }
+  return null;
+}
+
+export default async function Hero() {
+  const opening = await nextOpening();
+
   return (
     <section className="relative isolate flex min-h-[78vh] items-end overflow-hidden bg-navy-950 sm:min-h-[92vh]" aria-labelledby="hero-heading">
       <Image
@@ -29,7 +53,7 @@ export default function Hero() {
           <h1 id="hero-heading" className="mt-5 text-5xl font-semibold leading-[1.05] text-white sm:text-6xl lg:text-7xl">
             Your home,
             <br />
-            <span className="text-teal-300">spotless.</span>
+            <span className="bg-gradient-to-r from-teal-300 to-teal-100 bg-clip-text text-transparent">spotless.</span>
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-surface-100">
             Thoughtful, dependable home cleaning throughout Spokane Valley — personalized to your
@@ -63,6 +87,23 @@ export default function Hero() {
           </ul>
         </div>
       </Container>
+
+      {opening && (
+        <div className="absolute bottom-8 right-6 z-10 hidden w-64 rounded-2xl bg-white/95 p-4 shadow-[0_12px_40px_rgba(11,31,51,0.35)] ring-1 ring-black/5 backdrop-blur-sm lg:block xl:bottom-12 xl:right-12">
+          <div className="flex items-center gap-2">
+            <span className="flex size-8 items-center justify-center rounded-full bg-teal-100 text-teal-700">
+              <CalendarClock className="size-4" aria-hidden />
+            </span>
+            <div>
+              <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-teal-700">
+                <span className="size-1.5 rounded-full bg-teal-500" aria-hidden /> Next opening
+              </p>
+              <p className="text-sm font-semibold text-navy-950">{opening.dateLabel} · {opening.timeLabel}</p>
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-surface-700">Real availability, updated live. Get your free estimate above to lock it in.</p>
+        </div>
+      )}
     </section>
   );
 }
