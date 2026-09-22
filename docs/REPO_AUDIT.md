@@ -9,7 +9,7 @@ Date: 2026-09-21. Scope: the actual state of `c:\Users\tafis\Music\abbiescleanco
 - `zod` 4 + `react-hook-form` for validation.
 - `stripe` 22.6.2, `resend` 6.28.1 (email), `@vercel/blob` 2.8.0 (object storage), `sharp` 0.35.4 (image processing), `bcryptjs` (password hashing).
 - Test tooling: `vitest` 5 (unit/integration), `@playwright/test` 1.63 (e2e). **No CI workflow exists** (`.github/workflows` is absent) — tests only run when someone runs them locally.
-- Deployment target: Vercel (`vercel.json` present, cron configured). **Not confirmed deployed** — no evidence in-repo of a live Vercel project; the owner has not confirmed this.
+- Deployment target: Vercel (`vercel.json` present, cron configured). **A Vercel project exists and is live** at `https://abbiescleanco.vercel.app/`, auto-deploying from `main` on every push — confirmed 2026-09-22 by fetching it directly and finding it running that session's latest commit (a corrected finding: an earlier version of this document, written from repo-file inspection alone rather than actually checking the live URL, wrongly said this was unconfirmed). See `docs/OPERATIONS.md` §1 for the important caveat: the real business domain, `abbiescleanco.com`, is **not** pointed at this Vercel project — it still serves a separate, pre-existing WordPress site.
 
 ## 2. Database — what's really there
 

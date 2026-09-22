@@ -46,7 +46,7 @@ The blueprint asks for `AIProvider`, `EmailProvider`, `SMSProvider`, `PaymentPro
 
 ## 4. Deployment (target, not yet confirmed live)
 
-Vercel is the assumed target: `vercel.json` configures a daily cron (`/api/automation/process`, Hobby-tier limitation — hourly isn't available on Hobby), `next.config.ts` allows Vercel Blob's `*.public.blob.vercel-storage.com` as an image remote pattern, and the upload code path-switches on `BLOB_READ_WRITE_TOKEN` being present. **No evidence a Vercel project has actually been created and connected** — this is a gap to close with the owner, not something to assume done.
+Vercel is the target, and it's live: `vercel.json` configures a daily cron (`/api/automation/process`, Hobby-tier limitation — hourly isn't available on Hobby), `next.config.ts` allows Vercel Blob's `*.public.blob.vercel-storage.com` as an image remote pattern, and the upload code path-switches on `BLOB_READ_WRITE_TOKEN` being present. A Vercel project exists, is connected to this GitHub repo, and auto-deploys `main` — confirmed 2026-09-22 at `https://abbiescleanco.vercel.app/`, already running that day's latest commit. **What's not done**: the real domain `abbiescleanco.com` is not pointed at it — see `docs/OPERATIONS.md` §1.
 
 ## 5. What changes, and what doesn't, to reach the blueprint's target architecture
 

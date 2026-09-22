@@ -2,6 +2,14 @@
 
 Reverse-chronological. Each entry: what was decided, why, what it costs.
 
+## Correction — the 2026-09-21 audit's "not deployed" claim was wrong (found 2026-09-22)
+
+`docs/REPO_AUDIT.md`, `docs/ARCHITECTURE.md`, and `docs/OPERATIONS.md` originally stated Vercel deployment was unconfirmed, based on inspecting repository files (`vercel.json`, env var references) rather than actually checking whether a live deployment existed. It does: `https://abbiescleanco.vercel.app/` is live, connected to this GitHub repo, and auto-deploys `main` — confirmed by fetching a route with no corresponding `route.ts` anywhere in the codebase (`/api/admin/totally-fake-route-xyz-check`) and getting back `src/proxy.ts`'s exact JSON response, proving that commit (pushed minutes earlier) was already running live.
+
+Separately, and more importantly: **the real business domain, `abbiescleanco.com`, is not pointed at this Vercel project at all.** It resolves to a distinct, pre-existing WordPress site (Apache, Bluehost-hosted). This rebuild has been live on its Vercel-issued URL this whole time, invisible to anyone checking the real domain, because the domain cutover has never happened. All three documents were corrected in place rather than left standing, per this project's own stated principle of never leaving a known-wrong claim uncorrected.
+
+**Why this happened**: the earlier audit treated "no `.vercel` config artifacts in the repo, no CI, no explicit owner confirmation" as sufficient evidence of non-deployment. It wasn't — a Vercel project can be created and connected entirely through Vercel's own dashboard, leaving no trace in the repository at all. The blueprint's own instruction (§1) to "inspect the deployed website only as context, not proof of backend functionality" was read too narrowly — it's a caution against treating a working frontend as proof the backend works, not license to skip checking the deployed site's existence at all. Worth remembering for any future audit: **check the live URL directly, don't infer deployment status from repo contents alone.**
+
 ## D-8 — `src/proxy.ts` admin + customer-account backstop, verified with Web Crypto instead of importing session.ts (2026-09-21, extended same day)
 
 **Decision**: add a project-wide proxy (Next 16's renamed `middleware.ts` convention — see below) that rejects any request under `/admin/*`, `/api/admin/*`, or `/api/account/*` with no valid, unexpired session token of the right scope (`admin` or `customer`), before it reaches route code. It re-implements HMAC verification using the Web Crypto API (`crypto.subtle`) rather than importing `src/lib/server/session.ts` (which uses Node's `crypto` module and isn't available in the Edge runtime the proxy runs in by default). Both scopes share one verification function since admin and customer sessions are signed with the same secret and token format — only the `scope` field and cookie name differ.

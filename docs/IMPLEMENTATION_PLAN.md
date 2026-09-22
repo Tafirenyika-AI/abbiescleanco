@@ -67,9 +67,10 @@ Missing from the full §3.4 spec:
 
 ## Suggested near-term order (revenue/risk-adjusted, not phase-numbered)
 
-1. **[creds]** Stripe test key → verify real payments work. Highest revenue impact of anything on this list; the code is already written and waiting.
+0. **[decision]** Point `abbiescleanco.com` at the live Vercel deployment (`https://abbiescleanco.vercel.app/`, confirmed live and up to date 2026-09-22 — see `docs/DECISIONS.md`'s correction note and `docs/OPERATIONS.md` §1), or explicitly decide not to yet. Right now the real domain still serves a separate, older WordPress site — none of this rebuild is visible to an actual visitor of `abbiescleanco.com` until this is done. This is the single highest-leverage decision on this whole list: everything below is pointless to a real customer until this happens, and it's entirely the owner's call (it takes the current live site down the moment it's done), not something to do without explicit go-ahead.
+1. **[creds]** Stripe test key → verify real payments work. Highest revenue impact of anything code-side; the code is already written and waiting.
 2. ~~`middleware.ts`/proxy admin backstop + Sentry wiring~~ **Done 2026-09-21** — both code-complete and live-verified; only Sentry still needs a DSN from the owner.
 3. **[creds]** Anthropic key → validate the photo estimator against real photos before promoting it.
 4. **[creds]** `NEXT_PUBLIC_SENTRY_DSN` → real error visibility, code already proven safe either way.
 5. **[decision]** Invoicing/accounting approach (Phase 3) and workforce/subcontractor classification (Phase 4) — both need the owner's input before more code should be written in those areas, and both gate real further scope.
-6. Everything else in Phases 5–8, in the order the owner cares about it — none of it is currently blocking revenue the way #1 is.
+6. Everything else in Phases 5–8, in the order the owner cares about it — none of it matters until #0 happens.
