@@ -50,7 +50,11 @@ export async function getActivityFeed(limit = 60): Promise<ActivityItem[]> {
     label: summarizeAuditAction(a.action),
     title: a.adminUser?.name ? `${a.adminUser.name}` : "System",
     description: `${a.entityType} ${a.entityId.slice(0, 8)}…`,
-    link: a.entityType === "lead" ? `/admin/leads/${a.entityId}` : a.entityType === "booking" ? `/admin/bookings/${a.entityId}` : a.entityType === "quote" ? `/admin/quotes/${a.entityId}` : null,
+    // A "*.deleted" entry has nothing left to link to -- the record itself is gone (soft-deleted),
+    // so a link here would just 404. Every other action still links through.
+    link: a.action.endsWith(".deleted")
+      ? null
+      : a.entityType === "lead" ? `/admin/leads/${a.entityId}` : a.entityType === "booking" ? `/admin/bookings/${a.entityId}` : a.entityType === "quote" ? `/admin/quotes/${a.entityId}` : null,
     createdAt: a.createdAt.toISOString(),
   }));
 

@@ -93,22 +93,35 @@ export default function AdminSidebar({
                     const Icon = item.icon;
                     const content = (
                       <>
-                        <Icon className="size-[18px] shrink-0" aria-hidden />
-                        {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
-                        {!collapsed && !item.built && (
-                          <span className="shrink-0 rounded-full bg-slate-700/60 px-1.5 py-0.5 text-[10px] font-semibold text-slate-300">
-                            Soon
+                        <span
+                          className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${
+                            active ? "bg-white/15" : "bg-white/5 group-hover:bg-white/10"
+                          }`}
+                        >
+                          <Icon className="size-[17px]" aria-hidden />
+                        </span>
+                        {!collapsed && (
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center gap-1.5">
+                              <span className="truncate">{item.label}</span>
+                              {!item.built && (
+                                <span className="shrink-0 rounded-full bg-slate-700/60 px-1.5 py-0.5 text-[10px] font-semibold text-slate-300">
+                                  Soon
+                                </span>
+                              )}
+                            </span>
+                            <span className={`block truncate text-xs font-normal ${active ? "text-white/70" : "text-slate-500"}`}>{item.description}</span>
                           </span>
                         )}
                       </>
                     );
-                    const className = `group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                    const className = `group flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-semibold transition-colors ${
                       collapsed ? "lg:justify-center" : ""
                     } ${
                       !item.built
                         ? "cursor-not-allowed text-slate-500"
                         : active
-                          ? "bg-admin-teal/15 text-admin-aqua"
+                          ? "bg-admin-teal text-white shadow-[0_4px_12px_rgba(15,157,138,0.35)]"
                           : "text-slate-300 hover:bg-white/5 hover:text-white"
                     }`;
 

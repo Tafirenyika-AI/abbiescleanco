@@ -36,8 +36,10 @@ export default function HowBookingWorks() {
 
       <ol className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {steps.map((s) => (
-          <li key={s.step} className="rounded-2xl border border-surface-200 p-5">
-            <span className="font-display text-3xl font-semibold text-teal-500">{s.step}</span>
+          <li key={s.step} className="relative overflow-hidden rounded-2xl border border-surface-200 p-5">
+            <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-teal-500 to-teal-300" aria-hidden />
+            <span className="text-xs font-semibold uppercase tracking-wider text-teal-600">Step 0{s.step}</span>
+            <p className="mt-2 font-display text-3xl font-semibold text-navy-950">{s.step}</p>
             <p className="mt-3 font-semibold text-navy-950">{s.title}</p>
             <p className="mt-1.5 text-sm text-surface-700">{s.description}</p>
           </li>

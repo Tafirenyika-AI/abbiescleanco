@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import { ArrowRight, ArrowDownRight, ArrowUpRight } from "lucide-react";
 import clsx from "clsx";
 import Card from "./Card";
+import Sparkline from "./Sparkline";
 
 export default function StatCard({
   label,
@@ -11,6 +12,7 @@ export default function StatCard({
   href,
   hint,
   delta,
+  spark,
 }: {
   label: string;
   value: string;
@@ -19,6 +21,8 @@ export default function StatCard({
   hint?: string;
   /** Real, computed trend only -- omit rather than invent one. Positive isn't always "good" (e.g. cancellations), so callers pass tone explicitly via sign + hint text. */
   delta?: { value: string; tone: "up" | "down" | "flat" };
+  /** Real daily values, oldest first -- omit rather than invent a trend line. */
+  spark?: number[];
 }) {
   const body = (
     <Card className="group h-full transition-shadow hover:shadow-[0_4px_16px_rgba(15,23,42,0.08)]">
@@ -26,6 +30,7 @@ export default function StatCard({
         <span className="flex size-9 items-center justify-center rounded-xl bg-admin-teal/10 text-admin-teal-hover">
           <Icon className="size-4.5" aria-hidden />
         </span>
+        {spark && spark.some((v) => v > 0) && <Sparkline values={spark} className="text-admin-teal/70" />}
         {delta && (
           <span
             className={clsx(
