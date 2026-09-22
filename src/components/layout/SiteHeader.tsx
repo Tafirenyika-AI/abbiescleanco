@@ -9,6 +9,7 @@ import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import TopBar from "./TopBar";
 import { telHref, whatsappLink } from "@/lib/data/business";
+import type { ContactInfo, BusinessHoursRow } from "@/lib/server/siteSettings";
 
 const navLinks = [
   { href: "/services", label: "Services" },
@@ -19,7 +20,7 @@ const navLinks = [
   { href: "/contact", label: "Contact" },
 ];
 
-export default function SiteHeader({ logoUrl }: { logoUrl?: string | null }) {
+export default function SiteHeader({ logoUrl, contact, hours }: { logoUrl?: string | null; contact: ContactInfo; hours: BusinessHoursRow[] }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -60,7 +61,7 @@ export default function SiteHeader({ logoUrl }: { logoUrl?: string | null }) {
 
   return (
     <header className="ios-glass sticky top-0 z-50 border-b border-black/[0.06]">
-      <TopBar />
+      <TopBar contact={contact} hours={hours} />
       <Container className="flex items-center justify-between py-3">
         <Link href="/" className="flex items-center gap-2.5" aria-label={`${"Abbie's Clean Method"} — Home`}>
           {logoUrl ? (
@@ -97,14 +98,14 @@ export default function SiteHeader({ logoUrl }: { logoUrl?: string | null }) {
 
         <div className="hidden items-center gap-3 lg:flex">
           <a
-            href={telHref()}
+            href={telHref(contact.phoneE164)}
             aria-label="Call us"
             className="flex size-10 items-center justify-center rounded-full text-navy-700 hover:bg-surface-100 hover:text-teal-600"
           >
             <Phone className="size-4.5" aria-hidden />
           </a>
           <a
-            href={whatsappLink("Hi Abbie's Clean Method! I'd like to ask about a cleaning.")}
+            href={whatsappLink("Hi Abbie's Clean Method! I'd like to ask about a cleaning.", contact.whatsappE164)}
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Message us on WhatsApp"

@@ -1,8 +1,9 @@
 import { Phone, CalendarCheck, MessageCircle } from "lucide-react";
 import { telHref, whatsappLink } from "@/lib/data/business";
+import type { ContactInfo } from "@/lib/server/siteSettings";
 
 /** iOS-style tab bar: frosted glass, hairline top border, home-indicator safe area. */
-export default function MobileActionBar() {
+export default function MobileActionBar({ contact }: { contact: ContactInfo }) {
   const tab = "ios-press flex flex-1 flex-col items-center gap-0.5 rounded-2xl py-1.5 text-[10.5px] font-medium text-navy-800/80";
   return (
     <nav
@@ -10,7 +11,7 @@ export default function MobileActionBar() {
       className="ios-glass fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.08] pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       <div className="mx-auto flex max-w-md items-stretch gap-1 px-3 pt-1.5 pb-1">
-        <a href={telHref()} className={tab} data-analytics="phone-click">
+        <a href={telHref(contact.phoneE164)} className={tab} data-analytics="phone-click">
           <Phone className="size-[22px]" aria-hidden />
           Call
         </a>
@@ -23,7 +24,7 @@ export default function MobileActionBar() {
           Estimate
         </a>
         <a
-          href={whatsappLink("Hi Abbie's Clean Method! I'd like to ask about a cleaning.")}
+          href={whatsappLink("Hi Abbie's Clean Method! I'd like to ask about a cleaning.", contact.whatsappE164)}
           target="_blank"
           rel="noopener noreferrer"
           className={tab}

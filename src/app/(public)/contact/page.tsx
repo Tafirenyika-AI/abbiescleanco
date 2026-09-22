@@ -3,7 +3,7 @@ import { Phone, Mail, MessageCircle, Clock, MapPin, AlertCircle } from "lucide-r
 import Section, { Eyebrow } from "@/components/ui/Section";
 import ContactForm from "@/components/contact/ContactForm";
 import { business, telHref, mailtoHref, whatsappLink } from "@/lib/data/business";
-import { getBusinessHours } from "@/lib/server/siteSettings";
+import { getBusinessHours, getContactInfo } from "@/lib/server/siteSettings";
 import { listServiceAreas } from "@/lib/server/content";
 
 export const metadata: Metadata = {
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 export default async function ContactPage() {
-  const [hours, areas] = await Promise.all([getBusinessHours(), listServiceAreas(true)]);
+  const [hours, areas, contact] = await Promise.all([getBusinessHours(), listServiceAreas(true), getContactInfo()]);
 
   return (
     <>
@@ -34,15 +34,15 @@ export default async function ContactPage() {
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-5">
           <div className="lg:col-span-2">
             <div className="space-y-4">
-              <a href={telHref()} className="flex items-center gap-3 rounded-2xl border border-surface-200 p-4 hover:border-teal-400">
+              <a href={telHref(contact.phoneE164)} className="flex items-center gap-3 rounded-2xl border border-surface-200 p-4 hover:border-teal-400">
                 <Phone className="size-5 text-teal-600" aria-hidden />
                 <div>
                   <p className="text-sm font-semibold text-navy-950">Call or text</p>
-                  <p className="text-sm text-surface-700">{business.phoneDisplay}</p>
+                  <p className="text-sm text-surface-700">{contact.phoneDisplay}</p>
                 </div>
               </a>
               <a
-                href={whatsappLink("Hi Abbie's Clean Method! I'd like to ask about a cleaning.")}
+                href={whatsappLink("Hi Abbie's Clean Method! I'd like to ask about a cleaning.", contact.whatsappE164)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 rounded-2xl border border-surface-200 p-4 hover:border-teal-400"
@@ -53,11 +53,11 @@ export default async function ContactPage() {
                   <p className="text-sm text-surface-700">Message us anytime</p>
                 </div>
               </a>
-              <a href={mailtoHref()} className="flex items-center gap-3 rounded-2xl border border-surface-200 p-4 hover:border-teal-400">
+              <a href={mailtoHref(undefined, contact.email)} className="flex items-center gap-3 rounded-2xl border border-surface-200 p-4 hover:border-teal-400">
                 <Mail className="size-5 text-teal-600" aria-hidden />
                 <div>
                   <p className="text-sm font-semibold text-navy-950">Email</p>
-                  <p className="break-all text-sm text-surface-700">{business.email}</p>
+                  <p className="break-all text-sm text-surface-700">{contact.email}</p>
                 </div>
               </a>
 

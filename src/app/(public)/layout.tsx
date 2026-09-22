@@ -7,7 +7,8 @@ import MobileActionBar from "@/components/layout/MobileActionBar";
 import InstallPrompt from "@/components/layout/InstallPrompt";
 import GuestAssistantWidget from "@/components/layout/GuestAssistantWidget";
 import { business } from "@/lib/data/business";
-import { getBranding } from "@/lib/server/siteSettings";
+import { getBranding, getContactInfo, getBusinessHours, getSocialLinks } from "@/lib/server/siteSettings";
+import { listServiceAreas } from "@/lib/server/content";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -46,32 +47,45 @@ export const metadata: Metadata = {
   },
 };
 
-const localBusinessSchema = {
-  "@context": "https://schema.org",
-  "@type": "HomeAndConstructionBusiness",
-  name: business.name,
-  description: business.tagline,
-  telephone: business.phoneE164,
-  email: business.email,
-  areaServed: business.areaServed.map((a) => ({ "@type": "City", name: a })),
-  address: {
-    "@type": "PostalAddress",
-    addressLocality: business.city,
-    addressRegion: business.region,
-    addressCountry: "US",
-  },
-  openingHoursSpecification: business.hoursSchema.map((h) => ({
-    "@type": "OpeningHoursSpecification",
-    dayOfWeek: h.dayOfWeek,
-    opens: h.opens,
-    closes: h.closes,
-  })),
-  sameAs: [business.social.tiktok, business.social.facebook].filter(Boolean),
-  url: siteUrl,
-};
-
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const branding = await getBranding();
+  const [branding, contact, hours, social, serviceAreas] = await Promise.all([
+    getBranding(),
+    getContactInfo(),
+    getBusinessHours(),
+    getSocialLinks(),
+    listServiceAreas(true),
+  ]);
+  const areaNames = serviceAreas.length > 0 ? serviceAreas.map((a) => a.name) : [...business.areaServed];
+
+  // Built here (not at module scope) so the SEO structured data reflects whatever's actually
+  // saved in /admin/settings right now, not the static file's defaults -- opening hours are the
+  // one field still sourced from the static schema, since the admin-editable hours are free-text
+  // ("8:00 AM – 6:00 PM") and schema.org needs structured 24h times; day-to-day precision there
+  // isn't worth the risk of mis-parsing free text into wrong structured hours.
+  const localBusinessSchema = {
+    "@context": "https://schema.org",
+    "@type": "HomeAndConstructionBusiness",
+    name: business.name,
+    description: business.tagline,
+    telephone: contact.phoneE164,
+    email: contact.email,
+    areaServed: areaNames.map((a) => ({ "@type": "City", name: a })),
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: business.city,
+      addressRegion: business.region,
+      addressCountry: "US",
+    },
+    openingHoursSpecification: business.hoursSchema.map((h) => ({
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: h.dayOfWeek,
+      opens: h.opens,
+      closes: h.closes,
+    })),
+    sameAs: [social.tiktok, social.facebook].filter(Boolean),
+    url: siteUrl,
+  };
+
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <head>
@@ -93,12 +107,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         >
           Skip to main content
         </a>
-        <SiteHeader logoUrl={branding.logoUrl} />
+        <SiteHeader logoUrl={branding.logoUrl} contact={contact} hours={hours} />
         <main id="main-content" className="flex-1 has-mobile-actionbar">
           {children}
         </main>
-        <SiteFooter />
-        <MobileActionBar />
+        <SiteFooter contact={contact} social={social} />
+        <MobileActionBar contact={contact} />
         <InstallPrompt />
         <GuestAssistantWidget />
       </body>

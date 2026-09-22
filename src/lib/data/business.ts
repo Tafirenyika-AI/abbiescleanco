@@ -41,15 +41,21 @@ export const business = {
   },
 } as const;
 
-export function whatsappLink(prefilledMessage: string) {
+/**
+ * These three accept an optional live override so pages that fetched the admin-editable contact
+ * info (see getContactInfo in siteSettings.ts) can use the real current number/address instead of
+ * this file's static fallback. Omit the override and you get the static default, unchanged --
+ * every existing call site keeps working exactly as before.
+ */
+export function whatsappLink(prefilledMessage: string, whatsappE164: string = business.whatsappE164) {
   const text = encodeURIComponent(prefilledMessage);
-  return `https://wa.me/${business.whatsappE164}?text=${text}`;
+  return `https://wa.me/${whatsappE164}?text=${text}`;
 }
 
-export function telHref() {
-  return `tel:${business.phoneE164}`;
+export function telHref(phoneE164: string = business.phoneE164) {
+  return `tel:${phoneE164}`;
 }
 
-export function mailtoHref(subject?: string) {
-  return subject ? `mailto:${business.email}?subject=${encodeURIComponent(subject)}` : `mailto:${business.email}`;
+export function mailtoHref(subject?: string, email: string = business.email) {
+  return subject ? `mailto:${email}?subject=${encodeURIComponent(subject)}` : `mailto:${email}`;
 }

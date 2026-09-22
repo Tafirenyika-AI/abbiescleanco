@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/server/requireAdmin";
 import { getBusinessHours, setBusinessHours } from "@/lib/server/siteSettings";
 
@@ -27,5 +28,6 @@ export async function PUT(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ ok: false, error: "Validation failed", issues: parsed.error.issues }, { status: 400 });
 
   await setBusinessHours(parsed.data.hours);
+  revalidatePath("/", "layout");
   return NextResponse.json({ ok: true });
 }

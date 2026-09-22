@@ -5,6 +5,7 @@ import Button from "@/components/ui/Button";
 import { business, whatsappLink } from "@/lib/data/business";
 import { getAvailableSlots } from "@/lib/server/bookingAvailability";
 import { getPricingConfig } from "@/lib/server/pricingStore";
+import { getContactInfo } from "@/lib/server/siteSettings";
 
 /** Real next open slot for the most-requested service, scanned a couple weeks out. Cached by the homepage's own ISR window (60s) -- a friendly heads-up, not a booking guarantee. */
 async function nextOpening() {
@@ -27,7 +28,7 @@ async function nextOpening() {
 }
 
 export default async function Hero() {
-  const opening = await nextOpening();
+  const [opening, contact] = await Promise.all([nextOpening(), getContactInfo()]);
 
   return (
     <section className="relative isolate flex min-h-[78vh] items-end overflow-hidden bg-navy-950 sm:min-h-[92vh]" aria-labelledby="hero-heading">
@@ -65,7 +66,7 @@ export default async function Hero() {
               Get My Free Estimate
             </Button>
             <Button
-              href={whatsappLink("Hi Abbie's Clean Method! I'd like to ask about a cleaning.")}
+              href={whatsappLink("Hi Abbie's Clean Method! I'd like to ask about a cleaning.", contact.whatsappE164)}
               external
               variant="outline"
               size="lg"

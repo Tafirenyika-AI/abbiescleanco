@@ -2,11 +2,12 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { verifyAdminSessionToken, ADMIN_SESSION_COOKIE } from "@/lib/server/adminAuth";
 import { getAdminProfile, hasPermission } from "@/lib/server/adminUsers";
-import { getBusinessHours, getSocialLinks, getBranding } from "@/lib/server/siteSettings";
+import { getBusinessHours, getSocialLinks, getBranding, getContactInfo } from "@/lib/server/siteSettings";
 import { getIntegrationStatus } from "@/lib/server/integrationSettings";
 import HoursAndSocialManager from "@/components/admin/settings/HoursAndSocialManager";
 import IntegrationsManager from "@/components/admin/settings/IntegrationsManager";
 import BrandingManager from "@/components/admin/settings/BrandingManager";
+import ContactInfoManager from "@/components/admin/settings/ContactInfoManager";
 
 export default async function AdminSettingsPage() {
   const cookieStore = await cookies();
@@ -20,10 +21,11 @@ export default async function AdminSettingsPage() {
     redirect("/admin");
   }
 
-  const [hours, social, branding, integrationStatus] = await Promise.all([
+  const [hours, social, branding, contact, integrationStatus] = await Promise.all([
     canManageContent ? getBusinessHours() : Promise.resolve(null),
     canManageContent ? getSocialLinks() : Promise.resolve(null),
     canManageContent ? getBranding() : Promise.resolve(null),
+    canManageContent ? getContactInfo() : Promise.resolve(null),
     canManageIntegrations ? getIntegrationStatus() : Promise.resolve(null),
   ]);
 
@@ -34,6 +36,8 @@ export default async function AdminSettingsPage() {
 
       <div className="mt-6 space-y-10">
         {canManageContent && branding && <BrandingManager initialBranding={branding} />}
+
+        {canManageContent && contact && <ContactInfoManager initialContact={contact} />}
 
         {canManageContent && hours && social && (
           <HoursAndSocialManager initialHours={hours} initialSocial={social} />

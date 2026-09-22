@@ -8,6 +8,7 @@ import Container from "@/components/ui/Container";
 import Button from "@/components/ui/Button";
 import { services, isServiceId } from "@/lib/data/services";
 import { business, whatsappLink } from "@/lib/data/business";
+import { getContactInfo } from "@/lib/server/siteSettings";
 import { serviceIcons } from "@/lib/serviceIcons";
 import { getServiceContentById } from "@/lib/server/servicesContent";
 
@@ -34,7 +35,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function ServiceDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   if (!isServiceId(slug)) notFound();
-  const service = await getServiceContentById(slug);
+  const [service, contact] = await Promise.all([getServiceContentById(slug), getContactInfo()]);
   if (!service) notFound();
   const ServiceIcon = serviceIcons[service.id];
 
@@ -101,7 +102,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
                 Get a quote for this service
               </Button>
               <Button
-                href={whatsappLink(`Hi Abbie's Clean Method! I'd like to ask about ${service.name}.`)}
+                href={whatsappLink(`Hi Abbie's Clean Method! I'd like to ask about ${service.name}.`, contact.whatsappE164)}
                 external
                 variant="outline"
                 size="lg"

@@ -3,6 +3,7 @@ import { services, type ServiceId } from "@/lib/data/services";
 import { getPricingConfig } from "@/lib/server/pricingStore";
 import { getServicePriceLabel } from "@/lib/pricing";
 import { listServiceAreas } from "@/lib/server/content";
+import { getContactInfo, getBusinessHours } from "@/lib/server/siteSettings";
 
 /**
  * Public/guest counterpart to the admin and customer Abbie Assistants -- blueprint section 4's
@@ -34,15 +35,24 @@ const tools: Tool[] = [
   },
   {
     match: (q) => /(hour|open|close|when.*(open|available))/.test(q),
-    run: async () => ({ type: "answer", text: business.hours.map((h) => `${h.days}: ${h.time}`).join(" · ") }),
+    run: async () => {
+      const hours = await getBusinessHours();
+      return { type: "answer", text: hours.map((h) => `${h.days}: ${h.time}`).join(" · ") };
+    },
   },
   {
     match: (q) => /(phone|call|contact|email|reach you)/.test(q),
-    run: async () => ({ type: "answer", text: `Call or text ${business.phoneDisplay}, or email ${business.email}.` }),
+    run: async () => {
+      const contact = await getContactInfo();
+      return { type: "answer", text: `Call or text ${contact.phoneDisplay}, or email ${contact.email}.` };
+    },
   },
   {
     match: (q) => /(whatsapp)/.test(q),
-    run: async () => ({ type: "navigate", text: "Opening WhatsApp…", href: whatsappLink("Hi Abbie's Clean Method! I have a question.") }),
+    run: async () => {
+      const contact = await getContactInfo();
+      return { type: "navigate", text: "Opening WhatsApp…", href: whatsappLink("Hi Abbie's Clean Method! I have a question.", contact.whatsappE164) };
+    },
   },
   {
     match: (q) => /(price|cost|how much|rate)/.test(q),
@@ -75,5 +85,6 @@ export async function resolveGuestAssistantQuery(rawQuery: string): Promise<Gues
   for (const tool of tools) {
     if (tool.match(q)) return tool.run();
   }
-  return { type: "unknown", text: `I'm not sure about that one — try asking: ${EXAMPLES.join(", ")}. For anything else, call/text ${business.phoneDisplay}.` };
+  const contact = await getContactInfo();
+  return { type: "unknown", text: `I'm not sure about that one — try asking: ${EXAMPLES.join(", ")}. For anything else, call/text ${contact.phoneDisplay}.` };
 }

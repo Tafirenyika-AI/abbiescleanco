@@ -4,11 +4,12 @@ import { Phone, Mail, MapPin } from "lucide-react";
 import Container from "@/components/ui/Container";
 import { business, telHref, mailtoHref, whatsappLink } from "@/lib/data/business";
 import { services } from "@/lib/data/services";
-import { getSocialLinks, getBranding } from "@/lib/server/siteSettings";
+import { getBranding } from "@/lib/server/siteSettings";
+import type { ContactInfo, SocialLinks } from "@/lib/server/siteSettings";
 
-export default async function SiteFooter() {
+export default async function SiteFooter({ contact, social }: { contact: ContactInfo; social: SocialLinks }) {
   const year = new Date().getFullYear();
-  const [social, branding] = await Promise.all([getSocialLinks(), getBranding()]);
+  const branding = await getBranding();
 
   return (
     <footer className="bg-navy-950 text-surface-200">
@@ -71,18 +72,18 @@ export default async function SiteFooter() {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-white">Get in touch</h2>
           <ul className="mt-4 space-y-3 text-sm">
             <li>
-              <a href={telHref()} className="flex items-center gap-2 hover:text-teal-300">
-                <Phone className="size-4 shrink-0" aria-hidden /> {business.phoneDisplay}
+              <a href={telHref(contact.phoneE164)} className="flex items-center gap-2 hover:text-teal-300">
+                <Phone className="size-4 shrink-0" aria-hidden /> {contact.phoneDisplay}
               </a>
             </li>
             <li>
-              <a href={mailtoHref()} className="flex items-center gap-2 hover:text-teal-300 break-all">
-                <Mail className="size-4 shrink-0" aria-hidden /> {business.email}
+              <a href={mailtoHref(undefined, contact.email)} className="flex items-center gap-2 hover:text-teal-300 break-all">
+                <Mail className="size-4 shrink-0" aria-hidden /> {contact.email}
               </a>
             </li>
             <li>
               <a
-                href={whatsappLink("Hi Abbie's Clean Method! I have a question.")}
+                href={whatsappLink("Hi Abbie's Clean Method! I have a question.", contact.whatsappE164)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-teal-300"

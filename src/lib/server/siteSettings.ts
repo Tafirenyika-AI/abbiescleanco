@@ -42,6 +42,36 @@ export async function setSocialLinks(links: SocialLinks): Promise<void> {
   });
 }
 
+export interface ContactInfo {
+  phoneDisplay: string;
+  phoneE164: string;
+  whatsappE164: string;
+  email: string;
+}
+
+const defaultContactInfo: ContactInfo = {
+  phoneDisplay: defaultBusiness.phoneDisplay,
+  phoneE164: defaultBusiness.phoneE164,
+  whatsappE164: defaultBusiness.whatsappE164,
+  email: defaultBusiness.email,
+};
+
+/** The real phone/WhatsApp/email used site-wide (footer, header, contact page, emails, the guest assistant). Editing this in /admin/settings changes every one of those the next time each page renders -- no code redeploy needed. */
+export async function getContactInfo(): Promise<ContactInfo> {
+  if (!isDatabaseConfigured || !prisma) return { ...defaultContactInfo };
+  const row = await prisma.businessSetting.findUnique({ where: { key: "contact_info" } });
+  return { ...defaultContactInfo, ...(row?.value as Partial<ContactInfo> | undefined) };
+}
+
+export async function setContactInfo(info: ContactInfo): Promise<void> {
+  if (!isDatabaseConfigured || !prisma) throw new Error("Requires DATABASE_URL to be configured.");
+  await prisma.businessSetting.upsert({
+    where: { key: "contact_info" },
+    update: { value: info as unknown as Prisma.InputJsonValue },
+    create: { key: "contact_info", value: info as unknown as Prisma.InputJsonValue },
+  });
+}
+
 export interface BrandingSettings {
   logoUrl: string | null;
 }
