@@ -1,7 +1,7 @@
 import { prisma, isDatabaseConfigured } from "@/lib/db";
 import { getPricingConfig } from "@/lib/server/pricingStore";
 import { getAvailableSlots } from "@/lib/server/bookingAvailability";
-import { findConflicts } from "@/lib/server/bookingStore";
+import { findConflicts, withSlotLock, SlotConflictError } from "@/lib/server/bookingStore";
 import { notifyAdmins } from "@/lib/server/notificationStore";
 import { isTrustedMediaUrl } from "@/lib/server/mediaUpload";
 import { serviceIds } from "@/lib/validation/quote";
@@ -209,7 +209,15 @@ export async function requestReschedule(customerId: string, bookingId: string, s
   if (!slots.some((s) => s.startISO === start.toISOString() && s.endISO === end.toISOString())) return { ok: false, error: "That time isn't available — please pick another" };
   if ((await findConflicts(start, end, bookingId)).length > 0) return { ok: false, error: "That time was just taken — please pick another" };
 
-  await db().booking.update({ where: { id: bookingId }, data: { scheduledStart: start, scheduledEnd: end, status: "REQUESTED" } });
+  try {
+    await withSlotLock(async (tx) => {
+      if ((await findConflicts(start, end, bookingId, tx)).length > 0) throw new SlotConflictError();
+      await tx.booking.update({ where: { id: bookingId }, data: { scheduledStart: start, scheduledEnd: end, status: "REQUESTED" } });
+    });
+  } catch (err) {
+    if (err instanceof SlotConflictError) return { ok: false, error: "That time was just taken — please pick another" };
+    throw err;
+  }
   const label = start.toLocaleString("en-US", { timeZone: "America/Los_Angeles", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   await db().bookingStatusHistory.create({ data: { bookingId, fromStatus: b.status, toStatus: "REQUESTED", note: `Customer requested a new time: ${label}${reason ? ` — ${reason.slice(0, 300)}` : ""}` } });
   await db().clientNote.create({ data: { customerId, bookingId, leadId: b.leadId, kind: "RESCHEDULE_REQUEST", body: `Asked to move to ${label}.${reason ? ` ${reason.slice(0, 500)}` : ""}`, authorName: `${b.customer.firstName} ${b.customer.lastName}`.trim() } });

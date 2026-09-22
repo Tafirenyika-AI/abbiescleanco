@@ -1,10 +1,43 @@
 import { prisma, isDatabaseConfigured } from "@/lib/db";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import { generateReference } from "@/lib/reference";
 import { scheduleBookingConfirmationAndReminders, schedulePostServiceThankYou } from "@/lib/server/automationStore";
 
 function db() {
   if (!isDatabaseConfigured || !prisma) throw new Error("Bookings require DATABASE_URL to be configured.");
   return prisma;
+}
+
+type QueryClient = PrismaClient | Prisma.TransactionClient;
+
+/** Thrown inside {@link withSlotLock} when the authoritative re-check finds the slot is no longer free. */
+export class SlotConflictError extends Error {}
+
+/**
+ * Two concurrent requests can both pass a plain `findConflicts` check before either has written
+ * its booking (classic check-then-act race) -- a customer double-clicking, or two different
+ * customers, could otherwise both land a booking in the same slot. This re-runs the conflict
+ * check and the write inside one Postgres SERIALIZABLE transaction, so Postgres itself detects
+ * the write-write/write-read conflict and aborts the loser with a serialization failure (error
+ * 40001 / Prisma code P2034) instead of letting both commits succeed -- retried a couple of
+ * times since a serialization failure is expected to happen occasionally under real contention
+ * and is meant to be retried, not treated as a hard error.
+ */
+export async function withSlotLock<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+  const client = db();
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await client.$transaction(fn, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    } catch (err) {
+      lastErr = err;
+      const isSerializationFailure =
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        (err.code === "P2034" || (typeof err.meta?.code === "string" && err.meta.code === "40001"));
+      if (!isSerializationFailure) throw err;
+    }
+  }
+  throw lastErr;
 }
 
 export const BOOKING_STATUSES = ["REQUESTED", "CONFIRMED", "SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "RESCHEDULED"] as const;
@@ -107,10 +140,14 @@ export async function getBookingById(id: string): Promise<BookingDetail | null> 
   };
 }
 
-/** Bookings whose windows overlap the given range, excluding a specific booking (used when rescheduling it). */
-export async function findConflicts(scheduledStart: Date, scheduledEnd: Date, excludeBookingId?: string): Promise<BookingListItem[]> {
+/**
+ * Bookings whose windows overlap the given range, excluding a specific booking (used when
+ * rescheduling it). Pass `client` (a transaction handle from {@link withSlotLock}) when this
+ * check must be authoritative rather than a best-effort early check -- see that function's doc.
+ */
+export async function findConflicts(scheduledStart: Date, scheduledEnd: Date, excludeBookingId?: string, client?: QueryClient): Promise<BookingListItem[]> {
   if (!isDatabaseConfigured || !prisma) return [];
-  const bookings = await prisma.booking.findMany({
+  const bookings = await (client ?? prisma).booking.findMany({
     where: {
       deletedAt: null,
       id: excludeBookingId ? { not: excludeBookingId } : undefined,
@@ -285,19 +322,28 @@ export async function createSelfServiceBooking(
     },
   });
 
-  const booking = await db().booking.create({
-    data: {
-      reference: generateReference("B"),
-      leadId: lead.id,
-      quoteId: quote.id,
-      customerId: lead.customerId,
-      addressId: lead.addressId,
-      status: "REQUESTED",
-      scheduledStart: start,
-      scheduledEnd: end,
-      statusHistory: { create: { toStatus: "REQUESTED", note: "Self-service booking request" } },
-    },
-  });
+  let booking: { id: string; reference: string };
+  try {
+    booking = await withSlotLock(async (tx) => {
+      if ((await findConflicts(start, end, undefined, tx)).length > 0) throw new SlotConflictError();
+      return tx.booking.create({
+        data: {
+          reference: generateReference("B"),
+          leadId: lead.id,
+          quoteId: quote.id,
+          customerId: lead.customerId as string,
+          addressId: lead.addressId as string,
+          status: "REQUESTED",
+          scheduledStart: start,
+          scheduledEnd: end,
+          statusHistory: { create: { toStatus: "REQUESTED", note: "Self-service booking request" } },
+        },
+      });
+    });
+  } catch (err) {
+    if (err instanceof SlotConflictError) return { ok: false, error: "That time was just booked — please pick another" };
+    throw err;
+  }
 
   return {
     ok: true,
@@ -354,19 +400,28 @@ export async function scheduleBookingFromLead(
     },
   });
 
-  const booking = await db().booking.create({
-    data: {
-      reference: generateReference("B"),
-      leadId: lead.id,
-      quoteId: quote.id,
-      customerId: lead.customerId,
-      addressId: lead.addressId,
-      status: "CONFIRMED",
-      scheduledStart: start,
-      scheduledEnd: end,
-      statusHistory: { create: { toStatus: "CONFIRMED", note: "Scheduled directly from the lead by admin" } },
-    },
-  });
+  let booking: { id: string };
+  try {
+    booking = await withSlotLock(async (tx) => {
+      if ((await findConflicts(start, end, undefined, tx)).length > 0) throw new SlotConflictError();
+      return tx.booking.create({
+        data: {
+          reference: generateReference("B"),
+          leadId: lead.id,
+          quoteId: quote.id,
+          customerId: lead.customerId as string,
+          addressId: lead.addressId as string,
+          status: "CONFIRMED",
+          scheduledStart: start,
+          scheduledEnd: end,
+          statusHistory: { create: { toStatus: "CONFIRMED", note: "Scheduled directly from the lead by admin" } },
+        },
+      });
+    });
+  } catch (err) {
+    if (err instanceof SlotConflictError) return { ok: false, error: "That time conflicts with an existing booking" };
+    throw err;
+  }
 
   await scheduleBookingConfirmationAndReminders(booking.id, start);
 
@@ -445,19 +500,28 @@ export async function createAdminBooking(data: {
     },
   });
 
-  const booking = await db().booking.create({
-    data: {
-      reference: generateReference("B"),
-      leadId: lead.id,
-      quoteId: quote.id,
-      customerId: customer.id,
-      addressId: address.id,
-      status: "CONFIRMED",
-      scheduledStart: start,
-      scheduledEnd: end,
-      statusHistory: { create: { toStatus: "CONFIRMED", note: "Created directly by admin" } },
-    },
-  });
+  let booking: { id: string };
+  try {
+    booking = await withSlotLock(async (tx) => {
+      if ((await findConflicts(start, end, undefined, tx)).length > 0) throw new SlotConflictError();
+      return tx.booking.create({
+        data: {
+          reference: generateReference("B"),
+          leadId: lead.id,
+          quoteId: quote.id,
+          customerId: customer.id,
+          addressId: address.id,
+          status: "CONFIRMED",
+          scheduledStart: start,
+          scheduledEnd: end,
+          statusHistory: { create: { toStatus: "CONFIRMED", note: "Created directly by admin" } },
+        },
+      });
+    });
+  } catch (err) {
+    if (err instanceof SlotConflictError) return { ok: false, error: "That time conflicts with an existing booking" };
+    throw err;
+  }
 
   await scheduleBookingConfirmationAndReminders(booking.id, start);
 

@@ -1,0 +1,27 @@
+# Integrations
+
+Every row below reflects an actual check of `integrationSettings.ts`, `.env.example`, and the code path that would use the credential — not the blueprint's aspirational list. "Wired" means real code calls the provider when a credential is present; "Adapter exists, no credential" means the mock-fallback code path is the only one ever exercised so far; "Not wired" means no code reads the credential at all yet, even though a settings field or env var exists for it.
+
+| Provider | Purpose | Status | Credential entered? |
+|---|---|---|---|
+| Neon Postgres | Primary database | **Wired, live** | Yes — `DATABASE_URL` set, real data in it. |
+| Resend | Transactional email | **Wired**, mock fallback | Not confirmed — falls back to console-logged mock if unset; not verified either way this session. |
+| Twilio | SMS/WhatsApp-adjacent notifications | **Wired**, mock fallback | Same as above — not confirmed. |
+| Stripe | Card/Apple Pay/Google Pay checkout + webhook | **Wired**, mock fallback | **No** — owner has not entered a key. Real Stripe flow (including the webhook) has never been tested end-to-end against a real Stripe account. |
+| Vercel Blob | Object storage for uploads | **Wired** | Conditional — used automatically when `BLOB_READ_WRITE_TOKEN` is present (Vercel sets this itself once Blob is provisioned on the project); local disk fallback otherwise, confirmed working this session. |
+| Anthropic (Claude) | Vision model for the photo estimate | **Wired**, mock fallback | **No** — owner has not entered a key. Verified only against a mock vision server this session; real model behavior on real cleaning photos is untested. |
+| Google Maps | ZIP/service-area validation | **Not wired.** Settings field exists (`googleMapsApiKey`); ZIP is plain free-text validated by regex only. | N/A |
+| Google Calendar | Appointment sync | **Not wired.** Four env vars exist in `.env.example` (client ID/secret/refresh token/calendar ID); no code reads them. | N/A |
+| Cloudflare Turnstile | Bot protection | **Not wired.** Settings fields exist (site key + secret); no form actually renders a Turnstile widget or verifies a token server-side. The quote form's only anti-bot measure is a honeypot field. | N/A |
+| Sentry | Error reporting | **Not wired.** Settings field exists (`sentryDsn`); no Sentry SDK is installed or initialized. | N/A |
+| Google Analytics 4 | Analytics | **Not wired — no env var is even read anywhere**, despite `NEXT_PUBLIC_GA4_MEASUREMENT_ID` existing in `.env.example`. No analytics event of any kind fires from this app today. | N/A |
+| Google/Apple/Facebook OAuth | Social login | **Does not exist.** No library, no route, no settings field. | N/A |
+| Google Business Profile, Google Ads, Search Console, Meta/Instagram/Facebook/TikTok | Marketing distribution (blueprint §3.2) | **Does not exist.** No adapter, no data model. | N/A |
+| QuickBooks (or any accounting platform) | Accounting sync (blueprint §3.6) | **Does not exist.** | N/A |
+
+## What this means for the owner
+
+Nothing above is a code problem — every "not wired" integration is legitimately blocked on either a credential the owner hasn't provided, a developer-app registration (OAuth, Google Business Profile) that requires the owner's business identity, or a scope of work (marketing/accounting integrations) not yet started per the audit in `docs/REPO_AUDIT.md` §5. The two highest-value near-term unlocks, since the code is already written and waiting:
+
+1. **Stripe secret key + webhook signing secret** (`/admin/settings` → Integrations) — unlocks real card/Apple Pay/Google Pay payments. Test in Stripe test mode first; there's no Stripe CLI installed on the dev machine, so use Stripe's dashboard "send test webhook event" feature or a real test-mode Checkout session to verify the webhook path once the key is in.
+2. **Anthropic API key** (same Settings page) — unlocks real AI photo assessment instead of the "standard assumptions" fallback. Recommend trying it on a handful of real before/after photos before promoting `/estimate/photos` publicly, since the mock-server testing done this session proves the *plumbing* (price always from the pricing engine, crew-only notes hidden from the customer, honeypot/rate-limit/cross-origin protections) but says nothing about real-model accuracy.
