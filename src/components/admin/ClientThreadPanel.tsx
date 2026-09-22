@@ -61,9 +61,11 @@ export default function ClientThreadPanel({ leadId, bookingId }: { leadId?: stri
       {atts.length > 0 && (
         <ul className="grid grid-cols-3 gap-2">
           {atts.map((a) => (
-            <li key={a.id} className="overflow-hidden rounded-lg bg-admin-bg">
+            <li key={a.id} className={`overflow-hidden rounded-lg bg-admin-bg ${a.kind === "AUDIO" ? "col-span-3 flex items-center px-2 py-1.5" : ""}`}>
               {a.kind === "VIDEO" ? (
                 <video src={a.url} controls preload="metadata" className="aspect-square w-full object-cover" />
+              ) : a.kind === "AUDIO" ? (
+                <audio src={a.url} controls preload="metadata" className="w-full" />
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
                 <a href={a.url} target="_blank" rel="noopener noreferrer"><img src={a.url} alt={a.caption || "Client photo"} className="aspect-square w-full object-cover" /></a>

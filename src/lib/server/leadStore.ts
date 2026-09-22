@@ -1,5 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
+import { createHash } from "crypto";
 import { prisma, isDatabaseConfigured } from "@/lib/db";
 import { generateReference } from "@/lib/reference";
 import type { QuoteRequestInput } from "@/lib/validation/quote";
@@ -10,6 +11,17 @@ export { LEAD_STATUSES, leadStatusLabels, type LeadStatusValue, type StoredLead,
 
 const MOCK_DATA_DIR = path.join(process.cwd(), ".data");
 const MOCK_LEADS_FILE = path.join(MOCK_DATA_DIR, "leads.json");
+
+/**
+ * Deterministic fingerprint over (email, phone, service) — stored on every lead so duplicate
+ * detection is an indexed lookup, auditable after the fact, instead of only a live heuristic
+ * computed at submit time (see findRecentDuplicate below, which now uses this same fingerprint).
+ */
+function dedupFingerprint(email: string, phone: string, serviceId: string): string {
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedPhone = phone.replace(/\D/g, "");
+  return createHash("sha256").update(`${normalizedEmail}|${normalizedPhone}|${serviceId}`).digest("hex");
+}
 
 async function readMockLeads(): Promise<StoredLead[]> {
   try {
@@ -32,13 +44,11 @@ async function writeMockLeads(leads: StoredLead[]) {
  */
 export async function findRecentDuplicate(input: QuoteRequestInput): Promise<string | null> {
   const windowStart = new Date(Date.now() - 10 * 60 * 1000);
+  const fingerprint = dedupFingerprint(input.email, input.phone, input.service);
 
   if (isDatabaseConfigured && prisma) {
     const existing = await prisma.lead.findFirst({
-      where: {
-        createdAt: { gte: windowStart },
-        customer: { email: input.email, phone: input.phone },
-      },
+      where: { createdAt: { gte: windowStart }, dedupFingerprint: fingerprint },
       orderBy: { createdAt: "desc" },
     });
     return existing?.reference ?? null;
@@ -120,6 +130,7 @@ export async function createLead(input: QuoteRequestInput, estimate: EstimateRes
         utmMedium: input.utmMedium,
         utmContent: input.utmContent,
         referrer: input.referrer,
+        dedupFingerprint: dedupFingerprint(input.email, input.phone, input.service),
         preferredContactMethod: input.preferredContactMethod,
         additionalInstructions: input.additionalInstructions || null,
         promoCode: input.promoCode || null,

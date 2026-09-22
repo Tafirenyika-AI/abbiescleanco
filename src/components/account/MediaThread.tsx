@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Camera, Loader2, Send, Trash2, Video } from "lucide-react";
+import { Camera, Loader2, Mic, Send, Trash2, Video } from "lucide-react";
 import type { AttachmentItem, NoteItem } from "@/lib/server/clientPortalStore";
 
 const MAX_VIDEO_BYTES = 60 * 1024 * 1024;
+const MAX_AUDIO_BYTES = 15 * 1024 * 1024;
 
 /** Downscale big phone photos in the browser so uploads are fast and fit serverless body limits. */
 async function compressImage(file: File): Promise<File> {
@@ -93,6 +94,10 @@ export default function MediaThread({ target, readOnly = false }: { target: { le
         setError("Videos can be up to 60MB — try a shorter clip.");
         continue;
       }
+      if (original.type.startsWith("audio/") && original.size > MAX_AUDIO_BYTES) {
+        setError("Voice notes can be up to 15MB.");
+        continue;
+      }
       const isVideo = original.type.startsWith("video/");
       if (isVideo && (await uploadVideoDirect(original))) continue;
       const file = isVideo ? original : await compressImage(original);
@@ -123,15 +128,22 @@ export default function MediaThread({ target, readOnly = false }: { target: { le
       {attachments.length > 0 && (
         <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           {attachments.map((a) => (
-            <li key={a.id} className="relative overflow-hidden rounded-xl bg-surface-100 ring-1 ring-black/5">
+            <li key={a.id} className={`relative overflow-hidden rounded-xl bg-surface-100 ring-1 ring-black/5 ${a.kind === "AUDIO" ? "col-span-3 flex items-center px-3 py-2 sm:col-span-4" : ""}`}>
               {a.kind === "VIDEO" ? (
                 <video src={a.url} controls preload="metadata" className="aspect-square w-full object-cover" />
+              ) : a.kind === "AUDIO" ? (
+                <audio src={a.url} controls preload="metadata" className="w-full" />
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
                 <a href={a.url} target="_blank" rel="noopener noreferrer"><img src={a.url} alt={a.caption || "Uploaded photo"} className="aspect-square w-full object-cover" /></a>
               )}
               {a.uploadedBy === "CUSTOMER" && !readOnly && (
-                <button type="button" onClick={() => remove(a.id)} aria-label="Remove file" className="ios-press absolute right-1 top-1 rounded-full bg-black/55 p-1.5 text-white">
+                <button
+                  type="button"
+                  onClick={() => remove(a.id)}
+                  aria-label="Remove file"
+                  className={a.kind === "AUDIO" ? "ios-press ml-2 shrink-0 rounded-full bg-surface-200 p-1.5 text-navy-950" : "ios-press absolute right-1 top-1 rounded-full bg-black/55 p-1.5 text-white"}
+                >
                   <Trash2 className="size-3.5" aria-hidden />
                 </button>
               )}
@@ -166,8 +178,8 @@ export default function MediaThread({ target, readOnly = false }: { target: { le
               {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Send className="size-4" aria-hidden />} Send note
             </button>
             <label className="ios-press inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-surface-100 px-4 py-2 text-sm font-semibold text-navy-950">
-              <Camera className="size-4" aria-hidden /> <Video className="size-4" aria-hidden /> Add photos / video
-              <input ref={fileRef} type="file" accept="image/*,video/mp4,video/quicktime,video/webm" multiple className="sr-only" onChange={(e) => onFiles(e.target.files)} />
+              <Camera className="size-4" aria-hidden /> <Video className="size-4" aria-hidden /> <Mic className="size-4" aria-hidden /> Add photos / video / voice note
+              <input ref={fileRef} type="file" accept="image/*,video/mp4,video/quicktime,video/webm,audio/mpeg,audio/wav,audio/ogg,audio/mp4,audio/x-m4a,.mp3,.wav,.ogg,.m4a" multiple className="sr-only" onChange={(e) => onFiles(e.target.files)} />
             </label>
           </div>
           {error && <p role="alert" className="text-sm text-red-700">{error}</p>}

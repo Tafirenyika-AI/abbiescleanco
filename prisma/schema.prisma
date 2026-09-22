@@ -229,6 +229,7 @@ model Lead {
   utmMedium    String?    // UTM medium, if present (e.g. cpc, email, social)
   utmContent   String?    // UTM content, if present (ad/creative variant)
   referrer     String?    // document.referrer at submit time, if any (attribution for non-UTM traffic)
+  dedupFingerprint String? // sha256(email|phone|serviceId), indexed — makes duplicate detection auditable/queryable, not just a live heuristic
 
   serviceId    String
   service      ServiceCatalogItem @relation(fields: [serviceId], references: [id])
@@ -253,6 +254,7 @@ model Lead {
 
   @@index([status])
   @@index([createdAt])
+  @@index([dedupFingerprint])
   @@map("leads")
 }
 

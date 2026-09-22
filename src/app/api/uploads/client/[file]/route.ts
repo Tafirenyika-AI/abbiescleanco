@@ -7,11 +7,11 @@ import path from "path";
  * serves files that existed in public/ at build time, so runtime uploads need their own route.
  * The filename is strictly validated (32 hex chars + known extension), so no path traversal.
  */
-const TYPES: Record<string, string> = { jpg: "image/jpeg", png: "image/png", webp: "image/webp", mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm" };
+const TYPES: Record<string, string> = { jpg: "image/jpeg", png: "image/png", webp: "image/webp", mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm", wav: "audio/wav", mp3: "audio/mpeg", ogg: "audio/ogg", m4a: "audio/mp4" };
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ file: string }> }) {
   const { file } = await params;
-  const m = /^[a-f0-9]{32}\.(jpg|png|webp|mp4|mov|webm)$/.exec(file);
+  const m = /^[a-f0-9]{32}\.(jpg|png|webp|mp4|mov|webm|wav|mp3|ogg|m4a)$/.exec(file);
   if (!m) return NextResponse.json({ ok: false }, { status: 404 });
   try {
     const buf = await fs.readFile(path.join(process.cwd(), "public", "uploads", "client", file));

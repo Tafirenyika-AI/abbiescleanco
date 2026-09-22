@@ -80,7 +80,7 @@ export async function addClientNote(customerId: string, target: { leadId?: strin
 export async function addClientAttachment(
   customerId: string,
   target: { leadId?: string; bookingId?: string },
-  media: { url: string; kind: "IMAGE" | "VIDEO"; mimeType: string; sizeBytes: number; caption?: string },
+  media: { url: string; kind: "IMAGE" | "VIDEO" | "AUDIO"; mimeType: string; sizeBytes: number; caption?: string },
   authorName?: string
 ): Promise<Result<{ attachment: AttachmentItem }>> {
   const t = await ownedTarget(customerId, target);
@@ -91,7 +91,8 @@ export async function addClientAttachment(
   const a = await db().attachment.create({
     data: { customerId, leadId: target.bookingId ? t.leadId : target.leadId, bookingId: target.bookingId, kind: media.kind, url: media.url, mimeType: media.mimeType, sizeBytes: media.sizeBytes, caption: media.caption?.slice(0, 300) || null, uploadedBy: "CUSTOMER" },
   });
-  await notifyAdmins("NEW_MESSAGE", `New ${media.kind === "VIDEO" ? "video" : "photo"} from ${authorName ?? "a customer"}`, media.caption?.slice(0, 140) || "The client added a file to their request.", target.bookingId ? `/admin/bookings/${target.bookingId}` : `/admin/leads`);
+  const kindLabel = media.kind === "VIDEO" ? "video" : media.kind === "AUDIO" ? "voice note" : "photo";
+  await notifyAdmins("NEW_MESSAGE", `New ${kindLabel} from ${authorName ?? "a customer"}`, media.caption?.slice(0, 140) || "The client added a file to their request.", target.bookingId ? `/admin/bookings/${target.bookingId}` : `/admin/leads`);
   return { ok: true, attachment: mapAtt(a) };
 }
 
