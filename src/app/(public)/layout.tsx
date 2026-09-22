@@ -5,6 +5,7 @@ import SiteHeader from "@/components/layout/SiteHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
 import MobileActionBar from "@/components/layout/MobileActionBar";
 import InstallPrompt from "@/components/layout/InstallPrompt";
+import GuestAssistantWidget from "@/components/layout/GuestAssistantWidget";
 import { business } from "@/lib/data/business";
 import { getBranding } from "@/lib/server/siteSettings";
 
@@ -99,6 +100,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <SiteFooter />
         <MobileActionBar />
         <InstallPrompt />
+        <GuestAssistantWidget />
       </body>
     </html>
   );
