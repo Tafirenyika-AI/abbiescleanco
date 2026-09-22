@@ -5,6 +5,7 @@ import { getProfile } from "@/lib/server/accounts";
 import { getMyRequests, getMyQuotes, getMyBookings, getMyPayments } from "@/lib/server/customerHistory";
 import Section from "@/components/ui/Section";
 import AccountDashboard from "@/components/account/AccountDashboard";
+import AssistantWidget from "@/components/account/AssistantWidget";
 
 // Real account history (requests/quotes/bookings/payments) -- never cache this per-customer page.
 export const dynamic = "force-dynamic";
@@ -31,6 +32,7 @@ export default async function AccountPage() {
           <AccountDashboard profile={profile} requests={requests} quotes={quotes} bookings={bookings} payments={payments} />
         </div>
       </div>
+      {customerId && <AssistantWidget />}
     </Section>
   );
 }
