@@ -22,7 +22,7 @@ Remaining smaller items in this phase's spirit, not yet done:
 Remaining gaps:
 - **[decision]** Recurring service enrollment — `RecurringSchedule` model exists but is entirely unused; `recurringDiscountRates` exist in the pricing engine but are switched off pending owner-approved rates (a prior, deliberate decision, not an oversight). Needs the owner to confirm actual recurring pricing before this is worth building out.
 - ~~**[code]** `middleware.ts` defense-in-depth for admin routes~~ **Done 2026-09-21** — `src/proxy.ts` (Next 16 renamed the convention from `middleware.ts`; migrated via `@next/codemod`). See `docs/SECURITY.md` §2 and `docs/DECISIONS.md` D-8.
-- **[code]** The equivalent backstop does not exist for the customer-facing surface (`/api/account/*`) — every route there correctly calls `requireCustomer()` today (verified this and a prior session), but there's no proxy-level guarantee against a future route forgetting it, the same class of gap `src/proxy.ts` just closed for admin. Lower priority than the admin version was, since customer routes are less individually destructive if one is missed, but the same fix pattern applies.
+- ~~**[code]** The equivalent backstop for `/api/account/*`~~ **Done 2026-09-21** — `src/proxy.ts` now covers both surfaces (see `docs/DECISIONS.md` D-8, updated).
 
 ## Phase 3 — Payments, invoices, financial reporting
 

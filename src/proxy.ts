@@ -1,23 +1,29 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Defense-in-depth backstop for the whole /admin surface. Every admin route already checks auth
- * itself today -- API routes via requireAdmin() (src/lib/server/requireAdmin.ts), dashboard pages
- * via the (dashboard) layout's own session lookup+redirect -- so this middleware is deliberately
- * NOT the primary authorization mechanism. It exists so a route added later that forgets that
- * call fails closed (401 for APIs, redirect-to-login for pages) instead of silently being
- * reachable by anyone with no session at all. It only checks "is this a validly signed, unexpired
- * ADMIN-scoped session token" -- not fine-grained permissions, which stay in each route's own
- * requireAdmin(req, permission) call (that also does a DB lookup this middleware deliberately
- * avoids, to stay fast and dependency-free).
+ * Defense-in-depth backstop for the /admin and /api/account surfaces. Every route in both already
+ * checks auth itself today -- admin API routes via requireAdmin(), the admin dashboard pages via
+ * the (dashboard) layout's own session lookup+redirect, and /api/account/* routes via
+ * requireCustomer() (src/lib/server/customerContext.ts) -- so this proxy is deliberately NOT the
+ * primary authorization mechanism. It exists so a route added later that forgets that call fails
+ * closed (401 for APIs, redirect-to-login for admin pages) instead of silently being reachable by
+ * anyone with no session at all. It only checks "is this a validly signed, unexpired session token
+ * of the right scope" -- not fine-grained admin permissions (stay in requireAdmin(req, permission))
+ * and not the DB-backed "does this session's user actually have a linked Customer row" check (stays
+ * in requireCustomer()), both of which this proxy deliberately skips to stay fast and dependency-
+ * free. The public marketing site and the single customer-facing /account page are NOT covered:
+ * /account already does its own session check server-side (one page, not the ~29 the admin surface
+ * has, so a proxy-level backstop adds little there), and /api/account's pre-auth endpoints
+ * (signup/login/etc.) must stay reachable by definition.
  *
  * Verification is reimplemented here with Web Crypto rather than importing session.ts (which uses
- * Node's `crypto` module) because middleware runs in the Edge runtime by default, which can't load
+ * Node's `crypto` module) because the proxy runs in the Edge runtime by default, which can't load
  * Node built-ins. If session.ts's token format ever changes, this must be updated to match --
- * that coupling is the tradeoff for not needing a Node-runtime middleware configuration.
+ * that coupling is the tradeoff for not needing a Node-runtime proxy configuration.
  */
 
 const ADMIN_SESSION_COOKIE = "admin_session";
+const CUSTOMER_SESSION_COOKIE = "customer_session";
 
 const PUBLIC_ADMIN_PATHS = new Set([
   "/admin/login",
@@ -28,6 +34,15 @@ const PUBLIC_ADMIN_PATHS = new Set([
   "/api/admin/forgot-password",
   "/api/admin/reset-password",
   "/api/admin/logout",
+]);
+
+const PUBLIC_ACCOUNT_API_PATHS = new Set([
+  "/api/account/login",
+  "/api/account/signup",
+  "/api/account/forgot-password",
+  "/api/account/reset-password",
+  "/api/account/claim",
+  "/api/account/logout",
 ]);
 
 function base64urlToBytes(b64url: string): Uint8Array {
@@ -44,7 +59,8 @@ function hexToBytes(hex: string): Uint8Array {
   return out;
 }
 
-async function hasValidAdminSession(token: string | undefined): Promise<boolean> {
+/** Mirrors session.ts's verifySessionToken -- both admin and customer sessions share the same signing scheme, only `scope` differs. */
+async function hasValidSession(token: string | undefined, expectedScope: "admin" | "customer"): Promise<boolean> {
   if (!token) return false;
   const [body, signatureHex] = token.split(".");
   if (!body || !signatureHex) return false;
@@ -58,7 +74,7 @@ async function hasValidAdminSession(token: string | undefined): Promise<boolean>
     if (!validSignature) return false;
 
     const payload = JSON.parse(new TextDecoder().decode(base64urlToBytes(body))) as { scope?: string; exp?: number };
-    return payload.scope === "admin" && typeof payload.exp === "number" && Date.now() <= payload.exp;
+    return payload.scope === expectedScope && typeof payload.exp === "number" && Date.now() <= payload.exp;
   } catch {
     return false;
   }
@@ -66,9 +82,17 @@ async function hasValidAdminSession(token: string | undefined): Promise<boolean>
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  if (pathname.startsWith("/api/account/")) {
+    if (PUBLIC_ACCOUNT_API_PATHS.has(pathname)) return NextResponse.next();
+    const authed = await hasValidSession(req.cookies.get(CUSTOMER_SESSION_COOKIE)?.value, "customer");
+    if (authed) return NextResponse.next();
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+
   if (PUBLIC_ADMIN_PATHS.has(pathname)) return NextResponse.next();
 
-  const authed = await hasValidAdminSession(req.cookies.get(ADMIN_SESSION_COOKIE)?.value);
+  const authed = await hasValidSession(req.cookies.get(ADMIN_SESSION_COOKIE)?.value, "admin");
   if (authed) return NextResponse.next();
 
   if (pathname.startsWith("/api/")) {
@@ -82,5 +106,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*"],
+  matcher: ["/admin/:path*", "/api/admin/:path*", "/api/account/:path*"],
 };
