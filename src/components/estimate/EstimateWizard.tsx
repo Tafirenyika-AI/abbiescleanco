@@ -101,6 +101,17 @@ export default function EstimateWizard({
     if (bathrooms) setValue("bathrooms", Number(bathrooms));
     const campaign = searchParams.get("utm_campaign");
     if (campaign) setValue("campaign", campaign);
+    const utmSource = searchParams.get("utm_source");
+    if (utmSource) setValue("utmSource", utmSource);
+    const utmMedium = searchParams.get("utm_medium");
+    if (utmMedium) setValue("utmMedium", utmMedium);
+    const utmContent = searchParams.get("utm_content");
+    if (utmContent) setValue("utmContent", utmContent);
+    // Only meaningful when it points away from this site — an internal referrer (e.g. the
+    // homepage linking to this page) says nothing about how the visitor first arrived.
+    if (typeof document !== "undefined" && document.referrer && !document.referrer.startsWith(window.location.origin)) {
+      setValue("referrer", document.referrer.slice(0, 500));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

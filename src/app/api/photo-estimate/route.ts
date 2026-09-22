@@ -70,7 +70,8 @@ export async function POST(req: NextRequest) {
     const profile = session ? await getProfile(session.userId) : null;
     const id = await savePhotoEstimate({ customerId: profile?.customer?.id, imageUrls: urls, areaType: parsed.data.areaType, result });
 
-    // Customer-safe view: findings + estimate, but not the internal crew note or supply list.
+    // Full assessment, including supplies/staffNotes — the customer reviews and approves this
+    // exact content before it's ever shared with the crew (see reviewPhotoEstimate).
     return NextResponse.json({
       ok: true,
       photoEstimateId: id,
@@ -86,6 +87,8 @@ export async function POST(req: NextRequest) {
       hoursHigh: result.hoursHigh,
       breakdown: result.breakdown,
       findings: result.analysis?.findings ?? [],
+      supplies: result.analysis?.supplies ?? [],
+      staffNotes: result.analysis?.staffNotes ?? "",
     });
   } catch (err) {
     if (err instanceof MediaError) return NextResponse.json({ ok: false, error: err.message }, { status: 400 });

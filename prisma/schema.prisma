@@ -225,6 +225,10 @@ model Lead {
   status       LeadStatus @default(NEW)
   source       String     @default("website") // website | referral | google | tiktok | facebook | other
   campaign     String?    // UTM campaign, if present
+  utmSource    String?    // UTM source, if present (e.g. google, facebook)
+  utmMedium    String?    // UTM medium, if present (e.g. cpc, email, social)
+  utmContent   String?    // UTM content, if present (ad/creative variant)
+  referrer     String?    // document.referrer at submit time, if any (attribution for non-UTM traffic)
 
   serviceId    String
   service      ServiceCatalogItem @relation(fields: [serviceId], references: [id])
@@ -899,6 +903,11 @@ model PhotoEstimate {
   hoursLow     Float?
   hoursHigh    Float?
   mode         String   @default("ai") // ai | fallback
+
+  // Customer review gate: the AI assessment (findings/supplies/notes) is only shared with the
+  // cleaning crew once the customer has seen it and explicitly approved — never posted blind.
+  customerApproved Boolean @default(false)
+  customerNotes    String? // customer's own additions/corrections, shown to the crew alongside the AI notes
 
   createdAt DateTime @default(now())
 

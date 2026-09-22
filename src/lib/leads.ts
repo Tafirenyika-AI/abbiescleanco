@@ -37,6 +37,10 @@ export interface StoredLead {
   lostReason?: string | null;
   source: string;
   campaign?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmContent?: string;
+  referrer?: string;
   input: QuoteRequestInput;
   estimate: EstimateResult;
   createdAt: string;

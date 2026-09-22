@@ -180,6 +180,19 @@ export default function LeadDetailDrawer({
             </dl>
           </section>
 
+          {(lead.campaign || lead.utmSource || lead.utmMedium || lead.utmContent || lead.referrer) && (
+            <section className="mt-5">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Attribution</h3>
+              <dl className="mt-2 space-y-1.5 text-sm">
+                {lead.utmSource && <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">UTM source</dt><dd className="text-admin-text">{lead.utmSource}</dd></div>}
+                {lead.utmMedium && <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">UTM medium</dt><dd className="text-admin-text">{lead.utmMedium}</dd></div>}
+                {lead.campaign && <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Campaign</dt><dd className="text-admin-text">{lead.campaign}</dd></div>}
+                {lead.utmContent && <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">UTM content</dt><dd className="text-admin-text">{lead.utmContent}</dd></div>}
+                {lead.referrer && <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Referrer</dt><dd className="max-w-[220px] truncate text-right text-admin-text" title={lead.referrer}>{lead.referrer}</dd></div>}
+              </dl>
+            </section>
+          )}
+
           <section className="mt-5">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Service & property</h3>
             <dl className="mt-2 space-y-1.5 text-sm">

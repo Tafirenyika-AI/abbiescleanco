@@ -231,7 +231,27 @@ export async function savePhotoEstimate(data: {
   return row.id;
 }
 
-/** When a photo estimate turns into a request, attach the photos + AI summary to the lead so the team sees them. */
+/**
+ * Records the customer's own review of the AI assessment — whether they've approved sharing it
+ * with the cleaning crew, plus anything they want to add or correct. Only allowed before the
+ * estimate has been claimed by a lead (`linkPhotoEstimateToLead` reads this exactly once).
+ */
+export async function reviewPhotoEstimate(id: string, approved: boolean, customerNotes?: string): Promise<boolean> {
+  if (!isDatabaseConfigured || !prisma) return false;
+  const pe = await prisma.photoEstimate.findUnique({ where: { id } });
+  if (!pe || pe.leadId) return false; // unknown id, or already shared — too late to change
+  await prisma.photoEstimate.update({
+    where: { id },
+    data: { customerApproved: approved, customerNotes: customerNotes?.trim().slice(0, 2000) || null },
+  });
+  return true;
+}
+
+/**
+ * When a photo estimate turns into a request, attach the photos to the lead so the team sees
+ * them. The AI's structured assessment is only turned into a crew-visible note if the customer
+ * reviewed and approved it first (see reviewPhotoEstimate) — never posted blind.
+ */
 export async function linkPhotoEstimateToLead(photoEstimateId: string, leadId: string, customerId: string): Promise<void> {
   if (!isDatabaseConfigured || !prisma) return;
   const pe = await prisma.photoEstimate.findUnique({ where: { id: photoEstimateId } });
@@ -242,12 +262,13 @@ export async function linkPhotoEstimateToLead(photoEstimateId: string, leadId: s
     await prisma.attachment.create({ data: { customerId, leadId, kind: "IMAGE", url, mimeType: "image/jpeg", caption: "Photo estimate upload", uploadedBy: "CUSTOMER" } });
   }
   const a = (pe.analysis as { analysis?: PhotoAnalysis | null } | null)?.analysis;
-  if (a) {
+  if (a && pe.customerApproved) {
     const lines = [
-      `AI photo assessment (${a.confidence} confidence${a.needsManualReview ? ", NEEDS MANUAL REVIEW" : ""}): overall ${a.overallCondition}.`,
+      `AI photo assessment (${a.confidence} confidence${a.needsManualReview ? ", NEEDS MANUAL REVIEW" : ""}, customer-reviewed): overall ${a.overallCondition}.`,
       ...a.findings.map((f) => `• ${f.area} (${f.condition}): ${f.issues.join("; ") || "no specific issues noted"}`),
       a.supplies.length ? `Bring: ${a.supplies.join(", ")}.` : "",
       a.staffNotes ? `Crew note: ${a.staffNotes}` : "",
+      pe.customerNotes ? `Customer note: ${pe.customerNotes}` : "",
     ].filter(Boolean);
     await prisma.clientNote.create({ data: { customerId, leadId, body: lines.join("\n"), author: "STAFF", authorName: "AI photo assessment", kind: "AI_ASSESSMENT" } });
   }

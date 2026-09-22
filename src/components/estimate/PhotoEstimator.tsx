@@ -17,6 +17,8 @@ interface Result {
   hoursLow: number;
   hoursHigh: number;
   findings: Finding[];
+  supplies: string[];
+  staffNotes: string;
 }
 interface Details { areaType: string; propertyType: "apartment" | "house" | "townhome"; squareFeet: string; bedrooms: string; bathrooms: string; hasPets: boolean; zip: string }
 
@@ -49,6 +51,8 @@ export default function PhotoEstimator({ addOnLabels, serviceNames, isLoggedIn }
   const [contact, setContact] = useState({ firstName: "", lastName: "", email: "", phone: "", accept: false });
   const [sent, setSent] = useState<{ reference: string } | null>(null);
   const [gotcha, setGotcha] = useState("");
+  const [shareWithTeam, setShareWithTeam] = useState(true);
+  const [customerNotes, setCustomerNotes] = useState("");
 
   function addFiles(list: FileList | null) {
     if (!list) return;
@@ -82,6 +86,13 @@ export default function PhotoEstimator({ addOnLabels, serviceNames, isLoggedIn }
     if (!contact.firstName || !contact.lastName || !contact.email || !contact.phone) return setError("Please fill in your name, email and phone.");
     if (!contact.accept) return setError("Please accept the service policies to continue.");
     setBusy(true);
+    if (result.photoEstimateId) {
+      await fetch(`/api/photo-estimate/${result.photoEstimateId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approved: shareWithTeam, customerNotes: customerNotes || undefined }),
+      }).catch(() => {}); // best-effort — a failure here shouldn't block sending the request itself
+    }
     const res = await fetch("/api/quote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -133,6 +144,28 @@ export default function PhotoEstimator({ addOnLabels, serviceNames, isLoggedIn }
           )}
           <p className="mt-4 text-xs text-surface-700">This is a preliminary estimate based on your photos and answers. Final pricing is confirmed by our team before anything is booked.</p>
         </div>
+
+        {(result.supplies.length > 0 || result.staffNotes) && (
+          <div className="rounded-[28px] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
+            <h3 className="text-lg font-semibold text-navy-950">Review your photo assessment</h3>
+            <p className="mt-1 text-sm text-surface-700">This is exactly what our team will see if you choose to share it. Add anything to correct or clarify before you send your request.</p>
+            {result.staffNotes && <p className="mt-3 rounded-2xl bg-surface-100 px-3.5 py-2.5 text-sm text-navy-950">{result.staffNotes}</p>}
+            {result.supplies.length > 0 && <p className="mt-3 text-sm text-surface-700"><span className="font-semibold text-navy-950">What we&apos;ll bring:</span> {result.supplies.join(", ")}</p>}
+            <label className="mt-4 block text-sm font-medium text-navy-950">
+              Anything to add or correct?
+              <textarea
+                className={`${field} min-h-[80px]`}
+                value={customerNotes}
+                onChange={(e) => setCustomerNotes(e.target.value)}
+                placeholder="Optional — e.g. the stain in the kitchen is actually on the ceiling, not the counter."
+              />
+            </label>
+            <label className="mt-3 flex items-start gap-2 text-sm text-navy-950">
+              <input type="checkbox" checked={shareWithTeam} onChange={(e) => setShareWithTeam(e.target.checked)} className="mt-0.5" />
+              <span>Share this assessment with our cleaning crew so they come prepared.</span>
+            </label>
+          </div>
+        )}
 
         <div className="rounded-[28px] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
           <h3 className="text-lg font-semibold text-navy-950">Send this to our team</h3>
