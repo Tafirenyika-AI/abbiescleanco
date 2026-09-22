@@ -96,3 +96,26 @@ export async function getReportsSummary(rangeStart: Date, rangeEnd: Date): Promi
     netRevenue: acceptedValue - totalExpenses,
   };
 }
+
+/** Real payments received (status PAID), bucketed per day -- for a dashboard revenue trend chart. Oldest first. */
+export async function getDailyRevenue(days: number): Promise<{ date: string; cents: number }[]> {
+  const out: { date: string; cents: number }[] = [];
+  if (!isDatabaseConfigured || !prisma) return out;
+
+  const end = new Date();
+  const start = new Date(end);
+  start.setDate(start.getDate() - (days - 1));
+  start.setHours(0, 0, 0, 0);
+
+  const payments = await prisma.payment.findMany({ where: { status: "PAID", createdAt: { gte: start } }, select: { amount: true, createdAt: true } });
+
+  for (let i = 0; i < days; i++) {
+    const dayStart = new Date(start);
+    dayStart.setDate(dayStart.getDate() + i);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setHours(23, 59, 59, 999);
+    const cents = payments.filter((p) => p.createdAt >= dayStart && p.createdAt <= dayEnd).reduce((sum, p) => sum + p.amount, 0);
+    out.push({ date: dayStart.toISOString().slice(0, 10), cents });
+  }
+  return out;
+}

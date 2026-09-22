@@ -35,7 +35,7 @@ export default function WhyChooseUs() {
             </h2>
           </Reveal>
 
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {points.map(({ icon: Icon, title, description }, i) => (
               <Reveal key={title} delayMs={i * 70}>
                 <div className="h-full rounded-2xl border border-surface-200 p-4.5 transition-colors duration-300 hover:border-teal-200">

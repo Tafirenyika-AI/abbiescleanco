@@ -3,7 +3,7 @@ import { ArrowRight, Inbox, FileQuestion, TrendingUp, CalendarClock, DollarSign,
 import { listLeads } from "@/lib/server/leadStore";
 import { listQuotes } from "@/lib/server/quoteStore";
 import { listBookingsInRange } from "@/lib/server/bookingStore";
-import { getReportsSummary } from "@/lib/server/reportsStore";
+import { getReportsSummary, getDailyRevenue } from "@/lib/server/reportsStore";
 import { getActivityFeed } from "@/lib/server/activityStore";
 import { listTeamMembers } from "@/lib/server/teamStore";
 import { isDatabaseConfigured } from "@/lib/db";
@@ -11,6 +11,7 @@ import Card from "@/components/admin/ui/Card";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import StatCard from "@/components/admin/ui/StatCard";
 import GaugeRing from "@/components/admin/ui/GaugeRing";
+import BarChart from "@/components/admin/ui/BarChart";
 import { formatDateTime } from "@/lib/adminDate";
 
 function money(cents: number) {
@@ -52,13 +53,14 @@ export default async function AdminDashboardPage() {
   const weekEnd = new Date(now);
   weekEnd.setDate(weekEnd.getDate() + 7);
 
-  const [leads, quotes, report, upcomingBookings, activity, team] = await Promise.all([
+  const [leads, quotes, report, upcomingBookings, activity, team, dailyRevenue] = await Promise.all([
     listLeads(),
     listQuotes(),
     getReportsSummary(rangeStart30, now),
     listBookingsInRange(now.toISOString(), weekEnd.toISOString()),
     getActivityFeed(6),
     listTeamMembers(),
+    getDailyRevenue(7),
   ]);
 
   const newLeads = leads.filter((l) => l.status === "NEW");
@@ -162,26 +164,40 @@ export default async function AdminDashboardPage() {
           )}
 
           <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <Card className="lg:col-span-2">
+            <Card>
               <div className="flex items-center justify-between">
-                <h2 className="font-semibold text-admin-text">Top opportunities</h2>
-                <Link href="/admin/quotes" className="text-xs font-semibold text-admin-teal-hover hover:underline">View all quotes</Link>
+                <h2 className="font-semibold text-admin-text">Revenue, last 7 days</h2>
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-admin-success"><span className="size-1.5 rounded-full bg-admin-success" aria-hidden /> Live</span>
               </div>
-              {topOpportunities.length === 0 ? (
+              <div className="mt-3">
+                <BarChart data={dailyRevenue.map((d) => ({ label: new Date(d.date).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short" }), value: d.cents }))} formatValue={money} />
+              </div>
+            </Card>
+            <Card>
+              <h2 className="font-semibold text-admin-text">Top performing services</h2>
+              {popularServices.length === 0 ? (
                 <div className="mt-3">
-                  <EmptyState icon={FileQuestion} title="No open quotes" description="Quotes you've sent that are awaiting a customer decision will show up here, largest first." />
+                  <EmptyState
+                    title="No leads yet"
+                    description="New quote and contact requests will appear here."
+                    action={
+                      <Link href="/estimate" className="text-sm font-semibold text-admin-teal-hover hover:underline">
+                        View public quote form →
+                      </Link>
+                    }
+                  />
                 </div>
               ) : (
-                <ul className="mt-4 divide-y divide-admin-border">
-                  {topOpportunities.map((q) => (
-                    <li key={q.id}>
-                      <Link href={`/admin/quotes/${q.id}`} className="flex items-center justify-between gap-3 py-2.5 hover:opacity-80">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-admin-text">{q.customerName}</p>
-                          <p className="truncate text-xs text-admin-text-muted">{q.serviceName} · {q.quoteNumber}</p>
-                        </div>
-                        <span className="shrink-0 text-sm font-semibold text-admin-text">{money(q.total)}</span>
-                      </Link>
+                <ul className="mt-4 space-y-3">
+                  {popularServices.map(([service, count]) => (
+                    <li key={service}>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-admin-text">{service}</span>
+                        <span className="font-semibold text-admin-text">{count}</span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-admin-bg">
+                        <div className="h-full rounded-full bg-admin-teal" style={{ width: `${maxCount ? (count / maxCount) * 100 : 0}%` }} />
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -207,6 +223,32 @@ export default async function AdminDashboardPage() {
 
           <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Card>
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold text-admin-text">Top opportunities</h2>
+                <Link href="/admin/quotes" className="text-xs font-semibold text-admin-teal-hover hover:underline">View all</Link>
+              </div>
+              {topOpportunities.length === 0 ? (
+                <div className="mt-3">
+                  <EmptyState icon={FileQuestion} title="No open quotes" description="Quotes you've sent that are awaiting a customer decision will show up here, largest first." />
+                </div>
+              ) : (
+                <ul className="mt-4 divide-y divide-admin-border">
+                  {topOpportunities.map((q) => (
+                    <li key={q.id}>
+                      <Link href={`/admin/quotes/${q.id}`} className="flex items-center justify-between gap-3 py-2.5 hover:opacity-80">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-admin-text">{q.customerName}</p>
+                          <p className="truncate text-xs text-admin-text-muted">{q.serviceName} · {q.quoteNumber}</p>
+                        </div>
+                        <span className="shrink-0 text-sm font-semibold text-admin-text">{money(q.total)}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+
+            <Card>
               <h2 className="font-semibold text-admin-text">Upcoming bookings</h2>
               {nextBookings.length === 0 ? (
                 <div className="mt-3">
@@ -223,37 +265,6 @@ export default async function AdminDashboardPage() {
                         </div>
                         <span className="shrink-0 text-xs font-semibold text-admin-text-muted">{b.scheduledStart ? formatDateTime(b.scheduledStart) : "—"}</span>
                       </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-
-            <Card>
-              <h2 className="font-semibold text-admin-text">Popular services</h2>
-              {popularServices.length === 0 ? (
-                <div className="mt-3">
-                  <EmptyState
-                    title="No leads yet"
-                    description="New quote and contact requests will appear here."
-                    action={
-                      <Link href="/estimate" className="text-sm font-semibold text-admin-teal-hover hover:underline">
-                        View public quote form →
-                      </Link>
-                    }
-                  />
-                </div>
-              ) : (
-                <ul className="mt-4 space-y-3">
-                  {popularServices.map(([service, count]) => (
-                    <li key={service}>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-admin-text">{service}</span>
-                        <span className="font-semibold text-admin-text">{count}</span>
-                      </div>
-                      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-admin-bg">
-                        <div className="h-full rounded-full bg-admin-teal" style={{ width: `${maxCount ? (count / maxCount) * 100 : 0}%` }} />
-                      </div>
                     </li>
                   ))}
                 </ul>

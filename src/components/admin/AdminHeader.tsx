@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, Search, Bell, Plus, ChevronRight, ExternalLink, UserCircle, Settings, LogOut, CheckCheck } from "lucide-react";
+import { Menu, Search, Sparkles, Loader2, Bell, Plus, ChevronRight, ExternalLink, UserCircle, Settings, LogOut, CheckCheck } from "lucide-react";
 import { allNavItems, findNavItem } from "@/lib/admin/nav";
 import type { AdminNotificationItem } from "@/lib/server/notificationStore";
 import SignOutButton from "./SignOutButton";
@@ -69,11 +69,13 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [asking, setAsking] = useState(false);
+  const [answer, setAnswer] = useState<{ text: string; href?: string } | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) { setSearchOpen(false); setAnswer(null); }
     }
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
@@ -82,6 +84,23 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
   const matches = query.trim()
     ? allNavItems.filter((item) => item.built && item.label.toLowerCase().includes(query.trim().toLowerCase()))
     : [];
+
+  async function ask() {
+    if (!query.trim()) return;
+    setAsking(true);
+    setAnswer(null);
+    const res = await fetch("/api/admin/assistant", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query }) });
+    const data = await res.json().catch(() => null);
+    setAsking(false);
+    if (!data?.ok) return;
+    if (data.result.type === "navigate" && data.result.href) {
+      router.push(data.result.href);
+      setSearchOpen(false);
+      setQuery("");
+      return;
+    }
+    setAnswer({ text: data.result.text, href: data.result.href });
+  }
 
   return (
     <header className="flex items-center gap-3 border-b border-admin-border bg-admin-card px-4 py-3 sm:px-6">
@@ -107,34 +126,54 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
         <h1 className="truncate text-lg font-semibold text-admin-text sm:text-xl">{activeItem?.label ?? "Admin"}</h1>
       </div>
 
-      <div ref={searchRef} className="relative hidden sm:block">
-        <div className="flex items-center gap-2 rounded-lg border border-admin-border bg-admin-bg px-3 py-2">
-          <Search className="size-4 text-admin-text-muted" aria-hidden />
+      <div ref={searchRef} className="relative hidden sm:block sm:w-64 lg:w-96">
+        <div className="flex items-center gap-2 rounded-full border border-admin-border bg-admin-bg px-3.5 py-2.5">
+          <Sparkles className="size-4 shrink-0 text-admin-teal-hover" aria-hidden />
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { setQuery(e.target.value); setAnswer(null); }}
             onFocus={() => setSearchOpen(true)}
-            placeholder="Search admin…"
-            className="w-40 bg-transparent text-sm text-admin-text placeholder:text-admin-text-muted focus:outline-none"
+            onKeyDown={(e) => e.key === "Enter" && ask()}
+            placeholder="Ask Abbie Assistant or search admin…"
+            className="w-full bg-transparent text-sm text-admin-text placeholder:text-admin-text-muted focus:outline-none"
           />
+          {asking && <Loader2 className="size-4 shrink-0 animate-spin text-admin-text-muted" aria-hidden />}
         </div>
-        {searchOpen && matches.length > 0 && (
-          <div className="absolute right-0 top-full z-20 mt-1.5 w-56 rounded-xl border border-admin-border bg-admin-card p-1.5 shadow-lg">
-            {matches.map((item) => (
-              <button
-                key={item.href}
-                type="button"
-                onClick={() => {
-                  router.push(item.href);
-                  setSearchOpen(false);
-                  setQuery("");
-                }}
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-admin-text hover:bg-admin-bg"
-              >
-                <item.icon className="size-4 text-admin-text-muted" aria-hidden />
-                {item.label}
-              </button>
-            ))}
+        {searchOpen && (matches.length > 0 || answer || query.trim()) && (
+          <div className="absolute right-0 top-full z-20 mt-1.5 w-full min-w-72 rounded-xl border border-admin-border bg-admin-card p-1.5 shadow-lg">
+            {answer && (
+              <div className="rounded-lg bg-admin-teal/5 p-2.5 text-sm text-admin-text">
+                <p className="flex items-start gap-1.5"><Sparkles className="mt-0.5 size-3.5 shrink-0 text-admin-teal-hover" aria-hidden /> {answer.text}</p>
+                {answer.href && (
+                  <Link href={answer.href} onClick={() => { setSearchOpen(false); setQuery(""); setAnswer(null); }} className="mt-1.5 inline-block pl-5 text-xs font-semibold text-admin-teal-hover hover:underline">
+                    View details →
+                  </Link>
+                )}
+              </div>
+            )}
+            {matches.length > 0 && (
+              <div className={answer ? "mt-1.5 border-t border-admin-border pt-1.5" : undefined}>
+                {matches.map((item) => (
+                  <button
+                    key={item.href}
+                    type="button"
+                    onClick={() => {
+                      router.push(item.href);
+                      setSearchOpen(false);
+                      setQuery("");
+                      setAnswer(null);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-admin-text hover:bg-admin-bg"
+                  >
+                    <item.icon className="size-4 text-admin-text-muted" aria-hidden />
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {!answer && matches.length === 0 && query.trim() && (
+              <p className="flex items-center gap-1.5 px-2.5 py-2 text-xs text-admin-text-muted"><Search className="size-3.5" aria-hidden /> Press Enter to ask Abbie Assistant</p>
+            )}
           </div>
         )}
       </div>
