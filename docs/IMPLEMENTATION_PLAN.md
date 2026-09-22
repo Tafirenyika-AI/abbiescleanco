@@ -11,7 +11,7 @@ Done: `docs/REPO_AUDIT.md`, `docs/ARCHITECTURE.md`, `docs/DATA_MODEL.md`, `docs/
 **Status: already built and live-verified in prior sessions** (`docs/REPO_AUDIT.md` §3). The one real correctness gap found in this area — booking double-booking under concurrency — is fixed this session (`docs/DECISIONS.md` D-1), live-verified with real concurrent requests against the database.
 
 Remaining smaller items in this phase's spirit, not yet done:
-- **[code]** Capture UTM parameters (`utm_source`/`utm_medium`/`utm_content`, referrer) on the estimate form, not just `campaign`. Small, additive, improves the attribution the blueprint asks for (§3.1) without needing any new credential.
+- ~~**[code]** Capture UTM parameters (`utm_source`/`utm_medium`/`utm_content`, referrer)~~ **Done 2026-09-22** (`6543779`) — `Lead.utmSource`/`utmMedium`/`utmContent`/`referrer`, captured on the estimate form and visible to admins in the lead detail drawer's new Attribution section.
 - **[code]** Store a computed dedup fingerprint (`hash(email, phone, serviceId)`) on `Lead` alongside the existing live-query dedup check, so duplicate detection is auditable/indexed rather than only a runtime heuristic. Low priority — the current mechanism works and is tested; this is a transparency/scale improvement, not a bug fix.
 - **[decision]** Commercial RFP tracker (§3.1) — no evidence this business currently pursues commercial RFPs; don't build speculatively.
 
@@ -56,7 +56,7 @@ All three: level 1 (§4 typed route registry + deterministic intent matching) re
 Missing from the full §3.4 spec:
 - **[creds]** Enter a real Anthropic key and validate against real photos (currently mock-server-tested only, per `docs/REPO_AUDIT.md`).
 - **[code]** Voice/audio upload + transcription — doesn't exist at all.
-- **[code]** The explicit "customer reviews/edits/approves the structured scope before it's shared with the crew" step — today the AI assessment is generated and stored directly as a crew-visible note; there's no customer-facing review/edit/approve gate on the AI's own output before it reaches staff. Worth adding given the blueprint explicitly calls for it and it's a meaningful trust/accuracy improvement.
+- ~~**[code]** The explicit "customer reviews/edits/approves the structured scope before it's shared with the crew" step~~ **Done 2026-09-22** (`6543779`) — the customer now sees the same supplies/crew-notes the AI generated, can add their own corrections, and must explicitly choose to share before `linkPhotoEstimateToLead` posts anything to the crew; declining, or never reviewing at all, safely results in no crew note (photos still attach either way).
 - **[decision]** After-service photo QA — needs owner sign-off on what claims (if any) are made about it, since the blueprint is explicit that images must never be claimed to prove sanitation.
 
 ## Phase 7 — Marketing integrations, approvals, attribution
