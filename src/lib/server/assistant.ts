@@ -111,8 +111,12 @@ export async function resolveAssistantQuery(rawQuery: string): Promise<Assistant
     if (tool.match(q)) return tool.run(q);
   }
 
-  const navMatch = allNavItems.find((item) => item.built && (item.label.toLowerCase().includes(q) || item.description.toLowerCase().includes(q)));
-  if (navMatch) return { type: "navigate", text: `Opening ${navMatch.label}…`, href: navMatch.href };
+  const navMatch = allNavItems.find((item) => item.label.toLowerCase().includes(q) || item.description.toLowerCase().includes(q));
+  if (navMatch) {
+    return navMatch.built
+      ? { type: "navigate", text: `Opening ${navMatch.label}…`, href: navMatch.href }
+      : { type: "answer", text: `${navMatch.label} isn't built yet — here's what's planned for it.`, href: navMatch.href };
+  }
 
   return { type: "unknown", text: `I don't have an answer for that yet. Try: ${EXAMPLE_QUERIES.join(", ")}.` };
 }

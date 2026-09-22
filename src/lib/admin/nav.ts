@@ -19,6 +19,10 @@ import {
   Settings,
   ScrollText,
   Mail,
+  HardHat,
+  Building2,
+  FileStack,
+  Landmark,
   type LucideIcon,
 } from "lucide-react";
 import type { AdminPermission } from "@/lib/permissions";
@@ -63,13 +67,17 @@ export const navGroups: NavGroup[] = [
       { href: "/admin/calendar", label: "Calendar", description: "Month view of every job", icon: CalendarDays, permission: "MANAGE_BOOKINGS", built: true },
       { href: "/admin/pricing", label: "Services & pricing", description: "Rates, add-ons, service catalog", icon: Wrench, permission: "MANAGE_PRICING", built: true },
       { href: "/admin/team", label: "Team", description: "Roster & job assignments", icon: UsersRound, permission: "MANAGE_USERS", built: true },
+      { href: "/admin/workforce", label: "Workforce & subcontractors", description: "Logins, documents, job offers", icon: HardHat, permission: "MANAGE_USERS", built: false },
+      { href: "/admin/property-managers", label: "Property managers", description: "Multi-property turnover portal", icon: Building2, permission: "MANAGE_BOOKINGS", built: false },
     ],
   },
   {
     label: "Finance",
     items: [
       { href: "/admin/payments", label: "Payments", description: "Record & reconcile payments", icon: CreditCard, permission: "VIEW_REPORTS", built: true },
+      { href: "/admin/invoices", label: "Invoices", description: "Formal, printable invoices", icon: FileStack, permission: "VIEW_REPORTS", built: false },
       { href: "/admin/expenses", label: "Expenses", description: "Track business costs", icon: Receipt, permission: "VIEW_REPORTS", built: true },
+      { href: "/admin/accounting", label: "Accounting", description: "Sync to QuickBooks or similar", icon: Landmark, permission: "VIEW_REPORTS", built: false },
       { href: "/admin/reports", label: "Reports", description: "Revenue, funnel, exports", icon: BarChart3, permission: "VIEW_REPORTS", built: true },
     ],
   },
@@ -79,6 +87,7 @@ export const navGroups: NavGroup[] = [
       { href: "/admin/reviews", label: "Reviews", description: "Moderate & publish reviews", icon: Star, permission: "MANAGE_REVIEWS", built: true },
       { href: "/admin/promotions", label: "Promotions", description: "Promo codes & discounts", icon: Megaphone, permission: "MANAGE_PRICING", built: true },
       { href: "/admin/automations", label: "Automations", description: "Reminders & follow-ups", icon: Zap, permission: "MANAGE_CONTENT", built: true },
+      { href: "/admin/marketing", label: "Marketing studio", description: "Campaigns & social content", icon: Megaphone, permission: "MANAGE_CONTENT", built: false },
     ],
   },
   {

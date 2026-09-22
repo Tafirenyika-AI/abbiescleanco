@@ -118,22 +118,15 @@ export default function AdminSidebar({
                     const className = `group flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-semibold transition-colors ${
                       collapsed ? "lg:justify-center" : ""
                     } ${
-                      !item.built
-                        ? "cursor-not-allowed text-slate-500"
-                        : active
-                          ? "bg-admin-teal text-white shadow-[0_4px_12px_rgba(15,157,138,0.35)]"
+                      active
+                        ? "bg-admin-teal text-white shadow-[0_4px_12px_rgba(15,157,138,0.35)]"
+                        : !item.built
+                          ? "text-slate-400 hover:bg-white/5 hover:text-slate-200"
                           : "text-slate-300 hover:bg-white/5 hover:text-white"
                     }`;
 
-                    if (!item.built) {
-                      return (
-                        <span key={item.href} className={className} title={`${item.label} — coming soon`} aria-disabled="true">
-                          {content}
-                        </span>
-                      );
-                    }
                     return (
-                      <Link key={item.href} href={item.href} className={className} title={collapsed ? item.label : undefined}>
+                      <Link key={item.href} href={item.href} className={className} title={collapsed ? item.label : !item.built ? `${item.label} — not built yet, see what's planned` : undefined}>
                         {content}
                       </Link>
                     );

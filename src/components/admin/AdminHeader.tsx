@@ -82,7 +82,7 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
   }, []);
 
   const matches = query.trim()
-    ? allNavItems.filter((item) => item.built && item.label.toLowerCase().includes(query.trim().toLowerCase()))
+    ? allNavItems.filter((item) => item.label.toLowerCase().includes(query.trim().toLowerCase()))
     : [];
 
   async function ask() {
@@ -166,7 +166,8 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
                     className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-admin-text hover:bg-admin-bg"
                   >
                     <item.icon className="size-4 text-admin-text-muted" aria-hidden />
-                    {item.label}
+                    <span className="flex-1">{item.label}</span>
+                    {!item.built && <span className="rounded-full bg-admin-bg px-1.5 py-0.5 text-[10px] font-semibold text-admin-text-muted">Soon</span>}
                   </button>
                 ))}
               </div>
