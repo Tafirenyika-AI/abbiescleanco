@@ -2,6 +2,28 @@
 
 Reverse-chronological. Each entry: what was decided, why, what it costs.
 
+## D-8 — `src/proxy.ts` admin backstop, verified with Web Crypto instead of importing session.ts (2026-09-21)
+
+**Decision**: add a project-wide proxy (Next 16's renamed `middleware.ts` convention — see below) that rejects any request under `/admin/*` or `/api/admin/*` with no valid, unexpired admin-scoped session token, before it reaches route code. It re-implements HMAC verification using the Web Crypto API (`crypto.subtle`) rather than importing `src/lib/server/session.ts` (which uses Node's `crypto` module and isn't available in the Edge runtime the proxy runs in by default).
+
+**Why**: every admin API route already calls `requireAdmin()` itself, and the dashboard pages are protected by their shared layout's own session check — both verified working. But neither is enforced by the framework; a route added later that simply forgot the call would be silently reachable by anyone. The proxy is a deliberately dumb, fast backstop against exactly that failure mode — it checks "is this signed by us and not expired," not permissions, which stay exactly where they were.
+
+**Naming note**: Next.js 16 deprecated the `middleware.ts` file convention in favor of `proxy.ts` (same mechanism, clearer name — this file runs in front of routing, it isn't a request-handling middleware chain). Migrated automatically via `npx @next/codemod middleware-to-proxy .`, which renamed the file and the exported function (`middleware` → `proxy`) and left everything else unchanged.
+
+**Cost / tradeoff**: the Web Crypto reimplementation duplicates `session.ts`'s token-verification logic in one more place — if the token format in `session.ts` ever changes, `src/proxy.ts` must be updated to match, or it will silently reject every real session. This is a known, accepted coupling, not an oversight; the alternative (configuring Next's Node-runtime middleware support to allow importing `session.ts` directly) was avoided to keep the proxy on the default, best-supported Edge runtime path.
+
+**Verification**: live-tested against the real running app — 6 admin API routes and the dashboard confirmed blocked with no cookie, a forged/garbage cookie rejected cleanly (no 500), all 5 pre-auth admin endpoints (login, 2FA verify, forgot/reset-password, logout) still reachable, and a real admin login → authenticated API call → authenticated page load all still worked end-to-end. 17/17 checks passed.
+
+## D-9 — Sentry wired code-complete, activated by one env var, not the Settings-DB pattern (2026-09-21)
+
+**Decision**: install `@sentry/nextjs`, wire `src/instrumentation.ts` (+ `onRequestError`), `src/instrumentation-client.ts` (+ `onRouterTransitionStart`), `sentry.server.config.ts`, `sentry.edge.config.ts`, and wrap `next.config.ts` with `withSentryConfig`. All four reference `process.env.NEXT_PUBLIC_SENTRY_DSN` directly — **not** `integrationSettings.ts`'s DB-value-with-env-fallback pattern used by every other provider in this app.
+
+**Why**: Sentry initializes once at process/build startup (`Sentry.init()` in each runtime's config, called from `register()`), before any database connection is guaranteed to exist and before any per-request code runs — there's no request in flight yet to read a DB-stored setting from. Trying to force it into the DB-hot-swap pattern the other integrations use would mean either a synchronous DB call blocking cold start, or a real init happening on the *second* request instead of the first — both worse than just using an env var, which is also how Sentry's own tooling (the setup wizard) expects it to be configured. The `sentryDsn` field still exists in `/admin/settings` for visibility/consistency with the other integration rows, but its help text is explicit that saving a value there does nothing.
+
+**Why this is safe to ship without an account**: Sentry's SDK contract guarantees `Sentry.init({ dsn: undefined })` sends nothing and throws nothing — this is documented, intentional behavior, not something this app is relying on undocumented. Verified directly: production build and server start both succeed with zero Sentry-related output, and no network call to Sentry occurs.
+
+**Cost**: none currently (DSN-less, so purely dormant code); once a DSN is set, standard Sentry pricing/data-retention terms apply — an owner decision, not a code one.
+
 ## D-1 — Serializable-transaction re-check to close the booking double-booking race (2026-09-21)
 
 **Decision**: wrap the final conflict re-check + booking write (`createSelfServiceBooking`, `scheduleBookingFromLead`, `createAdminBooking` in `bookingStore.ts`; `requestReschedule` in `clientPortalStore.ts`) in a Postgres `SERIALIZABLE` transaction (`withSlotLock()`), retried up to 3 times on a serialization failure (Prisma code `P2034`). The existing fast, non-transactional `findConflicts()` check stays in place *before* this as a cheap early-reject for the common case (good UX, avoids wasted writes) — the transactional re-check is the authoritative one, run immediately before the actual write.

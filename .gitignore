@@ -39,6 +39,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the no-secrets template that documents every variable this app reads -- this was
+# never actually version-controlled despite README.md referring to it as if it were (found
+# 2026-09-21 while updating it for the new Sentry env vars).
+!.env.example
 
 # vercel
 .vercel

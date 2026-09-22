@@ -21,7 +21,8 @@ Remaining smaller items in this phase's spirit, not yet done:
 
 Remaining gaps:
 - **[decision]** Recurring service enrollment — `RecurringSchedule` model exists but is entirely unused; `recurringDiscountRates` exist in the pricing engine but are switched off pending owner-approved rates (a prior, deliberate decision, not an oversight). Needs the owner to confirm actual recurring pricing before this is worth building out.
-- **[code]** `middleware.ts` defense-in-depth for admin routes (`docs/SECURITY.md` §2) — worth doing regardless of anything else, low effort, closes a real (if currently theoretical) gap.
+- ~~**[code]** `middleware.ts` defense-in-depth for admin routes~~ **Done 2026-09-21** — `src/proxy.ts` (Next 16 renamed the convention from `middleware.ts`; migrated via `@next/codemod`). See `docs/SECURITY.md` §2 and `docs/DECISIONS.md` D-8.
+- **[code]** The equivalent backstop does not exist for the customer-facing surface (`/api/account/*`) — every route there correctly calls `requireCustomer()` today (verified this and a prior session), but there's no proxy-level guarantee against a future route forgetting it, the same class of gap `src/proxy.ts` just closed for admin. Lower priority than the admin version was, since customer routes are less individually destructive if one is missed, but the same fix pattern applies.
 
 ## Phase 3 — Payments, invoices, financial reporting
 
@@ -61,13 +62,14 @@ Missing from the full §3.4 spec:
 ## Phase 8 — Forecasting, optimization, hardening, load tests, staged rollout
 
 **Status: not started**, and not meaningfully startable yet — load testing and forecasting need either real production traffic history or a much larger built surface than exists today. The one piece of "hardening" that *is* actionable now, independent of the rest:
-- **[code]** Observability (`docs/OPERATIONS.md` §5 — currently zero monitoring). Wiring Sentry (a settings field already exists for the DSN) would be a small, high-value, standalone win: real error visibility before this goes live for real customers, rather than after.
+- ~~**[code]** Observability~~ **Sentry wired 2026-09-21** (`docs/OPERATIONS.md` §5, `docs/SECURITY.md` §7a) — code-complete, verified as a safe no-op without a DSN. **[creds]** now: just `NEXT_PUBLIC_SENTRY_DSN`.
 - **[code]** Durable rate limiting (Upstash Redis or similar) before/if real traffic materializes (`docs/SECURITY.md` §6).
 
 ## Suggested near-term order (revenue/risk-adjusted, not phase-numbered)
 
 1. **[creds]** Stripe test key → verify real payments work. Highest revenue impact of anything on this list; the code is already written and waiting.
-2. **[code]** `middleware.ts` admin backstop + Sentry wiring — both small, both close real (if currently low-probability) gaps, neither needs anything from the owner.
+2. ~~`middleware.ts`/proxy admin backstop + Sentry wiring~~ **Done 2026-09-21** — both code-complete and live-verified; only Sentry still needs a DSN from the owner.
 3. **[creds]** Anthropic key → validate the photo estimator against real photos before promoting it.
-4. **[decision]** Invoicing/accounting approach (Phase 3) and workforce/subcontractor classification (Phase 4) — both need the owner's input before more code should be written in those areas, and both gate real further scope.
-5. Everything else in Phases 5–8, in the order the owner cares about it — none of it is currently blocking revenue the way #1 is.
+4. **[creds]** `NEXT_PUBLIC_SENTRY_DSN` → real error visibility, code already proven safe either way.
+5. **[decision]** Invoicing/accounting approach (Phase 3) and workforce/subcontractor classification (Phase 4) — both need the owner's input before more code should be written in those areas, and both gate real further scope.
+6. Everything else in Phases 5–8, in the order the owner cares about it — none of it is currently blocking revenue the way #1 is.
