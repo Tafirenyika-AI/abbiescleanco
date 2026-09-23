@@ -138,7 +138,7 @@ export default function NewLeadForm() {
         type="button"
         onClick={submit}
         disabled={!valid || saving}
-        className="mt-4 flex items-center gap-2 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
+        className="ios-press mt-4 flex items-center gap-2 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
       >
         {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null} Create lead
       </button>

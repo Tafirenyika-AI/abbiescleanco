@@ -92,7 +92,7 @@ export default function ClientThreadPanel({ leadId, bookingId }: { leadId?: stri
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} placeholder="Reply to the client…" className="w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <label className="flex items-center gap-1.5 text-xs text-admin-text-muted"><input type="checkbox" checked={email} onChange={(e) => setEmail(e.target.checked)} /> Email them a heads-up</label>
-          <button type="button" onClick={send} disabled={busy || !text.trim()} className="inline-flex items-center gap-1.5 rounded-lg bg-admin-teal px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
+          <button type="button" onClick={send} disabled={busy || !text.trim()} className="ios-press inline-flex items-center gap-1.5 rounded-lg bg-admin-teal px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
             {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Send className="size-4" aria-hidden />} Send
           </button>
         </div>

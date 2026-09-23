@@ -154,7 +154,7 @@ export default function TeamView({ initialMembers }: { initialMembers: TeamMembe
             <option value="Lead Cleaner">Lead Cleaner</option>
             <option value="Supervisor">Supervisor</option>
           </select>
-          <button type="button" onClick={addMember} disabled={creating || !name.trim()} className="inline-flex items-center gap-1.5 rounded-full bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
+          <button type="button" onClick={addMember} disabled={creating || !name.trim()} className="ios-press inline-flex items-center gap-1.5 rounded-full bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
             <Plus className="size-4" aria-hidden /> Add
           </button>
         </div>

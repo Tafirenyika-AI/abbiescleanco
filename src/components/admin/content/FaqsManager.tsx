@@ -62,7 +62,7 @@ function Row({ faq, onDeleted }: { faq: FaqItem; onDeleted: (id: string) => void
         </label>
         <div className="flex items-center gap-2 text-xs text-admin-text-muted">
           {saving && <Loader2 className="size-3.5 animate-spin" aria-hidden />}
-          <button type="button" onClick={remove} disabled={deleting} aria-label="Delete FAQ" className="flex size-8 items-center justify-center rounded-lg text-red-600 hover:bg-red-50">
+          <button type="button" onClick={remove} disabled={deleting} aria-label="Delete FAQ" className="ios-press flex size-8 items-center justify-center rounded-lg text-red-600 hover:bg-red-50">
             <Trash2 className="size-4" aria-hidden />
           </button>
         </div>
@@ -111,7 +111,7 @@ export default function FaqsManager({ initialFaqs }: { initialFaqs: FaqItem[] })
           onChange={(e) => setNewAnswer(e.target.value)}
           className="mt-2 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm"
         />
-        <button type="button" onClick={addFaq} disabled={creating} className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-admin-navy px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
+        <button type="button" onClick={addFaq} disabled={creating} className="ios-press mt-2 inline-flex items-center gap-1.5 rounded-full bg-admin-navy px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
           <Plus className="size-4" aria-hidden /> Add FAQ
         </button>
       </div>

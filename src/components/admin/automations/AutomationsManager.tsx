@@ -88,7 +88,7 @@ export default function AutomationsManager({
           type="button"
           onClick={runNow}
           disabled={running}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-admin-border px-3.5 py-2 text-sm font-semibold text-admin-text hover:bg-admin-bg disabled:opacity-60"
+          className="ios-press inline-flex items-center gap-1.5 rounded-lg border border-admin-border px-3.5 py-2 text-sm font-semibold text-admin-text hover:bg-admin-bg disabled:opacity-60"
         >
           {running ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Play className="size-4" aria-hidden />} Run now
         </button>
@@ -140,7 +140,7 @@ export default function AutomationsManager({
           type="button"
           onClick={save}
           disabled={saving}
-          className="mt-4 flex items-center gap-2 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
+          className="ios-press mt-4 flex items-center gap-2 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
         >
           {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null} Save rules
         </button>

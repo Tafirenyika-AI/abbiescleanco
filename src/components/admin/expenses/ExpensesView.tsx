@@ -137,7 +137,7 @@ export default function ExpensesView({ initialExpenses }: { initialExpenses: Exp
               <input value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
             </label>
           </div>
-          <button type="button" onClick={submit} disabled={!amount || !date || saving} className="mt-3 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
+          <button type="button" onClick={submit} disabled={!amount || !date || saving} className="ios-press mt-3 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
             Save
           </button>
         </Card>

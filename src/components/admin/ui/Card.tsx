@@ -13,7 +13,7 @@ export default function Card({
   return (
     <div
       className={clsx(
-        "rounded-2xl border border-admin-border bg-admin-card shadow-[0_1px_2px_rgba(15,23,42,0.04)]",
+        "ios-card-shadow rounded-2xl border border-admin-border bg-admin-card",
         padded && "p-5 sm:p-6",
         className
       )}

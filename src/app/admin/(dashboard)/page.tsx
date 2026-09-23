@@ -136,7 +136,7 @@ export default async function AdminDashboardPage() {
                   <strong className="font-semibold">{unassignedBookings.length}</strong> booking{unassignedBookings.length === 1 ? "" : "s"} in the next 7 days {unassignedBookings.length === 1 ? "has" : "have"} no cleaner assigned yet
                 </p>
               </div>
-              <Link href="/admin/bookings" className="shrink-0 rounded-full bg-admin-teal px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-admin-teal-hover">
+              <Link href="/admin/bookings" className="ios-press shrink-0 rounded-full bg-admin-teal px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-admin-teal-hover">
                 Assign now
               </Link>
             </Card>
@@ -153,7 +153,7 @@ export default async function AdminDashboardPage() {
               <ul className="mt-3 space-y-2">
                 {attentionItems.map((item) => (
                   <li key={item.label}>
-                    <Link href={item.href} className="flex items-center justify-between gap-2 rounded-xl bg-white/10 px-3.5 py-2.5 text-sm font-medium hover:bg-white/15">
+                    <Link href={item.href} className="ios-press flex items-center justify-between gap-2 rounded-xl bg-white/10 px-3.5 py-2.5 text-sm font-medium hover:bg-white/15">
                       {item.label}
                       <ArrowRight className="size-3.5 shrink-0" aria-hidden />
                     </Link>
@@ -278,7 +278,7 @@ export default async function AdminDashboardPage() {
             <h2 className="text-sm font-semibold text-admin-text">Quick actions</h2>
             <div className="mt-3 grid grid-cols-2 gap-2">
               {quickActions.map((a) => (
-                <Link key={a.href} href={a.href} className="flex items-center gap-1.5 rounded-lg border border-admin-border px-2.5 py-2 text-xs font-semibold text-admin-text hover:bg-admin-bg">
+                <Link key={a.href} href={a.href} className="ios-press flex items-center gap-1.5 rounded-lg border border-admin-border px-2.5 py-2 text-xs font-semibold text-admin-text hover:bg-admin-bg">
                   <Plus className="size-3.5 shrink-0 text-admin-teal-hover" aria-hidden /> {a.label}
                 </Link>
               ))}

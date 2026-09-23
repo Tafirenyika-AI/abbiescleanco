@@ -125,11 +125,11 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
   }
 
   return (
-    <header className="flex items-center gap-3 border-b border-admin-border bg-admin-card px-4 py-3 sm:px-6">
+    <header className="ios-glass sticky top-0 z-20 flex items-center gap-3 border-b border-admin-border/70 px-4 py-3 sm:px-6">
       <button
         type="button"
         onClick={onOpenMenu}
-        className="flex size-9 items-center justify-center rounded-lg text-admin-text-muted hover:bg-admin-bg lg:hidden"
+        className="ios-press flex size-9 items-center justify-center rounded-lg text-admin-text-muted hover:bg-admin-bg lg:hidden"
         aria-label="Open menu"
       >
         <Menu className="size-5" aria-hidden />
@@ -162,7 +162,7 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
           {asking && <Loader2 className="size-4 shrink-0 animate-spin text-admin-text-muted" aria-hidden />}
         </div>
         {searchOpen && (matches.length > 0 || answer || pendingAction || query.trim()) && (
-          <div className="absolute right-0 top-full z-20 mt-1.5 w-full min-w-72 rounded-xl border border-admin-border bg-admin-card p-1.5 shadow-lg">
+          <div className="ios-sheet-in absolute right-0 top-full z-20 mt-1.5 w-full min-w-72 rounded-xl border border-admin-border bg-admin-card p-1.5 shadow-[0_4px_12px_rgba(15,23,42,0.08),0_16px_40px_rgba(15,23,42,0.1)]">
             {pendingAction && (
               <div className="rounded-lg bg-admin-teal/5 p-2.5 text-sm text-admin-text">
                 <p className="flex items-start gap-1.5"><Sparkles className="mt-0.5 size-3.5 shrink-0 text-admin-teal-hover" aria-hidden /> {pendingAction.text}</p>
@@ -171,11 +171,11 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
                     type="button"
                     onClick={confirmAction}
                     disabled={confirming}
-                    className="inline-flex items-center gap-1 rounded-full bg-admin-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                    className="ios-press inline-flex items-center gap-1 rounded-full bg-admin-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
                   >
                     {confirming && <Loader2 className="size-3 animate-spin" aria-hidden />} Confirm
                   </button>
-                  <button type="button" onClick={() => setPendingAction(null)} className="rounded-full bg-admin-bg px-3 py-1.5 text-xs font-semibold text-admin-text">
+                  <button type="button" onClick={() => setPendingAction(null)} className="ios-press rounded-full bg-admin-bg px-3 py-1.5 text-xs font-semibold text-admin-text">
                     Cancel
                   </button>
                 </div>
@@ -203,7 +203,7 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
                       setQuery("");
                       setAnswer(null);
                     }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-admin-text hover:bg-admin-bg"
+                    className="ios-press flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-admin-text hover:bg-admin-bg"
                   >
                     <item.icon className="size-4 text-admin-text-muted" aria-hidden />
                     <span className="flex-1">{item.label}</span>
@@ -220,7 +220,7 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
       </div>
 
       <details className="relative">
-        <summary className="flex size-9 cursor-pointer list-none items-center justify-center rounded-lg text-admin-text-muted hover:bg-admin-bg [&::-webkit-details-marker]:hidden">
+        <summary className="ios-press flex size-9 cursor-pointer list-none items-center justify-center rounded-lg text-admin-text-muted hover:bg-admin-bg [&::-webkit-details-marker]:hidden">
           <span className="relative">
             <Bell className="size-5" aria-hidden />
             {!!unreadCount && (
@@ -230,11 +230,11 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
             )}
           </span>
         </summary>
-        <div className="absolute right-0 top-full z-20 mt-1.5 w-80 rounded-xl border border-admin-border bg-admin-card p-2 shadow-lg">
+        <div className="ios-sheet-in absolute right-0 top-full z-20 mt-1.5 w-80 rounded-xl border border-admin-border bg-admin-card p-2 shadow-[0_4px_12px_rgba(15,23,42,0.08),0_16px_40px_rgba(15,23,42,0.1)]">
           <div className="flex items-center justify-between px-2 py-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Notifications</p>
             {unreadCount > 0 && (
-              <button type="button" onClick={markAllRead} className="flex items-center gap-1 text-xs font-semibold text-admin-teal-hover hover:underline">
+              <button type="button" onClick={markAllRead} className="ios-press flex items-center gap-1 text-xs font-semibold text-admin-teal-hover hover:underline">
                 <CheckCheck className="size-3.5" aria-hidden /> Mark all read
               </button>
             )}
@@ -248,7 +248,7 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
                   key={n.id}
                   href={n.link ?? "/admin/notifications"}
                   onClick={() => !n.isRead && markRead(n.id)}
-                  className={`block rounded-lg px-2.5 py-2 text-sm hover:bg-admin-bg ${n.isRead ? "text-admin-text-muted" : "text-admin-text"}`}
+                  className={`ios-press block rounded-lg px-2.5 py-2 text-sm hover:bg-admin-bg ${n.isRead ? "text-admin-text-muted" : "text-admin-text"}`}
                 >
                   <span className="flex items-center gap-1.5">
                     {!n.isRead && <span className="size-1.5 shrink-0 rounded-full bg-admin-teal" aria-hidden />}
@@ -259,21 +259,21 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
               ))}
             </div>
           )}
-          <Link href="/admin/notifications" className="mt-1 block rounded-lg px-2.5 py-2 text-center text-xs font-semibold text-admin-teal-hover hover:bg-admin-bg">
+          <Link href="/admin/notifications" className="ios-press mt-1 block rounded-lg px-2.5 py-2 text-center text-xs font-semibold text-admin-teal-hover hover:bg-admin-bg">
             View all
           </Link>
         </div>
       </details>
 
       <details className="relative">
-        <summary className="flex list-none items-center gap-1.5 rounded-lg bg-admin-teal px-3 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover [&::-webkit-details-marker]:hidden">
+        <summary className="ios-press flex list-none items-center gap-1.5 rounded-full bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white shadow-[0_1px_2px_rgba(15,157,138,0.25),0_6px_16px_rgba(15,157,138,0.22)] hover:bg-admin-teal-hover [&::-webkit-details-marker]:hidden">
           <Plus className="size-4" aria-hidden />
           <span className="hidden sm:inline">Create</span>
         </summary>
-        <div className="absolute right-0 top-full z-20 mt-1.5 w-52 rounded-xl border border-admin-border bg-admin-card p-1.5 shadow-lg">
+        <div className="ios-sheet-in absolute right-0 top-full z-20 mt-1.5 w-52 rounded-xl border border-admin-border bg-admin-card p-1.5 shadow-[0_4px_12px_rgba(15,23,42,0.08),0_16px_40px_rgba(15,23,42,0.1)]">
           {quickCreateItems.map((item) =>
             item.href ? (
-              <Link key={item.label} href={item.href} className="flex items-center justify-between rounded-lg px-2.5 py-2 text-sm text-admin-text hover:bg-admin-bg">
+              <Link key={item.label} href={item.href} className="ios-press flex items-center justify-between rounded-lg px-2.5 py-2 text-sm text-admin-text hover:bg-admin-bg">
                 {item.label}
               </Link>
             ) : (
@@ -291,7 +291,7 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
       </details>
 
       <details className="relative">
-        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg py-1 pl-1 pr-2 hover:bg-admin-bg [&::-webkit-details-marker]:hidden">
+        <summary className="ios-press flex cursor-pointer list-none items-center gap-2 rounded-lg py-1 pl-1 pr-2 hover:bg-admin-bg [&::-webkit-details-marker]:hidden">
           <span className="flex size-8 items-center justify-center rounded-full bg-admin-teal/15 text-sm font-semibold text-admin-teal-hover">
             {adminName.charAt(0).toUpperCase()}
           </span>
@@ -300,14 +300,14 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
             <span className="block text-xs text-admin-text-muted">{adminRole}</span>
           </span>
         </summary>
-        <div className="absolute right-0 top-full z-20 mt-1.5 w-52 rounded-xl border border-admin-border bg-admin-card p-1.5 shadow-lg">
-          <Link href="/admin/profile" className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-admin-text hover:bg-admin-bg">
+        <div className="ios-sheet-in absolute right-0 top-full z-20 mt-1.5 w-52 rounded-xl border border-admin-border bg-admin-card p-1.5 shadow-[0_4px_12px_rgba(15,23,42,0.08),0_16px_40px_rgba(15,23,42,0.1)]">
+          <Link href="/admin/profile" className="ios-press flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-admin-text hover:bg-admin-bg">
             <UserCircle className="size-4 text-admin-text-muted" aria-hidden /> My profile
           </Link>
-          <Link href="/admin/settings" className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-admin-text hover:bg-admin-bg">
+          <Link href="/admin/settings" className="ios-press flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-admin-text hover:bg-admin-bg">
             <Settings className="size-4 text-admin-text-muted" aria-hidden /> Business settings
           </Link>
-          <Link href="/" className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-admin-text hover:bg-admin-bg">
+          <Link href="/" className="ios-press flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-admin-text hover:bg-admin-bg">
             <ExternalLink className="size-4 text-admin-text-muted" aria-hidden /> View public website
           </Link>
           <div className="mt-1 border-t border-admin-border pt-1">
@@ -317,7 +317,7 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
                   type="button"
                   onClick={onClick}
                   disabled={loading}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-admin-error hover:bg-red-50"
+                  className="ios-press flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-admin-error hover:bg-red-50"
                 >
                   <LogOut className="size-4" aria-hidden /> {loading ? "Signing out…" : "Sign out"}
                 </button>

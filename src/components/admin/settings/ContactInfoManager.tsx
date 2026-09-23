@@ -70,7 +70,7 @@ export default function ContactInfoManager({ initialContact }: { initialContact:
         </label>
       </div>
       <div className="mt-4 flex items-center gap-3">
-        <button type="button" onClick={save} disabled={state === "saving"} className="inline-flex items-center gap-2 rounded-full bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
+        <button type="button" onClick={save} disabled={state === "saving"} className="ios-press inline-flex items-center gap-2 rounded-full bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
           {state === "saving" ? <Loader2 className="size-4 animate-spin" aria-hidden /> : "Save contact info"}
         </button>
         {state === "saved" && <span className="flex items-center gap-1 text-sm text-admin-teal-hover"><CheckCircle2 className="size-4" aria-hidden /> Saved</span>}

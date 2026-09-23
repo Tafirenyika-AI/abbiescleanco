@@ -25,7 +25,7 @@ export default function ExportCsvButton({ filename, rows }: { filename: string; 
   }
 
   return (
-    <button type="button" onClick={download} disabled={rows.length === 0} className="inline-flex items-center gap-1.5 rounded-lg border border-admin-border px-3 py-1.5 text-xs font-semibold text-admin-text hover:bg-admin-bg disabled:opacity-50">
+    <button type="button" onClick={download} disabled={rows.length === 0} className="ios-press inline-flex items-center gap-1.5 rounded-lg border border-admin-border px-3 py-1.5 text-xs font-semibold text-admin-text hover:bg-admin-bg disabled:opacity-50">
       <Download className="size-3.5" aria-hidden /> Export CSV
     </button>
   );

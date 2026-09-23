@@ -54,7 +54,7 @@ function Row({ area, onDeleted }: { area: ServiceAreaContent; onDeleted: (id: st
         Active
       </label>
       {saving && <Loader2 className="size-3.5 animate-spin text-admin-text-muted" aria-hidden />}
-      <button type="button" onClick={remove} disabled={deleting} aria-label="Delete area" className="ml-auto flex size-8 items-center justify-center rounded-lg text-red-600 hover:bg-red-50">
+      <button type="button" onClick={remove} disabled={deleting} aria-label="Delete area" className="ios-press ml-auto flex size-8 items-center justify-center rounded-lg text-red-600 hover:bg-red-50">
         <Trash2 className="size-4" aria-hidden />
       </button>
     </div>
@@ -91,7 +91,7 @@ export default function ServiceAreasManager({ initialAreas }: { initialAreas: Se
           onChange={(e) => setNewName(e.target.value)}
           className="flex-1 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm"
         />
-        <button type="button" onClick={addArea} disabled={creating} className="inline-flex items-center gap-1.5 rounded-full bg-admin-navy px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
+        <button type="button" onClick={addArea} disabled={creating} className="ios-press inline-flex items-center gap-1.5 rounded-full bg-admin-navy px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
           <Plus className="size-4" aria-hidden /> Add
         </button>
       </div>

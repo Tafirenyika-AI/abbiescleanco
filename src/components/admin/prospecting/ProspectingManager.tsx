@@ -90,7 +90,7 @@ export default function ProspectingManager({ initialProspects, placesConfigured 
             placeholder='e.g. "property management Spokane Valley WA"'
             className="min-w-64 flex-1 rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text"
           />
-          <button type="button" onClick={search} disabled={searching || !query.trim()} className="inline-flex items-center gap-1.5 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+          <button type="button" onClick={search} disabled={searching || !query.trim()} className="ios-press inline-flex items-center gap-1.5 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
             {searching ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Search className="size-4" aria-hidden />} Search
           </button>
         </div>
@@ -126,7 +126,7 @@ export default function ProspectingManager({ initialProspects, placesConfigured 
             </thead>
             <tbody>
               {filtered.map((p) => (
-                <tr key={p.id} onClick={() => setSelected(p)} className="cursor-pointer border-t border-admin-border hover:bg-admin-bg">
+                <tr key={p.id} onClick={() => setSelected(p)} className="cursor-pointer border-t border-admin-border transition-colors duration-150 hover:bg-admin-bg">
                   <td className="px-4 py-2.5 font-medium text-admin-text">{p.businessName || p.contactName || "Unnamed"}</td>
                   <td className="px-4 py-2.5 text-admin-text-muted">{prospectCategoryLabels[p.category]}</td>
                   <td className="px-4 py-2.5 text-admin-text-muted">{p.phone || p.email || "—"}</td>
@@ -213,15 +213,15 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-black/30" onClick={onClose}>
-      <div className="h-full w-full max-w-lg overflow-y-auto bg-admin-card p-6" onClick={(e) => e.stopPropagation()}>
+    <div className="ios-backdrop-in fixed inset-0 z-40 flex justify-end bg-black/30 backdrop-blur-sm" onClick={onClose}>
+      <div className="ios-drawer-in h-full w-full max-w-lg overflow-y-auto bg-admin-card p-6 shadow-[-8px_0_40px_rgba(15,23,42,0.12)]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs text-admin-text-muted">{prospectCategoryLabels[prospect.category]}</p>
             <h2 className="text-lg font-semibold text-admin-text">{prospect.businessName || prospect.contactName || "Unnamed prospect"}</h2>
             <Badge tone={statusTone(prospect.status)} className="mt-1">{prospectStatusLabels[prospect.status]}</Badge>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-admin-text-muted hover:bg-admin-bg"><X className="size-5" aria-hidden /></button>
+          <button type="button" onClick={onClose} aria-label="Close" className="ios-press rounded-lg p-1.5 text-admin-text-muted hover:bg-admin-bg"><X className="size-5" aria-hidden /></button>
         </div>
 
         <dl className="mt-4 space-y-1.5 text-sm">
@@ -235,7 +235,7 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
         <div className="mt-5">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Outreach draft</h3>
           <p className="mt-1 text-xs text-admin-text-muted">This is exactly what will be sent — edit freely before sending.</p>
-          <button type="button" onClick={draft} disabled={busy === "draft"} className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-admin-bg px-3 py-1.5 text-xs font-semibold text-admin-text disabled:opacity-50">
+          <button type="button" onClick={draft} disabled={busy === "draft"} className="ios-press mt-2 inline-flex items-center gap-1.5 rounded-full bg-admin-bg px-3 py-1.5 text-xs font-semibold text-admin-text disabled:opacity-50">
             {busy === "draft" ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Sparkles className="size-3.5" aria-hidden />} {subject ? "Regenerate draft" : "Generate draft"}
           </button>
           <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject" className="mt-2 w-full rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text" />
@@ -248,17 +248,17 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2">
-          <button type="button" onClick={saveDraft} disabled={!!busy} className="rounded-full bg-admin-bg px-4 py-2 text-sm font-semibold text-admin-text disabled:opacity-50">Save</button>
+          <button type="button" onClick={saveDraft} disabled={!!busy} className="ios-press rounded-full bg-admin-bg px-4 py-2 text-sm font-semibold text-admin-text disabled:opacity-50">Save</button>
           <button
             type="button"
             onClick={send}
             disabled={!!busy || !prospect.email || !subject || !body || prospect.status === "DO_NOT_CONTACT"}
-            className="inline-flex items-center gap-1.5 rounded-full bg-admin-teal px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            className="ios-press inline-flex items-center gap-1.5 rounded-full bg-admin-teal px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
             {busy === "send" ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Send className="size-4" aria-hidden />} Send
           </button>
           {prospect.status !== "DO_NOT_CONTACT" && (
-            <button type="button" onClick={() => setStatus("DO_NOT_CONTACT")} disabled={!!busy} className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">
+            <button type="button" onClick={() => setStatus("DO_NOT_CONTACT")} disabled={!!busy} className="ios-press inline-flex items-center gap-1.5 rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">
               <Ban className="size-4" aria-hidden /> Do not contact
             </button>
           )}
@@ -266,8 +266,8 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
 
         {prospect.status === "SENT" && (
           <div className="mt-4 flex gap-2">
-            <button type="button" onClick={() => setStatus("REPLIED")} disabled={!!busy} className="rounded-full bg-admin-bg px-3 py-1.5 text-xs font-semibold text-admin-text disabled:opacity-50">Mark replied</button>
-            <button type="button" onClick={() => setStatus("CONVERTED")} disabled={!!busy} className="rounded-full bg-admin-bg px-3 py-1.5 text-xs font-semibold text-admin-text disabled:opacity-50">Mark converted</button>
+            <button type="button" onClick={() => setStatus("REPLIED")} disabled={!!busy} className="ios-press rounded-full bg-admin-bg px-3 py-1.5 text-xs font-semibold text-admin-text disabled:opacity-50">Mark replied</button>
+            <button type="button" onClick={() => setStatus("CONVERTED")} disabled={!!busy} className="ios-press rounded-full bg-admin-bg px-3 py-1.5 text-xs font-semibold text-admin-text disabled:opacity-50">Mark converted</button>
           </div>
         )}
 

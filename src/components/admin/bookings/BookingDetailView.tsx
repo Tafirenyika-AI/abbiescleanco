@@ -340,7 +340,7 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
                 type="button"
                 onClick={generatePaymentLink}
                 disabled={!payAmount || generatingLink}
-                className="flex items-center gap-2 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
+                className="ios-press flex items-center gap-2 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
               >
                 {generatingLink ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <CreditCard className="size-4" aria-hidden />}
                 Generate payment link
@@ -364,7 +364,7 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
             <h2 className="font-semibold text-admin-text">Assigned cleaner</h2>
             <div className="mt-2 flex gap-2">
               <input value={staff} onChange={(e) => setStaff(e.target.value)} placeholder="Unassigned" className="flex-1 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
-              <button type="button" onClick={saveStaff} disabled={savingStaff} className="rounded-lg bg-admin-navy px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">Save</button>
+              <button type="button" onClick={saveStaff} disabled={savingStaff} className="ios-press rounded-lg bg-admin-navy px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">Save</button>
             </div>
           </Card>
 
@@ -421,7 +421,7 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
                 type="button"
                 onClick={sendReviewRequest}
                 disabled={sendingReviewRequest || reviewRequestSent}
-                className="mt-3 flex items-center gap-2 rounded-lg bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
+                className="ios-press mt-3 flex items-center gap-2 rounded-lg bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
               >
                 {sendingReviewRequest ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
                 {reviewRequestSent ? "Sent" : "Send review request"}
@@ -463,7 +463,7 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
                 type="button"
                 disabled={!earlyNote.trim() || startingEarly}
                 onClick={confirmEarlyStart}
-                className="flex items-center gap-2 rounded-lg bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
+                className="ios-press flex items-center gap-2 rounded-lg bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
               >
                 {startingEarly ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
                 Approve &amp; start

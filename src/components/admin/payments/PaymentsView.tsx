@@ -160,7 +160,7 @@ export default function PaymentsView({
           <div className="mt-3 max-w-sm">
             <ImageUploadField label="Proof of payment (optional — receipt or screenshot)" value={proofUrl} onChange={setProofUrl} />
           </div>
-          <button type="button" onClick={submit} disabled={!bookingId || !amount || saving} className="mt-3 flex items-center gap-2 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
+          <button type="button" onClick={submit} disabled={!bookingId || !amount || saving} className="ios-press mt-3 flex items-center gap-2 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
             {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null} Save
           </button>
         </Card>

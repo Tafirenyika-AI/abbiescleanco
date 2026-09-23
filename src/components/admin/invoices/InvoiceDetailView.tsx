@@ -40,22 +40,22 @@ export default function InvoiceDetailView({
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <Link href="/admin/invoices" className="inline-flex items-center gap-1.5 text-sm font-medium text-admin-text-muted hover:text-admin-text">
+        <Link href="/admin/invoices" className="ios-press inline-flex items-center gap-1.5 text-sm font-medium text-admin-text-muted hover:text-admin-text">
           <ArrowLeft className="size-4" aria-hidden /> Back to invoices
         </Link>
         <div className="flex gap-2">
-          <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded-full bg-admin-bg px-4 py-2 text-sm font-semibold text-admin-text">
+          <button type="button" onClick={() => window.print()} className="ios-press inline-flex items-center gap-1.5 rounded-full bg-admin-bg px-4 py-2 text-sm font-semibold text-admin-text">
             <Printer className="size-4" aria-hidden /> Print / Save PDF
           </button>
           {invoice.status !== "VOID" && (
-            <button type="button" onClick={voidThisInvoice} disabled={voiding} className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">
+            <button type="button" onClick={voidThisInvoice} disabled={voiding} className="ios-press inline-flex items-center gap-1.5 rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">
               {voiding ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Ban className="size-4" aria-hidden />} Void
             </button>
           )}
         </div>
       </div>
 
-      <div id="printable-area" className="mx-auto max-w-2xl rounded-2xl border border-admin-border bg-white p-8 print:rounded-none print:border-0 print:p-0">
+      <div id="printable-area" className="ios-card-shadow mx-auto max-w-2xl rounded-2xl border border-admin-border bg-white p-8 print:rounded-none print:border-0 print:p-0 print:shadow-none">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-xl font-bold text-navy-950">{business.legalName}</h1>

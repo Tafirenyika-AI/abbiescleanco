@@ -42,7 +42,7 @@ export default function ConfirmDialog({
         e.preventDefault();
         onCancel();
       }}
-      className="m-auto w-full max-w-sm rounded-2xl border border-admin-border bg-admin-card p-6 shadow-2xl backdrop:bg-slate-950/50"
+      className="m-auto w-full max-w-sm rounded-2xl border border-admin-border bg-admin-card p-6 shadow-[0_8px_24px_rgba(15,23,42,0.1),0_24px_64px_rgba(15,23,42,0.16)] backdrop:bg-slate-950/50 backdrop:backdrop-blur-sm"
     >
       <h2 className="text-base font-semibold text-admin-text">{title}</h2>
       {description && <p className="mt-2 text-sm text-admin-text-muted">{description}</p>}
@@ -50,7 +50,7 @@ export default function ConfirmDialog({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-lg border border-admin-border px-3.5 py-2 text-sm font-semibold text-admin-text hover:bg-admin-bg"
+          className="ios-press rounded-lg border border-admin-border px-3.5 py-2 text-sm font-semibold text-admin-text hover:bg-admin-bg"
         >
           Cancel
         </button>
@@ -59,8 +59,8 @@ export default function ConfirmDialog({
           onClick={onConfirm}
           className={
             tone === "danger"
-              ? "rounded-lg bg-admin-error px-3.5 py-2 text-sm font-semibold text-white hover:bg-red-700"
-              : "rounded-lg bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover"
+              ? "ios-press rounded-lg bg-admin-error px-3.5 py-2 text-sm font-semibold text-white hover:bg-red-700"
+              : "ios-press rounded-lg bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover"
           }
         >
           {confirmLabel}

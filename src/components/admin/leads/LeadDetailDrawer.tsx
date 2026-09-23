@@ -133,14 +133,14 @@ export default function LeadDetailDrawer({
 
   return (
     <>
-      <button type="button" aria-label="Close lead details backdrop" onClick={onClose} className="fixed inset-0 z-40 bg-slate-950/40" />
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col bg-admin-card shadow-2xl">
+      <button type="button" aria-label="Close lead details backdrop" onClick={onClose} className="ios-backdrop-in fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-sm" />
+      <div className="ios-drawer-in fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col bg-admin-card shadow-[-8px_0_40px_rgba(15,23,42,0.16)]">
         <div className="flex items-center justify-between border-b border-admin-border px-5 py-4">
           <div>
             <p className="text-xs text-admin-text-muted">{lead.reference}</p>
             <h2 className="text-lg font-semibold text-admin-text">{fullName || "Lead"}</h2>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close lead details" className="flex size-8 items-center justify-center rounded-lg text-admin-text-muted hover:bg-admin-bg">
+          <button type="button" onClick={onClose} aria-label="Close lead details" className="ios-press flex size-8 items-center justify-center rounded-lg text-admin-text-muted hover:bg-admin-bg">
             <X className="size-5" aria-hidden />
           </button>
         </div>
@@ -303,8 +303,8 @@ export default function LeadDetailDrawer({
       </div>
 
       {pendingLostStatus && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-admin-card p-6 shadow-2xl">
+        <div className="ios-backdrop-in fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+          <div className="ios-modal-in w-full max-w-sm rounded-2xl bg-admin-card p-6 shadow-[0_8px_24px_rgba(15,23,42,0.1),0_24px_64px_rgba(15,23,42,0.16)]">
             <h2 className="text-base font-semibold text-admin-text">Why was this lead lost?</h2>
             <p className="mt-1 text-sm text-admin-text-muted">A reason is required so the team can learn from it.</p>
             <textarea
@@ -315,14 +315,14 @@ export default function LeadDetailDrawer({
               className="mt-3 w-full rounded-lg border border-admin-border px-3 py-2 text-sm text-admin-text"
             />
             <div className="mt-4 flex justify-end gap-2">
-              <button type="button" onClick={() => { setPendingLostStatus(false); setLostReason(""); }} className="rounded-lg border border-admin-border px-3.5 py-2 text-sm font-semibold text-admin-text hover:bg-admin-bg">
+              <button type="button" onClick={() => { setPendingLostStatus(false); setLostReason(""); }} className="ios-press rounded-lg border border-admin-border px-3.5 py-2 text-sm font-semibold text-admin-text hover:bg-admin-bg">
                 Cancel
               </button>
               <button
                 type="button"
                 disabled={!lostReason.trim() || savingStatus}
                 onClick={() => changeStatus("LOST", lostReason.trim())}
-                className="rounded-lg bg-admin-error px-3.5 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                className="ios-press rounded-lg bg-admin-error px-3.5 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
               >
                 Mark as lost
               </button>
@@ -342,8 +342,8 @@ export default function LeadDetailDrawer({
       />
 
       {scheduleOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-admin-card p-6 shadow-2xl">
+        <div className="ios-backdrop-in fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+          <div className="ios-modal-in w-full max-w-sm rounded-2xl bg-admin-card p-6 shadow-[0_8px_24px_rgba(15,23,42,0.1),0_24px_64px_rgba(15,23,42,0.16)]">
             <h2 className="text-base font-semibold text-admin-text">Schedule this cleaning</h2>
             <p className="mt-1 text-xs text-admin-text-muted">
               Creates an accepted quote and a confirmed booking together — skips building a quote by hand.
@@ -380,14 +380,14 @@ export default function LeadDetailDrawer({
             {scheduleError && <p className="mt-3 text-sm text-admin-error">{scheduleError}</p>}
 
             <div className="mt-4 flex justify-end gap-2">
-              <button type="button" onClick={() => setScheduleOpen(false)} className="rounded-lg border border-admin-border px-3.5 py-2 text-sm font-semibold text-admin-text hover:bg-admin-bg">
+              <button type="button" onClick={() => setScheduleOpen(false)} className="ios-press rounded-lg border border-admin-border px-3.5 py-2 text-sm font-semibold text-admin-text hover:bg-admin-bg">
                 Cancel
               </button>
               <button
                 type="button"
                 disabled={!scheduleValid || scheduling}
                 onClick={submitSchedule}
-                className="flex items-center gap-2 rounded-lg bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
+                className="ios-press flex items-center gap-2 rounded-lg bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
               >
                 {scheduling ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
                 Create booking

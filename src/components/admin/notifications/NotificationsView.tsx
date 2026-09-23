@@ -34,7 +34,7 @@ export default function NotificationsView({ initialNotifications }: { initialNot
           <p className="mt-1 text-sm text-admin-text-muted">{notifications.length} total · {unreadCount} unread</p>
         </div>
         {unreadCount > 0 && (
-          <button type="button" onClick={markAllRead} className="inline-flex items-center gap-1.5 rounded-lg border border-admin-border px-3.5 py-2 text-sm font-semibold text-admin-text hover:bg-admin-bg">
+          <button type="button" onClick={markAllRead} className="ios-press inline-flex items-center gap-1.5 rounded-lg border border-admin-border px-3.5 py-2 text-sm font-semibold text-admin-text hover:bg-admin-bg">
             <CheckCheck className="size-4" aria-hidden /> Mark all read
           </button>
         )}

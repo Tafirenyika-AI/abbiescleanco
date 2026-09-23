@@ -333,7 +333,7 @@ export default function QuoteDetailView({
               ))}
             </div>
             {isDraft && (
-              <button type="button" onClick={addItem} className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-admin-border px-3 py-1.5 text-xs font-semibold text-admin-text hover:bg-admin-bg">
+              <button type="button" onClick={addItem} className="ios-press mt-3 inline-flex items-center gap-1.5 rounded-full border border-admin-border px-3 py-1.5 text-xs font-semibold text-admin-text hover:bg-admin-bg">
                 <Plus className="size-3.5" aria-hidden /> Add line item
               </button>
             )}
@@ -345,7 +345,7 @@ export default function QuoteDetailView({
                   Customer entered promo code <strong className="font-mono">{validPromo.code}</strong> —{" "}
                   {validPromo.discountType === "PERCENT" ? `${validPromo.discountValue}% off` : `$${(validPromo.discountValue / 100).toFixed(2)} off`}
                 </p>
-                <button type="button" onClick={applyPromo} className="rounded-full bg-admin-teal px-3 py-1.5 text-xs font-semibold text-white hover:bg-admin-teal-hover">
+                <button type="button" onClick={applyPromo} className="ios-press rounded-full bg-admin-teal px-3 py-1.5 text-xs font-semibold text-white hover:bg-admin-teal-hover">
                   Apply to discount
                 </button>
               </div>
@@ -394,7 +394,7 @@ export default function QuoteDetailView({
             </dl>
 
             {isDraft && (
-              <button type="button" onClick={save} disabled={saving} className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-admin-teal px-4 py-2.5 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
+              <button type="button" onClick={save} disabled={saving} className="ios-press mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-admin-teal px-4 py-2.5 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
                 {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
                 {mode === "create" ? "Save draft" : "Save changes"}
               </button>
@@ -409,7 +409,7 @@ export default function QuoteDetailView({
                   placeholder="Optional message to include in the email…"
                   className="mt-3 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text"
                 />
-                <button type="button" onClick={sendQuote} disabled={sending} className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-admin-navy px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
+                <button type="button" onClick={sendQuote} disabled={sending} className="ios-press mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-admin-navy px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
                   {sending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Send className="size-4" aria-hidden />}
                   Send by email
                 </button>
@@ -433,7 +433,7 @@ export default function QuoteDetailView({
                     <button type="button" onClick={() => setStatus("DECLINED")} className="rounded-lg border border-admin-border px-3 py-2 text-sm font-medium text-admin-text hover:bg-admin-bg">Mark declined</button>
                   </>
                 )}
-                <button type="button" onClick={duplicate} className="flex items-center justify-center gap-1.5 rounded-lg border border-admin-border px-3 py-2 text-sm font-medium text-admin-text hover:bg-admin-bg">
+                <button type="button" onClick={duplicate} className="ios-press flex items-center justify-center gap-1.5 rounded-lg border border-admin-border px-3 py-2 text-sm font-medium text-admin-text hover:bg-admin-bg">
                   <Copy className="size-3.5" aria-hidden /> Duplicate as new draft
                 </button>
                 {quote.status === "ACCEPTED" ? (

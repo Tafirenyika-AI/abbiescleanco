@@ -89,7 +89,7 @@ export default function SiteHeader({ logoUrl, contact, hours }: { logoUrl?: stri
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-medium text-navy-800 hover:text-teal-600"
+              className="text-sm font-medium text-navy-800 transition-colors duration-150 hover:text-teal-600"
             >
               {link.label}
             </Link>
@@ -100,7 +100,7 @@ export default function SiteHeader({ logoUrl, contact, hours }: { logoUrl?: stri
           <a
             href={telHref(contact.phoneE164)}
             aria-label="Call us"
-            className="flex size-10 items-center justify-center rounded-full text-navy-700 hover:bg-surface-100 hover:text-teal-600"
+            className="ios-press flex size-10 items-center justify-center rounded-full text-navy-700 hover:bg-surface-100 hover:text-teal-600"
           >
             <Phone className="size-4.5" aria-hidden />
           </a>
@@ -109,7 +109,7 @@ export default function SiteHeader({ logoUrl, contact, hours }: { logoUrl?: stri
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Message us on WhatsApp"
-            className="flex size-10 items-center justify-center rounded-full text-navy-700 hover:bg-surface-100 hover:text-teal-600"
+            className="ios-press flex size-10 items-center justify-center rounded-full text-navy-700 hover:bg-surface-100 hover:text-teal-600"
           >
             <MessageCircle className="size-4.5" aria-hidden />
           </a>

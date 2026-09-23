@@ -161,6 +161,39 @@ h1, h2, h3, .font-display {
   animation: ios-sheet-up 420ms var(--ease-ios) both;
 }
 
+/* Side-drawer entrance (detail panels sliding in from the right). */
+@keyframes ios-drawer-in {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.ios-drawer-in {
+  animation: ios-drawer-in 320ms var(--ease-ios) both;
+}
+
+/* Centered modal entrance (a gentle scale-up, like an iOS alert/popover). */
+@keyframes ios-modal-in {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.ios-modal-in {
+  animation: ios-modal-in 260ms var(--ease-ios) both;
+}
+
+/* Backdrop fade, paired with any of the entrances above. */
+@keyframes ios-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.ios-backdrop-in {
+  animation: ios-backdrop-in 220ms ease-out both;
+}
+
+/* Soft, layered elevation used by admin cards -- an ambient shadow plus a tighter
+   contact shadow, closer to how iOS cards sit above their background than a flat 1px line. */
+.ios-card-shadow {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
 /* Visible focus states for keyboard navigation (WCAG 2.2 AA) */
 :focus-visible {
   outline: 3px solid var(--color-brand-teal-500);

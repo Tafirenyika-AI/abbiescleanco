@@ -59,7 +59,7 @@ export default function AdminSidebar({
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 shrink-0 bg-admin-sidebar transition-transform lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 shrink-0 bg-admin-sidebar transition-[transform,width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         } ${collapsed ? "lg:w-[76px]" : "w-64 lg:w-64"}`}
       >
@@ -115,7 +115,7 @@ export default function AdminSidebar({
                         )}
                       </>
                     );
-                    const className = `group flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-semibold transition-colors ${
+                    const className = `ios-press group flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-semibold transition-[background-color,color,box-shadow] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${
                       collapsed ? "lg:justify-center" : ""
                     } ${
                       active
@@ -140,7 +140,7 @@ export default function AdminSidebar({
             <button
               type="button"
               onClick={toggleCollapsed}
-              className="hidden w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-400 hover:bg-white/5 hover:text-white lg:flex"
+              className="ios-press hidden w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-400 hover:bg-white/5 hover:text-white lg:flex"
             >
               {collapsed ? <ChevronsRight className="size-4" aria-hidden /> : <ChevronsLeft className="size-4" aria-hidden />}
               {!collapsed && "Collapse"}

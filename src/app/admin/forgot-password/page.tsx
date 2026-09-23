@@ -51,7 +51,7 @@ export default function AdminForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={state === "submitting"}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-admin-teal px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-admin-teal-hover disabled:opacity-60"
+                className="ios-press flex w-full items-center justify-center gap-2 rounded-lg bg-admin-teal px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-admin-teal-hover disabled:opacity-60"
               >
                 {state === "submitting" ? "Sending…" : "Send reset link"}
               </button>

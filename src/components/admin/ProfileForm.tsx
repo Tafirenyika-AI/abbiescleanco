@@ -151,7 +151,7 @@ export default function ProfileForm({
           </label>
         </div>
         <div className="mt-4 flex items-center gap-3">
-          <button type="submit" disabled={nameState === "saving"} className="inline-flex items-center gap-2 rounded-full bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
+          <button type="submit" disabled={nameState === "saving"} className="ios-press inline-flex items-center gap-2 rounded-full bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
             {nameState === "saving" ? <Loader2 className="size-4 animate-spin" aria-hidden /> : "Save"}
           </button>
           {nameState === "saved" && <span className="flex items-center gap-1 text-sm text-admin-teal-hover"><CheckCircle2 className="size-4" aria-hidden /> Saved</span>}
@@ -172,7 +172,7 @@ export default function ProfileForm({
           </label>
         </div>
         <div className="mt-4 flex items-center gap-3">
-          <button type="submit" disabled={passwordState === "saving"} className="inline-flex items-center gap-2 rounded-full bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
+          <button type="submit" disabled={passwordState === "saving"} className="ios-press inline-flex items-center gap-2 rounded-full bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
             {passwordState === "saving" ? <Loader2 className="size-4 animate-spin" aria-hidden /> : "Update password"}
           </button>
           {passwordState === "saved" && <span className="flex items-center gap-1 text-sm text-admin-teal-hover"><CheckCircle2 className="size-4" aria-hidden /> Updated</span>}
@@ -194,7 +194,7 @@ export default function ProfileForm({
         </div>
 
         {twoFactorStep === "idle" && !enabled && (
-          <button type="button" onClick={startSetup} disabled={twoFactorBusy} className="mt-4 inline-flex items-center gap-2 rounded-full bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
+          <button type="button" onClick={startSetup} disabled={twoFactorBusy} className="ios-press mt-4 inline-flex items-center gap-2 rounded-full bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
             {twoFactorBusy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <ShieldCheck className="size-4" aria-hidden />}
             Enable two-factor authentication
           </button>
@@ -222,7 +222,7 @@ export default function ProfileForm({
                   className="mt-1 w-40 rounded-lg border border-admin-border px-2.5 py-1.5 text-center text-sm tracking-widest"
                 />
               </label>
-              <button type="submit" disabled={twoFactorBusy || confirmCode.length !== 6} className="rounded-full bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
+              <button type="submit" disabled={twoFactorBusy || confirmCode.length !== 6} className="ios-press rounded-full bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
                 {twoFactorBusy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : "Confirm & enable"}
               </button>
               <button type="button" onClick={() => setTwoFactorStep("idle")} className="rounded-full border border-admin-border px-4 py-2 text-sm font-semibold text-admin-text hover:bg-admin-bg">
@@ -273,7 +273,7 @@ export default function ProfileForm({
                   <span className="text-xs font-medium text-admin-text-muted">Confirm your password</span>
                   <input type="password" value={disablePassword} onChange={(e) => setDisablePassword(e.target.value)} className="mt-1 w-56 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm" />
                 </label>
-                <button type="submit" disabled={twoFactorBusy} className="rounded-full bg-admin-error px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
+                <button type="submit" disabled={twoFactorBusy} className="ios-press rounded-full bg-admin-error px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
                   {twoFactorBusy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : "Disable"}
                 </button>
                 <button type="button" onClick={() => setShowDisableForm(false)} className="rounded-full border border-admin-border px-4 py-2 text-sm font-semibold text-admin-text hover:bg-admin-bg">
