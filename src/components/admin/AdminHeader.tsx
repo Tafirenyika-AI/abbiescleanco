@@ -71,11 +71,13 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
   const [query, setQuery] = useState("");
   const [asking, setAsking] = useState(false);
   const [answer, setAnswer] = useState<{ text: string; href?: string } | null>(null);
+  const [pendingAction, setPendingAction] = useState<{ text: string; action: Record<string, unknown> } | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) { setSearchOpen(false); setAnswer(null); }
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) { setSearchOpen(false); setAnswer(null); setPendingAction(null); }
     }
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
@@ -89,6 +91,7 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
     if (!query.trim()) return;
     setAsking(true);
     setAnswer(null);
+    setPendingAction(null);
     const res = await fetch("/api/admin/assistant", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query }) });
     const data = await res.json().catch(() => null);
     setAsking(false);
@@ -99,7 +102,26 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
       setQuery("");
       return;
     }
+    if (data.result.type === "confirm" && data.result.action) {
+      setPendingAction({ text: data.result.text, action: data.result.action });
+      return;
+    }
     setAnswer({ text: data.result.text, href: data.result.href });
+  }
+
+  async function confirmAction() {
+    if (!pendingAction) return;
+    setConfirming(true);
+    const res = await fetch("/api/admin/assistant/execute", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(pendingAction.action) });
+    const data = await res.json().catch(() => null);
+    setConfirming(false);
+    setPendingAction(null);
+    if (data?.ok) {
+      setAnswer({ text: data.text, href: data.href });
+      setQuery("");
+    } else {
+      setAnswer({ text: data?.error || "Couldn't complete that." });
+    }
   }
 
   return (
@@ -131,7 +153,7 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
           <Sparkles className="size-4 shrink-0 text-admin-teal-hover" aria-hidden />
           <input
             value={query}
-            onChange={(e) => { setQuery(e.target.value); setAnswer(null); }}
+            onChange={(e) => { setQuery(e.target.value); setAnswer(null); setPendingAction(null); }}
             onFocus={() => setSearchOpen(true)}
             onKeyDown={(e) => e.key === "Enter" && ask()}
             placeholder="Ask Abbie Assistant or search admin…"
@@ -139,8 +161,26 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
           />
           {asking && <Loader2 className="size-4 shrink-0 animate-spin text-admin-text-muted" aria-hidden />}
         </div>
-        {searchOpen && (matches.length > 0 || answer || query.trim()) && (
+        {searchOpen && (matches.length > 0 || answer || pendingAction || query.trim()) && (
           <div className="absolute right-0 top-full z-20 mt-1.5 w-full min-w-72 rounded-xl border border-admin-border bg-admin-card p-1.5 shadow-lg">
+            {pendingAction && (
+              <div className="rounded-lg bg-admin-teal/5 p-2.5 text-sm text-admin-text">
+                <p className="flex items-start gap-1.5"><Sparkles className="mt-0.5 size-3.5 shrink-0 text-admin-teal-hover" aria-hidden /> {pendingAction.text}</p>
+                <div className="mt-2 flex gap-1.5 pl-5">
+                  <button
+                    type="button"
+                    onClick={confirmAction}
+                    disabled={confirming}
+                    className="inline-flex items-center gap-1 rounded-full bg-admin-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                  >
+                    {confirming && <Loader2 className="size-3 animate-spin" aria-hidden />} Confirm
+                  </button>
+                  <button type="button" onClick={() => setPendingAction(null)} className="rounded-full bg-admin-bg px-3 py-1.5 text-xs font-semibold text-admin-text">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
             {answer && (
               <div className="rounded-lg bg-admin-teal/5 p-2.5 text-sm text-admin-text">
                 <p className="flex items-start gap-1.5"><Sparkles className="mt-0.5 size-3.5 shrink-0 text-admin-teal-hover" aria-hidden /> {answer.text}</p>

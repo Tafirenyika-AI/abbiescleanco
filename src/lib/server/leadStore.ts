@@ -271,6 +271,21 @@ export async function getLeadById(id: string): Promise<StoredLead | null> {
   return leads.find((l) => l.id === id) ?? null;
 }
 
+/** Case-insensitive lookup by the human-friendly reference (e.g. "ACM-26-AC6372") -- used by the
+ *  admin assistant so a typed/pasted reference number can resolve to a real lead. */
+export async function getLeadByReference(reference: string): Promise<StoredLead | null> {
+  const ref = reference.trim().toUpperCase();
+  if (isDatabaseConfigured && prisma) {
+    const lead = await prisma.lead.findFirst({
+      where: { reference: ref, deletedAt: null },
+      include: { customer: true, quoteRequest: true, service: true, address: true },
+    });
+    return lead ? mapLead(lead) : null;
+  }
+  const leads = await readMockLeads();
+  return leads.find((l) => l.reference.toUpperCase() === ref) ?? null;
+}
+
 export async function deleteLead(id: string, adminUserId: string): Promise<boolean> {
   if (isDatabaseConfigured && prisma) {
     const before = await prisma.lead.findUnique({ where: { id } });
