@@ -23,6 +23,7 @@ import {
   Building2,
   FileStack,
   Landmark,
+  Radar,
   type LucideIcon,
 } from "lucide-react";
 import type { AdminPermission } from "@/lib/permissions";
@@ -84,6 +85,7 @@ export const navGroups: NavGroup[] = [
   {
     label: "Growth",
     items: [
+      { href: "/admin/prospecting", label: "Prospecting", description: "Find & reach out to new customers", icon: Radar, permission: "MANAGE_LEADS", built: true },
       { href: "/admin/reviews", label: "Reviews", description: "Moderate & publish reviews", icon: Star, permission: "MANAGE_REVIEWS", built: true },
       { href: "/admin/promotions", label: "Promotions", description: "Promo codes & discounts", icon: Megaphone, permission: "MANAGE_PRICING", built: true },
       { href: "/admin/automations", label: "Automations", description: "Reminders & follow-ups", icon: Zap, permission: "MANAGE_CONTENT", built: true },

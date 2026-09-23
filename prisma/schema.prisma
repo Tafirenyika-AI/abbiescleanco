@@ -916,3 +916,36 @@ model PhotoEstimate {
   @@index([leadId])
   @@map("photo_estimates")
 }
+
+// ---------- Prospecting: AI-assisted discovery of potential customers, never auto-contacted ----------
+
+model Prospect {
+  id           String   @id @default(cuid())
+  category     String   // PROPERTY_MANAGER | REALTOR | LOCAL_BUSINESS | HOMEOWNER | OTHER
+  businessName String?
+  contactName  String?
+  phone        String?
+  email        String?
+  address      String?
+  website      String?
+
+  source        String  @default("google_places")
+  sourcePlaceId String? @unique // Google Places id, used to avoid re-discovering the same business
+  sourceQuery   String? // the search that found this, kept for auditability
+
+  // NEW: just discovered. DRAFTED: outreach text prepared. SENT: an admin reviewed and sent it.
+  // REPLIED/CONVERTED: outcome tracking. REJECTED/DO_NOT_CONTACT: excluded from future outreach.
+  status       String   @default("NEW")
+  draftSubject String?
+  draftBody    String?
+  notes        String?
+
+  discoveredAt DateTime  @default(now())
+  contactedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([status])
+  @@index([category])
+  @@map("prospects")
+}
