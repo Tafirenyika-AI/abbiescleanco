@@ -61,7 +61,13 @@ Missing from the full §3.4 spec:
 
 ## Phase 7 — Marketing integrations, approvals, attribution
 
-**Status: not started.** Every item here needs a developer-app registration and/or ad account the owner controls (Google/Meta/TikTok business accounts, API access approval) before any code is useful — building adapters against APIs with no way to test them against a real account would risk exactly the "invented integration status" the blueprint prohibits (§0). **[decision]** first: which channels does the owner actually want to automate, and do they have (or want to create) the business accounts needed. Then **[creds]**, then **[code]**.
+**Status: mostly not started**, but one real piece shipped 2026-09-22 (`517b046`): **Prospecting** (`/admin/prospecting`) — outbound discovery of potential customers, distinct from every other feature so far which only handles inbound leads. Owner clarified the actual want: an AI that finds leads (property managers, realtors, local businesses, new homeowners), not just processes ones that already came in.
+- Answered via `AskUserQuestion` (owner's explicit choices): data source = web/business-directory search; targets = property managers, realtors, local businesses, AND new homeowners (broad); outreach = always human-approved before sending, never auto-sent.
+- **[code, done]**: Google Places (New) Text Search integration, using the `googleMapsApiKey` field that already existed in Settings but was unwired until now. Dedupes by Google's own place id. Deterministic template-based outreach drafting (no model call — the Anthropic key is still workspace-scope-blocked per Phase 6, so a real AI-personalized draft isn't possible yet; template drafts personalize only on real prospect/business data, never invented). A prospect can be marked "do not contact," which hard-blocks any future send. Includes a CAN-SPAM opt-out line in every draft.
+- **[creds] still needed**: a real Google Maps/Places API key to search real businesses — code is complete and was live-verified against a local mock Places server (28/28 checks + a Playwright pass), but has never hit Google's real API.
+- **Deliberately NOT built**: new-homeowner discovery specifically. Google Places is a business/POI directory — it has no concept of "who just bought a house." That needs a different data source entirely (property/real-estate transaction records, e.g. an MLS feed or a paid provider like ATTOM/Estated), which is its own **[decision]** (which provider, at what cost) before any **[creds]**/**[code]**. Told the owner this rather than silently only covering 3 of the 4 requested target types.
+- **Deliberately NOT built**: SMS/voice outreach. TCPA's consent bar for calls/texts is meaningfully stricter than email's CAN-SPAM rules, especially for cold outreach to numbers that never opted in — this deserves the owner's own decision (and possibly legal input) before any code assumes it's fine, rather than defaulting to "the human approves it so it must be OK."
+- Remaining Phase 7 items (social/ad platform integrations) unchanged: need Google/Meta/TikTok business accounts + developer-app registration before any code is useful.
 
 ## Phase 8 — Forecasting, optimization, hardening, load tests, staged rollout
 
@@ -76,5 +82,7 @@ Missing from the full §3.4 spec:
 2. ~~`middleware.ts`/proxy admin backstop + Sentry wiring~~ **Done 2026-09-21** — both code-complete and live-verified; only Sentry still needs a DSN from the owner.
 3. **[creds] blocked, not owner's fault**: Anthropic key entered 2026-09-22 and tested against a real photo — the key itself authenticates, but it's org-scoped and needs an `anthropic-workspace-id` on every request (see Phase 6 note above). Owner needs to either regenerate a workspace-scoped key (simplest) or provide the workspace ID.
 4. **[creds]** `NEXT_PUBLIC_SENTRY_DSN` → real error visibility, code already proven safe either way.
-5. **[decision]** Invoicing/accounting approach (Phase 3) and workforce/subcontractor classification (Phase 4) — both need the owner's input before more code should be written in those areas, and both gate real further scope.
-6. Everything else in Phases 5–8, in the order the owner cares about it — none of it matters until #0 happens.
+5. **[creds]** Google Maps/Places API key → real prospecting search (code complete 2026-09-22, `517b046`, tested against a mock server only so far — see Phase 7).
+6. **[decision]** Invoicing/accounting approach (Phase 3) and workforce/subcontractor classification (Phase 4) — both need the owner's input before more code should be written in those areas, and both gate real further scope.
+7. **[decision]** New-homeowner data source for prospecting (Phase 7) — Google Places can't do this; needs a real-estate/property-records provider decision.
+8. Everything else in Phases 5–8, in the order the owner cares about it — none of it matters until #0 happens.
