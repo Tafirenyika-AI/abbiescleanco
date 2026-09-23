@@ -8,7 +8,7 @@ import { notifyAdmins } from "@/lib/server/notificationStore";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const rate = checkRateLimit(`review:${ip}`, 5, 30 * 60 * 1000);
+  const rate = await checkRateLimit(`review:${ip}`, 5, 30 * 60 * 1000);
   if (!rate.allowed) {
     return NextResponse.json({ ok: false, error: "Too many submissions. Please try again later." }, { status: 429 });
   }

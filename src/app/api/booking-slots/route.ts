@@ -6,7 +6,7 @@ import { checkRateLimit } from "@/lib/server/rateLimit";
 
 export async function GET(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const rate = checkRateLimit(`booking-slots:${ip}`, 60, 10 * 60 * 1000);
+  const rate = await checkRateLimit(`booking-slots:${ip}`, 60, 10 * 60 * 1000);
   if (!rate.allowed) return NextResponse.json({ ok: false, error: "Too many requests" }, { status: 429 });
 
   const service = req.nextUrl.searchParams.get("service");

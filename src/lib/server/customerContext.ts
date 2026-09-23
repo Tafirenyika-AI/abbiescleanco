@@ -40,7 +40,7 @@ export async function requireCustomer(req: NextRequest, opts: { mutating?: boole
   if (!customer) return { error: NextResponse.json({ ok: false, error: "No customer profile for this account" }, { status: 403 }) };
 
   if (opts.mutating) {
-    const rl = checkRateLimit(`customer-mutation:${customer.id}`, 60, 60_000);
+    const rl = await checkRateLimit(`customer-mutation:${customer.id}`, 60, 60_000);
     if (!rl.allowed) return { error: NextResponse.json({ ok: false, error: "Too many requests — slow down a moment" }, { status: 429 }) };
   }
   return { ctx: { userId: session.userId, customerId: customer.id, firstName: customer.firstName, lastName: customer.lastName, email: customer.email } };

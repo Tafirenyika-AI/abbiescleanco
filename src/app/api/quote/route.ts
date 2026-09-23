@@ -23,7 +23,7 @@ async function getLeadCustomerId(leadId: string): Promise<string | null> {
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const rate = checkRateLimit(`quote:${ip}`, 5, 10 * 60 * 1000);
+  const rate = await checkRateLimit(`quote:${ip}`, 5, 10 * 60 * 1000);
   if (!rate.allowed) {
     return NextResponse.json(
       { ok: false, error: "Too many requests. Please try again shortly." },

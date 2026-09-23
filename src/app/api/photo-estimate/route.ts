@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   if (!isSameOrigin(req)) return NextResponse.json({ ok: false, error: "Cross-site request blocked" }, { status: 403 });
   // Each call can cost real money (vision model), so this is much tighter than the form limiter.
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const rate = checkRateLimit(`photo-estimate:${ip}`, 4, 10 * 60 * 1000);
+  const rate = await checkRateLimit(`photo-estimate:${ip}`, 4, 10 * 60 * 1000);
   if (!rate.allowed) return NextResponse.json({ ok: false, error: "You've run several photo estimates — please try again in a few minutes." }, { status: 429 });
 
   let form: FormData;

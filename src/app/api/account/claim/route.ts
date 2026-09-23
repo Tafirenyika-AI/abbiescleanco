@@ -12,7 +12,7 @@ import { sendEmail, welcomeEmail } from "@/lib/server/email";
  */
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const rate = checkRateLimit(`account-claim:${ip}`, 8, 15 * 60 * 1000);
+  const rate = await checkRateLimit(`account-claim:${ip}`, 8, 15 * 60 * 1000);
   if (!rate.allowed) {
     return NextResponse.json({ ok: false, error: "Too many attempts. Please try again shortly." }, { status: 429 });
   }

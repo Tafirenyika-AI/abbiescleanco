@@ -7,7 +7,7 @@ const schema = z.object({ query: z.string().trim().min(1).max(200) });
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const rate = checkRateLimit(`guest-assistant:${ip}`, 30, 10 * 60 * 1000);
+  const rate = await checkRateLimit(`guest-assistant:${ip}`, 30, 10 * 60 * 1000);
   if (!rate.allowed) return NextResponse.json({ ok: false, error: "Too many requests — please try again shortly." }, { status: 429 });
 
   const parsed = schema.safeParse(await req.json().catch(() => null));

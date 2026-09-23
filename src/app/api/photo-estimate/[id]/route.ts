@@ -18,7 +18,7 @@ const schema = z.object({
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!isSameOrigin(req)) return NextResponse.json({ ok: false, error: "Cross-site request blocked" }, { status: 403 });
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const rate = checkRateLimit(`photo-estimate-review:${ip}`, 20, 10 * 60 * 1000);
+  const rate = await checkRateLimit(`photo-estimate-review:${ip}`, 20, 10 * 60 * 1000);
   if (!rate.allowed) return NextResponse.json({ ok: false, error: "Too many requests — please try again shortly." }, { status: 429 });
 
   const { id } = await params;

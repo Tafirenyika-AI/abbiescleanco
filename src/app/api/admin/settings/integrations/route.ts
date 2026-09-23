@@ -17,6 +17,8 @@ const schema = z.object({
   turnstileSiteKey: z.string().trim().max(300).optional(),
   sentryDsn: z.string().trim().max(300).optional(),
   anthropicApiKey: z.string().trim().max(300).optional(),
+  upstashRedisUrl: z.string().trim().max(300).optional(),
+  upstashRedisToken: z.string().trim().max(300).optional(),
 });
 
 export async function GET(req: NextRequest) {

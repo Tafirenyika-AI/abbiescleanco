@@ -14,7 +14,7 @@ const schema = z.object({
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const rate = checkRateLimit(`self-book:${ip}`, 5, 10 * 60 * 1000);
+  const rate = await checkRateLimit(`self-book:${ip}`, 5, 10 * 60 * 1000);
   if (!rate.allowed) return NextResponse.json({ ok: false, error: "Too many requests. Please try again shortly." }, { status: 429 });
 
   const { id } = await params;

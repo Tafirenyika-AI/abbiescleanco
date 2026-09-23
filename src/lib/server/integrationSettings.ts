@@ -26,6 +26,8 @@ export interface IntegrationSettings {
   turnstileSiteKey?: string;
   sentryDsn?: string;
   anthropicApiKey?: string;
+  upstashRedisUrl?: string;
+  upstashRedisToken?: string;
 }
 
 const SECRET_FIELDS: (keyof IntegrationSettings)[] = [
@@ -37,6 +39,7 @@ const SECRET_FIELDS: (keyof IntegrationSettings)[] = [
   "googleMapsApiKey",
   "turnstileSecretKey",
   "anthropicApiKey",
+  "upstashRedisToken",
 ];
 
 async function getRaw(): Promise<IntegrationSettings> {
@@ -67,6 +70,8 @@ export async function getIntegrationStatus(): Promise<Record<keyof IntegrationSe
     turnstileSiteKey: "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
     sentryDsn: "NEXT_PUBLIC_SENTRY_DSN",
     anthropicApiKey: "ANTHROPIC_API_KEY",
+    upstashRedisUrl: "UPSTASH_REDIS_REST_URL",
+    upstashRedisToken: "UPSTASH_REDIS_REST_TOKEN",
   };
 
   const result = {} as Record<keyof IntegrationSettings, { configured: boolean; source: "database" | "environment" | "none"; value?: string }>;

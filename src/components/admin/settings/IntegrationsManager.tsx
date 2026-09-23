@@ -24,6 +24,8 @@ const fields: FieldMeta[] = [
   { key: "turnstileSiteKey", label: "Turnstile Site Key", isSecret: false, wired: false, help: "Not wired into any form yet." },
   { key: "turnstileSecretKey", label: "Turnstile Secret Key", isSecret: true, wired: false, help: "Not wired into any form yet." },
   { key: "sentryDsn", label: "Sentry DSN", isSecret: false, wired: false, help: "Error reporting is wired in, but the DSN must be set as the NEXT_PUBLIC_SENTRY_DSN environment variable (with a redeploy) — it initializes at server startup, so it can't be hot-swapped from a value saved here the way other integrations are." },
+  { key: "upstashRedisUrl", label: "Upstash Redis REST URL", isSecret: false, wired: true, help: "Makes rate limiting durable across server restarts/instances instead of in-memory only. Without this, rate limiting still works, just resets whenever the server restarts." },
+  { key: "upstashRedisToken", label: "Upstash Redis REST Token", isSecret: true, wired: true, help: "" },
 ];
 
 interface Status {
