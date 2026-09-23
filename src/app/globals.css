@@ -186,3 +186,21 @@ h1, h2, h3, .font-display {
     padding-bottom: 0;
   }
 }
+
+/* Print isolation: any page can mark one element #printable-area and everything else
+   (admin sidebar/header chrome included, regardless of DOM depth) is hidden on print/PDF. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-area,
+  #printable-area * {
+    visibility: visible;
+  }
+  #printable-area {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+}

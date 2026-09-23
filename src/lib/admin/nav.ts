@@ -76,7 +76,7 @@ export const navGroups: NavGroup[] = [
     label: "Finance",
     items: [
       { href: "/admin/payments", label: "Payments", description: "Record & reconcile payments", icon: CreditCard, permission: "VIEW_REPORTS", built: true },
-      { href: "/admin/invoices", label: "Invoices", description: "Formal, printable invoices", icon: FileStack, permission: "VIEW_REPORTS", built: false },
+      { href: "/admin/invoices", label: "Invoices", description: "Formal, printable invoices", icon: FileStack, permission: "VIEW_REPORTS", built: true },
       { href: "/admin/expenses", label: "Expenses", description: "Track business costs", icon: Receipt, permission: "VIEW_REPORTS", built: true },
       { href: "/admin/accounting", label: "Accounting", description: "Sync to QuickBooks or similar", icon: Landmark, permission: "VIEW_REPORTS", built: false },
       { href: "/admin/reports", label: "Reports", description: "Revenue, funnel, exports", icon: BarChart3, permission: "VIEW_REPORTS", built: true },

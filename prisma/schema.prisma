@@ -176,6 +176,7 @@ model Customer {
   bookings                Booking[]
   recurringSchedules      RecurringSchedule[]
   payments                Payment[]
+  invoices                Invoice[]
   communicationPreference CommunicationPreference?
   messages                Message[]
   reviews                 Review[]
@@ -318,9 +319,38 @@ model Quote {
   items    QuoteItem[]
   bookings Booking[]
   payments Payment[]
+  invoices Invoice[]
 
   @@index([status])
   @@map("quotes")
+}
+
+// An Invoice is a formally-issued bill against an existing Quote -- it deliberately does NOT
+// duplicate line items (reads them from the linked Quote/QuoteItem at render time) so there is
+// only ever one source of truth for what was actually quoted. What it adds is exactly what an
+// invoice is *for*: a fixed invoice number, an issue/due date, and a void state, independent of
+// whatever the underlying quote's own status later becomes.
+model Invoice {
+  id            String   @id @default(cuid())
+  invoiceNumber String   @unique
+
+  quoteId    String
+  quote      Quote    @relation(fields: [quoteId], references: [id])
+  bookingId  String?
+  booking    Booking? @relation(fields: [bookingId], references: [id])
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  status   String    @default("ISSUED") // ISSUED | VOID
+  issueDate DateTime @default(now())
+  dueDate   DateTime?
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("invoices")
 }
 
 model PromoCode {
@@ -460,6 +490,7 @@ model Booking {
   recurringSchedule RecurringSchedule? @relation(fields: [recurringScheduleId], references: [id])
   recurringScheduleId String?
   payments          Payment[]
+  invoices          Invoice[]
   automationEvents  AutomationEvent[]
   attachments       Attachment[]
   clientNotes       ClientNote[]
