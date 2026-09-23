@@ -17,6 +17,7 @@ const schema = z.object({
   notes: z.string().trim().max(2000).optional(),
   draftSubject: z.string().trim().max(200).optional(),
   draftBody: z.string().trim().max(5000).optional(),
+  assignedToId: z.string().trim().max(50).nullable().optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -132,6 +132,7 @@ model AdminUser {
   deletedAt    DateTime?
 
   auditLogs AuditLog[]
+  assignedProspects Prospect[]
 
   @@index([email])
   @@map("admin_users")
@@ -970,6 +971,15 @@ model Prospect {
   draftSubject String?
   draftBody    String?
   notes        String?
+
+  assignedToId String?
+  assignedTo   AdminUser? @relation(fields: [assignedToId], references: [id])
+
+  // Real web research (Claude's web_search tool), run on-demand per prospect, never automatic.
+  // researchSources is an array of {url, title} the findings were actually drawn from.
+  researchNotes   String?
+  researchSources Json?
+  researchedAt    DateTime?
 
   discoveredAt DateTime  @default(now())
   contactedAt  DateTime?

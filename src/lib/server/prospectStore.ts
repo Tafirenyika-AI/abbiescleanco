@@ -25,6 +25,8 @@ function mapRow(p: {
   phone: string | null; email: string | null; address: string | null; website: string | null;
   source: string; sourceQuery: string | null; status: string; draftSubject: string | null;
   draftBody: string | null; notes: string | null; discoveredAt: Date; contactedAt: Date | null;
+  assignedToId: string | null; assignedTo?: { name: string } | null;
+  researchNotes: string | null; researchSources: unknown; researchedAt: Date | null;
 }): ProspectRow {
   return {
     id: p.id,
@@ -41,6 +43,11 @@ function mapRow(p: {
     draftSubject: p.draftSubject,
     draftBody: p.draftBody,
     notes: p.notes,
+    assignedToId: p.assignedToId,
+    assignedToName: p.assignedTo?.name ?? null,
+    researchNotes: p.researchNotes,
+    researchSources: Array.isArray(p.researchSources) ? (p.researchSources as { url: string; title: string }[]) : null,
+    researchedAt: p.researchedAt?.toISOString() ?? null,
     discoveredAt: p.discoveredAt.toISOString(),
     contactedAt: p.contactedAt?.toISOString() ?? null,
   };
@@ -131,6 +138,7 @@ export async function searchAndSaveProspects(query: string, category: ProspectCa
 export async function listProspects(filters: { status?: ProspectStatus; category?: ProspectCategory } = {}): Promise<ProspectRow[]> {
   const rows = await db().prospect.findMany({
     where: { ...(filters.status ? { status: filters.status } : {}), ...(filters.category ? { category: filters.category } : {}) },
+    include: { assignedTo: { select: { name: true } } },
     orderBy: { discoveredAt: "desc" },
     take: 300,
   });
@@ -138,8 +146,20 @@ export async function listProspects(filters: { status?: ProspectStatus; category
 }
 
 export async function getProspectById(id: string): Promise<ProspectRow | null> {
-  const row = await db().prospect.findUnique({ where: { id } });
+  const row = await db().prospect.findUnique({ where: { id }, include: { assignedTo: { select: { name: true } } } });
   return row ? mapRow(row) : null;
+}
+
+export interface AssignableAdmin {
+  id: string;
+  name: string;
+}
+
+/** Active admin users who can be assigned as the responsible contact for a prospect. */
+export async function listAssignableAdmins(): Promise<AssignableAdmin[]> {
+  const { listAdminUsers } = await import("@/lib/server/adminUsers");
+  const admins = await listAdminUsers();
+  return admins.filter((a) => a.isActive).map((a) => ({ id: a.id, name: a.name }));
 }
 
 /**
@@ -181,16 +201,21 @@ export async function draftOutreachForProspect(id: string): Promise<ProspectRow 
   const updated = await db().prospect.update({
     where: { id },
     data: { draftSubject: subject, draftBody: body, status: p.status === "NEW" ? "DRAFTED" : p.status },
+    include: { assignedTo: { select: { name: true } } },
   });
   return mapRow(updated);
 }
 
 export async function updateProspect(
   id: string,
-  data: { status?: ProspectStatus; notes?: string; draftSubject?: string; draftBody?: string }
+  data: { status?: ProspectStatus; notes?: string; draftSubject?: string; draftBody?: string; assignedToId?: string | null }
 ): Promise<ProspectRow | null> {
   const existing = await db().prospect.findUnique({ where: { id } });
   if (!existing) return null;
+  if (data.assignedToId) {
+    const admin = await db().adminUser.findUnique({ where: { id: data.assignedToId } });
+    if (!admin) return null;
+  }
   const updated = await db().prospect.update({
     where: { id },
     data: {
@@ -198,9 +223,77 @@ export async function updateProspect(
       ...(data.notes !== undefined ? { notes: data.notes || null } : {}),
       ...(data.draftSubject !== undefined ? { draftSubject: data.draftSubject || null } : {}),
       ...(data.draftBody !== undefined ? { draftBody: data.draftBody || null } : {}),
+      ...(data.assignedToId !== undefined ? { assignedToId: data.assignedToId || null } : {}),
     },
+    include: { assignedTo: { select: { name: true } } },
   });
   return mapRow(updated);
+}
+
+export interface ResearchResult {
+  ok: boolean;
+  error?: string;
+  prospect?: ProspectRow;
+}
+
+/**
+ * Real web research via Claude's web_search tool -- run on-demand per prospect (an explicit admin
+ * click, never automatic), looking for genuine public information (reviews, complaints, posts)
+ * related to cleaning. Reports honestly when nothing relevant is found rather than inventing
+ * something; every claim comes with a real source URL from the search results.
+ */
+export async function researchProspect(id: string): Promise<ResearchResult> {
+  const p = await db().prospect.findUnique({ where: { id } });
+  if (!p) return { ok: false, error: "Not found" };
+
+  const apiKey = await getIntegrationValue("anthropicApiKey", "ANTHROPIC_API_KEY");
+  if (!apiKey) return { ok: false, error: "Anthropic isn't configured yet — add an API key in Settings → Integrations." };
+
+  const who = p.businessName || p.contactName || "this business";
+  const location = p.address || business.city;
+  const query = `Search the web for real, recent public information about "${who}" (${location}) that's relevant to a cleaning company considering reaching out to them -- specifically: any reviews, complaints, or posts mentioning cleanliness or a need for cleaning services; how large/established the business appears to be; and anything else a cleaning company would find useful before contacting them. If you find nothing relevant, say so plainly rather than guessing. Keep the answer under 200 words and cite your sources.`;
+
+  const baseUrl = (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com").replace(/\/$/, "");
+  let text = "";
+  const sources: { url: string; title: string }[] = [];
+  try {
+    const res = await fetch(`${baseUrl}/v1/messages`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5",
+        max_tokens: 1000,
+        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }],
+        messages: [{ role: "user", content: query }],
+      }),
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
+    const data = (await res.json()) as {
+      content?: { type: string; text?: string; citations?: { url?: string; title?: string }[] }[];
+    };
+    const textBlocks = (data.content ?? []).filter((c) => c.type === "text");
+    text = textBlocks.map((b) => b.text ?? "").join("\n\n").trim();
+    const seen = new Set<string>();
+    for (const b of textBlocks) {
+      for (const c of b.citations ?? []) {
+        if (c.url && c.title && !seen.has(c.url)) {
+          seen.add(c.url);
+          sources.push({ url: c.url, title: c.title });
+        }
+      }
+    }
+  } catch {
+    return { ok: false, error: "Couldn't complete research right now. Please try again shortly." };
+  }
+  if (!text) return { ok: false, error: "Research didn't return a usable result. Please try again." };
+
+  const updated = await db().prospect.update({
+    where: { id },
+    data: { researchNotes: text, researchSources: sources as object, researchedAt: new Date() },
+    include: { assignedTo: { select: { name: true } } },
+  });
+  return { ok: true, prospect: mapRow(updated) };
 }
 
 export interface SendOutreachResult {

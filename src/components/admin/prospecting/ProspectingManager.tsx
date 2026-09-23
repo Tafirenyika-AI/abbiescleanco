@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Search, Loader2, X, Mail, Send, Ban, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Search, Loader2, X, Mail, Send, Ban, Sparkles, UserCog, Globe } from "lucide-react";
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import { useToast } from "@/components/admin/ui/Toast";
@@ -13,6 +13,8 @@ import {
   PROSPECT_STATUSES,
   prospectCategoryLabels,
   prospectStatusLabels,
+  likelyServiceHints,
+  computeFitScore,
 } from "@/lib/prospects";
 
 function statusTone(status: ProspectStatus): "neutral" | "teal" | "success" | "warning" | "error" | "info" {
@@ -20,6 +22,12 @@ function statusTone(status: ProspectStatus): "neutral" | "teal" | "success" | "w
   if (status === "SENT" || status === "REPLIED") return "info";
   if (status === "CONVERTED") return "success";
   if (status === "DRAFTED" || status === "APPROVED") return "warning";
+  return "neutral";
+}
+
+function fitTone(level: "LOW" | "MEDIUM" | "HIGH"): "neutral" | "warning" | "success" {
+  if (level === "HIGH") return "success";
+  if (level === "MEDIUM") return "warning";
   return "neutral";
 }
 
@@ -120,20 +128,27 @@ export default function ProspectingManager({ initialProspects, placesConfigured 
                 <th className="px-4 py-2.5">Business / contact</th>
                 <th className="px-4 py-2.5">Category</th>
                 <th className="px-4 py-2.5">Contact info</th>
+                <th className="px-4 py-2.5">Fit</th>
+                <th className="px-4 py-2.5">Assigned</th>
                 <th className="px-4 py-2.5">Status</th>
                 <th className="px-4 py-2.5">Discovered</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p) => (
-                <tr key={p.id} onClick={() => setSelected(p)} className="cursor-pointer border-t border-admin-border transition-colors duration-150 hover:bg-admin-bg">
-                  <td className="px-4 py-2.5 font-medium text-admin-text">{p.businessName || p.contactName || "Unnamed"}</td>
-                  <td className="px-4 py-2.5 text-admin-text-muted">{prospectCategoryLabels[p.category]}</td>
-                  <td className="px-4 py-2.5 text-admin-text-muted">{p.phone || p.email || "—"}</td>
-                  <td className="px-4 py-2.5"><Badge tone={statusTone(p.status)}>{prospectStatusLabels[p.status]}</Badge></td>
-                  <td className="px-4 py-2.5 text-admin-text-muted">{when(p.discoveredAt)}</td>
-                </tr>
-              ))}
+              {filtered.map((p) => {
+                const fit = computeFitScore(p);
+                return (
+                  <tr key={p.id} onClick={() => setSelected(p)} className="cursor-pointer border-t border-admin-border transition-colors duration-150 hover:bg-admin-bg">
+                    <td className="px-4 py-2.5 font-medium text-admin-text">{p.businessName || p.contactName || "Unnamed"}</td>
+                    <td className="px-4 py-2.5 text-admin-text-muted">{prospectCategoryLabels[p.category]}</td>
+                    <td className="px-4 py-2.5 text-admin-text-muted">{p.phone || p.email || "—"}</td>
+                    <td className="px-4 py-2.5"><Badge tone={fitTone(fit.level)}>{fit.level}</Badge></td>
+                    <td className="px-4 py-2.5 text-admin-text-muted">{p.assignedToName || "—"}</td>
+                    <td className="px-4 py-2.5"><Badge tone={statusTone(p.status)}>{prospectStatusLabels[p.status]}</Badge></td>
+                    <td className="px-4 py-2.5 text-admin-text-muted">{when(p.discoveredAt)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -159,6 +174,37 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
   const [body, setBody] = useState(prospect.draftBody || "");
   const [notes, setNotes] = useState(prospect.notes || "");
   const [busy, setBusy] = useState<string | null>(null);
+  const [admins, setAdmins] = useState<{ id: string; name: string }[]>([]);
+  const fit = computeFitScore(prospect);
+
+  useEffect(() => {
+    fetch("/api/admin/prospecting/assignable-admins")
+      .then((r) => r.json())
+      .then((data) => { if (data.ok) setAdmins(data.admins); });
+  }, []);
+
+  async function assign(adminId: string) {
+    setBusy("assign");
+    const res = await fetch(`/api/admin/prospecting/${prospect.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assignedToId: adminId || null }),
+    });
+    const data = await res.json().catch(() => null);
+    setBusy(null);
+    if (!data?.ok) return showToast(data?.error || "Couldn't assign", "error");
+    onUpdated(data.prospect);
+  }
+
+  async function research() {
+    setBusy("research");
+    const res = await fetch(`/api/admin/prospecting/${prospect.id}/research`, { method: "POST" });
+    const data = await res.json().catch(() => null);
+    setBusy(null);
+    if (!data?.ok) return showToast(data?.error || "Research failed", "error");
+    onUpdated(data.prospect);
+    showToast("Research complete.", "success");
+  }
 
   async function draft() {
     setBusy("draft");
@@ -231,6 +277,56 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
           {prospect.website && <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Website</dt><dd className="truncate text-admin-text">{prospect.website}</dd></div>}
           {!prospect.email && <p className="text-xs text-amber-700">No email on file — outreach can&apos;t be sent until one is added.</p>}
         </dl>
+
+        <div className="mt-5 rounded-lg bg-admin-bg p-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Fit</h3>
+            <Badge tone={fitTone(fit.level)}>{fit.level}</Badge>
+          </div>
+          <ul className="mt-1.5 space-y-0.5 text-xs text-admin-text-muted">
+            {fit.factors.map((f, i) => <li key={i}>• {f}</li>)}
+          </ul>
+          <p className="mt-2 text-xs text-admin-text"><span className="font-semibold">Likely to be cleaning:</span> {likelyServiceHints[prospect.category]}</p>
+        </div>
+
+        <div className="mt-4">
+          <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-admin-text-muted"><UserCog className="size-3.5" aria-hidden /> Assigned to</h3>
+          <select
+            value={prospect.assignedToId || ""}
+            onChange={(e) => assign(e.target.value)}
+            disabled={busy === "assign"}
+            className="mt-1.5 w-full rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text"
+          >
+            <option value="">Unassigned</option>
+            {admins.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        </div>
+
+        <div className="mt-4">
+          <div className="flex items-center justify-between">
+            <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-admin-text-muted"><Globe className="size-3.5" aria-hidden /> Research</h3>
+            <button type="button" onClick={research} disabled={busy === "research"} className="ios-press inline-flex items-center gap-1.5 rounded-full bg-admin-bg px-3 py-1.5 text-xs font-semibold text-admin-text disabled:opacity-50">
+              {busy === "research" ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Search className="size-3.5" aria-hidden />} {prospect.researchNotes ? "Research again" : "Research"}
+            </button>
+          </div>
+          {busy === "research" && <p className="mt-1.5 text-xs text-admin-text-muted">Searching the real web for public info about this business — this can take up to a minute.</p>}
+          {prospect.researchNotes && (
+            <div className="mt-2 rounded-lg bg-admin-bg p-3">
+              <p className="whitespace-pre-wrap text-xs text-admin-text">{prospect.researchNotes}</p>
+              {prospect.researchSources && prospect.researchSources.length > 0 && (
+                <ul className="mt-2 space-y-1 border-t border-admin-border pt-2">
+                  {prospect.researchSources.map((s, i) => (
+                    <li key={i}>
+                      <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-xs text-admin-teal-hover hover:underline">{s.title}</a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {prospect.researchedAt && <p className="mt-2 text-[11px] text-admin-text-muted">Researched {when(prospect.researchedAt)}</p>}
+            </div>
+          )}
+          {!prospect.researchNotes && <p className="mt-1.5 text-xs text-admin-text-muted">Not researched yet — this looks up real, public info (reviews, mentions) related to cleaning needs.</p>}
+        </div>
 
         <div className="mt-5">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Outreach draft</h3>
