@@ -73,7 +73,7 @@ Missing from the full §3.4 spec:
 
 **Status: not started**, and not meaningfully startable yet — load testing and forecasting need either real production traffic history or a much larger built surface than exists today. The one piece of "hardening" that *is* actionable now, independent of the rest:
 - ~~**[code]** Observability~~ **Sentry wired 2026-09-21** (`docs/OPERATIONS.md` §5, `docs/SECURITY.md` §7a) — code-complete, verified as a safe no-op without a DSN. **[creds]** now: just `NEXT_PUBLIC_SENTRY_DSN`.
-- **[code]** Durable rate limiting (Upstash Redis or similar) before/if real traffic materializes (`docs/SECURITY.md` §6).
+- ~~**[code]** Durable rate limiting (Upstash Redis or similar)~~ **Done 2026-09-23** (`7051d2b`) — `checkRateLimit` now uses Upstash Redis when `upstashRedisUrl`/`upstashRedisToken` are set in Settings → Integrations (same DB-configurable pattern as every other credential), falls back to the existing in-memory limiter otherwise, and falls back again (not fails) if Upstash is configured but unreachable. **[creds]** now: the owner adding a real Upstash URL/token whenever they want durability across restarts/instances — code is complete and live-verified against a mock server either way.
 
 ## Suggested near-term order (revenue/risk-adjusted, not phase-numbered)
 
