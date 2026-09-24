@@ -84,7 +84,7 @@ export const navGroups: NavGroup[] = [
       { href: "/admin/invoices", label: "Invoices", description: "Formal, printable invoices", icon: FileStack, permission: "FINANCE_VIEW", built: true },
       { href: "/admin/expenses", label: "Expenses", description: "Track business costs", icon: Receipt, permission: "FINANCE_VIEW", built: true },
       { href: "/admin/finance/subcontractors", label: "Subcontractors", description: "Payables owed to cleaners", icon: Banknote, permission: "FINANCE_SUBCONTRACTORS", built: false },
-      { href: "/admin/finance/banking", label: "Banking", description: "Bank import & reconciliation", icon: Landmark, permission: "FINANCE_VIEW", built: false },
+      { href: "/admin/finance/banking", label: "Banking", description: "Bank import & reconciliation", icon: Landmark, permission: "FINANCE_VIEW", built: true },
       { href: "/admin/finance/tax-records", label: "Tax records", description: "Recordkeeping for filing season", icon: FileCheck2, permission: "FINANCE_TAX_RECORDS", built: false },
       { href: "/admin/finance/documents", label: "Documents", description: "Receipts, statements, filings", icon: FolderOpen, permission: "FINANCE_DOCUMENTS", built: false },
       { href: "/admin/reports", label: "Reports", description: "Revenue, funnel, exports", icon: BarChart3, permission: "VIEW_REPORTS", built: true },

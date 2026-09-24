@@ -144,6 +144,8 @@ model AdminUser {
 
   auditLogs AuditLog[]
   assignedProspects Prospect[]
+  bankImports BankImport[]
+  matchedBankTransactions BankTransaction[]
 
   @@index([email])
   @@map("admin_users")
@@ -594,6 +596,8 @@ model Payment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  bankTransactions BankTransaction[]
+
   @@index([status])
   @@map("payments")
 }
@@ -858,10 +862,70 @@ model Expense {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  bankTransactions BankTransaction[]
+
   @@index([category])
   @@index([date])
   @@index([bookingId])
   @@map("expenses")
+}
+
+// ---------- Banking (bank CSV import + reconciliation) ----------
+
+model BankImport {
+  id           String   @id @default(cuid())
+  filename     String
+  rowCount     Int
+  importedCount Int // rows actually inserted (excludes ones skipped as already-imported)
+  skippedCount Int @default(0) // rows skipped because an identical transaction was already imported
+
+  uploadedById String?
+  uploadedBy   AdminUser? @relation(fields: [uploadedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  transactions BankTransaction[]
+
+  @@map("bank_imports")
+}
+
+enum BankTransactionStatus {
+  UNMATCHED
+  MATCHED
+  IGNORED
+}
+
+model BankTransaction {
+  id       String   @id @default(cuid())
+  importId String
+  import   BankImport @relation(fields: [importId], references: [id])
+
+  date        DateTime
+  description String
+  amount      Int // cents, signed: positive = money in, negative = money out
+  rawRow      Json // the original CSV row, kept for reference if a match looks wrong
+
+  // hash(date|amount|description) -- lets a re-uploaded statement skip rows already imported,
+  // without silently dropping a genuine same-day/same-amount second charge (see dedupe logic).
+  dedupeHash String
+
+  status BankTransactionStatus @default(UNMATCHED)
+
+  matchedPaymentId String?
+  matchedPayment   Payment? @relation(fields: [matchedPaymentId], references: [id])
+  matchedExpenseId String?
+  matchedExpense   Expense? @relation(fields: [matchedExpenseId], references: [id])
+
+  matchedAt   DateTime?
+  matchedById String?
+  matchedBy   AdminUser? @relation(fields: [matchedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([status])
+  @@index([dedupeHash])
+  @@index([importId])
+  @@map("bank_transactions")
 }
 
 // ---------- Admin notification center ----------
