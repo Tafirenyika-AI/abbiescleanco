@@ -46,6 +46,7 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
   const [category, setCategory] = useState<ProspectCategory>("LOCAL_BUSINESS");
   const [searching, setSearching] = useState(false);
   const [webSearching, setWebSearching] = useState(false);
+  const [webSearchResult, setWebSearchResult] = useState<{ message: string; tone: "success" | "error" | "empty" } | null>(null);
   const [statusFilter, setStatusFilter] = useState<ProspectStatus | "">("");
 
   async function refresh() {
@@ -72,16 +73,25 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
 
   async function searchWeb() {
     setWebSearching(true);
+    setWebSearchResult(null);
     const res = await fetch("/api/admin/prospecting/search-web", { method: "POST" });
     const data = await res.json().catch(() => null);
     setWebSearching(false);
-    if (!data?.ok) return showToast(data?.error || "Web search failed", "error");
-    showToast(
+    if (!data?.ok) {
+      const message = data?.error || "Web search failed";
+      showToast(message, "error");
+      setWebSearchResult({ message, tone: "error" });
+      return;
+    }
+    const message =
       data.found === 0
-        ? "No genuine recent posts found this time, worth trying again in a day or two."
-        : `Found ${data.found}, ${data.new} new, ${data.duplicates} already known.`,
-      "success"
-    );
+        ? "Searched the web just now -- no genuine recent posts found this time, worth trying again in a day or two."
+        : `Searched the web just now -- found ${data.found}, ${data.new} new, ${data.duplicates} already known.`;
+    showToast(data.found === 0 ? message : `Found ${data.found}, ${data.new} new, ${data.duplicates} already known.`, "success");
+    // A toast alone (auto-dismisses after 4s) is easy to miss right after a ~30-60s wait --
+    // this stays on screen until the next search, so "nothing happened" isn't the takeaway
+    // when the real, honest answer is "the search ran and genuinely found nothing this time."
+    setWebSearchResult({ message, tone: data.found === 0 ? "empty" : "success" });
     await refresh();
   }
 
@@ -158,6 +168,12 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
         >
           {webSearching ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Radar className="size-4" aria-hidden />} {webSearching ? "Searching the web…" : "Search the web now"}
         </button>
+        {webSearching && <p className="mt-1.5 text-xs text-admin-text-muted">Running several real searches across the open web -- this usually takes 30-60 seconds, please wait.</p>}
+        {!webSearching && webSearchResult && (
+          <p className={`mt-1.5 text-xs font-medium ${webSearchResult.tone === "error" ? "text-red-600" : webSearchResult.tone === "empty" ? "text-admin-text-muted" : "text-admin-success"}`}>
+            {webSearchResult.message}
+          </p>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
