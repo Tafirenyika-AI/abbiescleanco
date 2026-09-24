@@ -20,6 +20,17 @@ function db() {
   return prisma;
 }
 
+// Real, found bug (2026-09-24): a vague admin query passed straight through to Google Places
+// literally can and did return other cleaning/janitorial/dry-cleaning businesses (e.g. "Cascade
+// Cleaners") as "prospects" -- those are competitors, never a real customer. This is a second,
+// independent safety net applied to every discovered result regardless of source or how the
+// underlying query was built, on top of (not instead of) any AI query-planning/prompt-level
+// exclusion instruction.
+const COMPETITOR_NAME_PATTERN = /\b(clean(?:ing|ers?)?|maid[s]?|janitorial|janitor|housekeep(?:ing|er)?|dry[\s-]?clean(?:ing|ers?)?)\b/i;
+function looksLikeCleaningCompetitor(name: string): boolean {
+  return COMPETITOR_NAME_PATTERN.test(name);
+}
+
 function mapRow(p: {
   id: string; category: string; businessName: string | null; contactName: string | null;
   phone: string | null; email: string | null; address: string | null; website: string | null;
@@ -107,29 +118,112 @@ export interface SearchProspectsResult {
   found?: number;
   new?: number;
   duplicates?: number;
+  excludedCompetitors?: number;
+  queriesRun?: string[];
 }
 
-/** Searches Google Places for businesses matching a query, storing any not already known as new
- *  prospects (deduped by Google's own place id). Never contacts anyone -- this only discovers. */
+interface QueryPlan {
+  query: string;
+  category: ProspectCategory;
+}
+
+/**
+ * Turns the admin's plain-English description of who they're looking for into concrete, real
+ * Google Places search queries. Real bug this fixes (2026-09-24): the search box previously sent
+ * whatever the admin typed straight to Google Places as a literal text query with zero
+ * interpretation -- an admin describing intent in a full sentence ("search for those who might
+ * be our potential clients") got matched by Google on stray words in that sentence and returned
+ * actual cleaning/dry-cleaning competitors, not real prospects. Every planned query is explicitly
+ * scoped to the real service area and told to target businesses that could realistically HIRE a
+ * cleaning company (property managers, realtors, HOAs, offices, medical/dental, gyms, daycares,
+ * short-term rental hosts, event venues), never other cleaning/janitorial businesses.
+ */
+async function planPlacesQueries(intent: string): Promise<{ ok: true; plans: QueryPlan[] } | { ok: false; error: string }> {
+  const apiKey = await getIntegrationValue("anthropicApiKey", "ANTHROPIC_API_KEY");
+  if (!apiKey) return { ok: false, error: "no Anthropic key" };
+
+  const areas = business.areaServed.join(", ");
+  const prompt = `${business.name} is a residential/commercial cleaning company. An admin wants to find REAL POTENTIAL CUSTOMERS near ${areas} using Google Places search. Here is what they typed, in their own words (it may be a full sentence, not a search query): "${intent}"
+
+Turn this into 1-4 concrete, well-formed Google Places text-search queries that will find real organizations that could realistically HIRE a cleaning company -- for example property management companies, real estate agencies, HOAs, medical/dental offices, gyms, daycares, event venues, short-term rental hosts, office buildings. Each query should read like a natural Google Places search string, e.g. "property management company Spokane Valley WA", scoped to the real service area above.
+
+CRITICAL: never produce a query that would mainly return other cleaning, janitorial, maid, housekeeping, or dry-cleaning businesses -- those are competitors, not prospects, even if the admin's own wording mentions "cleaners."
+
+Respond with ONLY a JSON array, nothing else. One object per query: {"query": "...", "category": one of "HOMEOWNER", "LOCAL_BUSINESS", "PROPERTY_MANAGER", "OTHER"}.`;
+
+  const baseUrl = (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com").replace(/\/$/, "");
+  try {
+    const res = await fetch(`${baseUrl}/v1/messages`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5", max_tokens: 800, messages: [{ role: "user", content: prompt }] }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
+    const data = (await res.json()) as { content?: { type: string; text?: string }[] };
+    const text = (data.content ?? []).filter((c) => c.type === "text").map((c) => c.text ?? "").join("\n").trim();
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+    if (!Array.isArray(parsed)) throw new Error("not an array");
+    const plans = parsed.filter(
+      (p): p is QueryPlan => p && typeof p.query === "string" && p.query.trim().length > 0 && (PROSPECT_CATEGORIES as readonly string[]).includes(p.category)
+    );
+    if (plans.length === 0) throw new Error("no usable plans");
+    return { ok: true, plans };
+  } catch {
+    return { ok: false, error: "query planning failed" };
+  }
+}
+
+/** Searches Google Places for businesses matching the admin's request, storing any not already
+ *  known as new prospects (deduped by Google's own place id). Never contacts anyone -- this only
+ *  discovers. When Anthropic is configured, the admin's plain-English description is first turned
+ *  into real, targeted Places queries (see planPlacesQueries); otherwise falls back to sending
+ *  the typed text straight to Places, same as before. Either way, every result is checked against
+ *  looksLikeCleaningCompetitor() before being saved, so a competitor can never slip through. */
 export async function searchAndSaveProspects(query: string, category: ProspectCategory): Promise<SearchProspectsResult> {
   const apiKey = await getIntegrationValue("googleMapsApiKey", "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY");
   if (!apiKey) return { ok: false, error: "Google Places isn't configured yet, add a Google Maps API key in Settings → Integrations." };
 
-  let results: PlaceResult[];
-  try {
-    results = await callPlacesTextSearch(apiKey, query);
-  } catch {
+  const planned = await planPlacesQueries(query);
+  const plans: QueryPlan[] = planned.ok ? planned.plans : [{ query, category }];
+
+  const allResults: { result: PlaceResult; category: ProspectCategory }[] = [];
+  for (const plan of plans) {
+    try {
+      const results = await callPlacesTextSearch(apiKey, plan.query);
+      for (const r of results) allResults.push({ result: r, category: plan.category });
+    } catch {
+      // one query in the plan failing shouldn't sink the whole search -- continue with the rest
+    }
+  }
+  if (allResults.length === 0 && plans.length === 1 && plans[0].query === query) {
     return { ok: false, error: "Couldn't reach Google Places right now. Please try again shortly." };
   }
-  if (results.length === 0) return { ok: true, found: 0, new: 0, duplicates: 0 };
+
+  const seenPlaceIds = new Set<string>();
+  const deduped = allResults.filter(({ result }) => {
+    if (seenPlaceIds.has(result.placeId)) return false;
+    seenPlaceIds.add(result.placeId);
+    return true;
+  });
 
   let created = 0;
-  for (const r of results) {
+  let duplicates = 0;
+  let excludedCompetitors = 0;
+  for (const { result: r, category: cat } of deduped) {
+    if (looksLikeCleaningCompetitor(r.name)) {
+      excludedCompetitors++;
+      continue;
+    }
     const existing = await db().prospect.findUnique({ where: { sourcePlaceId: r.placeId } });
-    if (existing) continue;
+    if (existing) {
+      duplicates++;
+      continue;
+    }
     await db().prospect.create({
       data: {
-        category,
+        category: cat,
         businessName: r.name,
         address: r.address || null,
         phone: r.phone,
@@ -141,7 +235,14 @@ export async function searchAndSaveProspects(query: string, category: ProspectCa
     });
     created++;
   }
-  return { ok: true, found: results.length, new: created, duplicates: results.length - created };
+  return {
+    ok: true,
+    found: deduped.length,
+    new: created,
+    duplicates,
+    excludedCompetitors,
+    queriesRun: plans.map((p) => p.query),
+  };
 }
 
 interface WebOpportunity {
@@ -230,11 +331,18 @@ Respond with ONLY a JSON array, nothing else before or after it. One object per 
   if (findings.length === 0) return { ok: true, found: 0, new: 0, duplicates: 0 };
 
   let created = 0;
+  let excludedCompetitors = 0;
   for (const f of findings) {
     // Cross-check against the response's own citations -- if the model named a URL that never
     // actually came back from a real search this turn, treat it as unverified and skip it rather
     // than create a prospect from a possibly-invented source.
     if (!citedUrls.has(f.url)) continue;
+    // Second, independent layer beyond the prompt's own "don't include companies advertising
+    // their own services" instruction -- a prompt instruction alone is never fully trusted here.
+    if (looksLikeCleaningCompetitor(f.title)) {
+      excludedCompetitors++;
+      continue;
+    }
     const existing = await db().prospect.findFirst({ where: { website: f.url } });
     if (existing) continue;
     await db().prospect.create({
@@ -250,7 +358,7 @@ Respond with ONLY a JSON array, nothing else before or after it. One object per 
     created++;
   }
   const verifiedFound = findings.filter((f) => citedUrls.has(f.url)).length;
-  return { ok: true, found: verifiedFound, new: created, duplicates: verifiedFound - created };
+  return { ok: true, found: verifiedFound, new: created, duplicates: verifiedFound - created - excludedCompetitors, excludedCompetitors };
 }
 
 export async function listProspects(filters: { status?: ProspectStatus; category?: ProspectCategory } = {}): Promise<ProspectRow[]> {

@@ -45,6 +45,7 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<ProspectCategory>("LOCAL_BUSINESS");
   const [searching, setSearching] = useState(false);
+  const [searchResult, setSearchResult] = useState<{ message: string; queriesRun?: string[] } | null>(null);
   const [webSearching, setWebSearching] = useState(false);
   const [webSearchResult, setWebSearchResult] = useState<{ message: string; tone: "success" | "error" | "empty" } | null>(null);
   const [statusFilter, setStatusFilter] = useState<ProspectStatus | "">("");
@@ -59,6 +60,7 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
   async function search() {
     if (!query.trim()) return;
     setSearching(true);
+    setSearchResult(null);
     const res = await fetch("/api/admin/prospecting", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -66,8 +68,16 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
     });
     const data = await res.json().catch(() => null);
     setSearching(false);
-    if (!data?.ok) return showToast(data?.error || "Search failed", "error");
-    showToast(`Found ${data.found}, ${data.new} new, ${data.duplicates} already known.`, "success");
+    if (!data?.ok) {
+      showToast(data?.error || "Search failed", "error");
+      setSearchResult({ message: data?.error || "Search failed" });
+      return;
+    }
+    const parts = [`Found ${data.found}, ${data.new} new, ${data.duplicates} already known`];
+    if (data.excludedCompetitors > 0) parts.push(`${data.excludedCompetitors} filtered out as other cleaning/janitorial businesses`);
+    const message = `${parts.join(", ")}.`;
+    showToast(message, "success");
+    setSearchResult({ message, queriesRun: data.queriesRun });
     await refresh();
   }
 
@@ -133,6 +143,9 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
 
       <div className="rounded-xl border border-admin-border bg-admin-card p-4">
         <h2 className="text-sm font-semibold text-admin-text">Find new prospects</h2>
+        <p className="mt-1 text-xs text-admin-text-muted">
+          {"Describe who you're looking for in your own words -- AI turns it into real, targeted searches (property managers, realtors, HOAs, offices, and similar) and automatically filters out other cleaning/janitorial businesses, which are competitors, not prospects."}
+        </p>
         <div className="mt-2 flex flex-wrap gap-2">
           <select value={category} onChange={(e) => setCategory(e.target.value as ProspectCategory)} className="rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text">
             {PROSPECT_CATEGORIES.filter((c) => c !== "HOMEOWNER").map((c) => (
@@ -143,13 +156,21 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && search()}
-            placeholder='e.g. "property management Spokane Valley WA"'
+            placeholder='e.g. "property managers who might need recurring cleaning" or "property management Spokane Valley WA"'
             className="min-w-64 flex-1 rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text"
           />
           <button type="button" onClick={search} disabled={searching || !query.trim()} className="ios-press inline-flex items-center gap-1.5 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
             {searching ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Search className="size-4" aria-hidden />} Search
           </button>
         </div>
+        {!searching && searchResult && (
+          <div className="mt-2 text-xs text-admin-text-muted">
+            <p className="font-medium text-admin-text">{searchResult.message}</p>
+            {searchResult.queriesRun && searchResult.queriesRun.length > 0 && (
+              <p className="mt-0.5">Real searches run: {searchResult.queriesRun.map((q) => `"${q}"`).join(", ")}</p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="rounded-xl border border-admin-border bg-admin-card p-4">
