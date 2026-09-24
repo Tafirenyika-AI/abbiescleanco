@@ -3,8 +3,12 @@
 import { useState } from "react";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 import type { FaqItem } from "@/lib/server/content";
+import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
+import BulkDeleteBar from "@/components/admin/ui/BulkDeleteBar";
+import { useToast } from "@/components/admin/ui/Toast";
+import { useBulkSelect } from "@/lib/admin/useBulkSelect";
 
-function Row({ faq, onDeleted }: { faq: FaqItem; onDeleted: (id: string) => void }) {
+function Row({ faq, onDeleted, checked, onToggle }: { faq: FaqItem; onDeleted: (id: string) => void; checked: boolean; onToggle: () => void }) {
   const [question, setQuestion] = useState(faq.question);
   const [answer, setAnswer] = useState(faq.answer);
   const [isActive, setIsActive] = useState(faq.isActive);
@@ -28,7 +32,9 @@ function Row({ faq, onDeleted }: { faq: FaqItem; onDeleted: (id: string) => void
   }
 
   return (
-    <div className="rounded-2xl border border-admin-border bg-admin-card p-4">
+    <div className="flex gap-2.5 rounded-2xl border border-admin-border bg-admin-card p-4">
+      <input type="checkbox" checked={checked} onChange={onToggle} aria-label={`Select FAQ: ${faq.question}`} className="mt-2" />
+      <div className="flex-1">
       <label className="block">
         <span className="text-xs font-medium text-admin-text-muted">Question</span>
         <input
@@ -67,15 +73,36 @@ function Row({ faq, onDeleted }: { faq: FaqItem; onDeleted: (id: string) => void
           </button>
         </div>
       </div>
+      </div>
     </div>
   );
 }
 
 export default function FaqsManager({ initialFaqs }: { initialFaqs: FaqItem[] }) {
+  const { showToast } = useToast();
   const [faqs, setFaqs] = useState(initialFaqs);
   const [newQuestion, setNewQuestion] = useState("");
   const [newAnswer, setNewAnswer] = useState("");
   const [creating, setCreating] = useState(false);
+  const bulk = useBulkSelect(faqs.map((f) => f.id));
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+
+  async function deleteSelected() {
+    setBulkDeleting(true);
+    const res = await fetch("/api/admin/faqs/bulk", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [...bulk.selected] }),
+    });
+    const data = await res.json().catch(() => null);
+    setBulkDeleting(false);
+    setConfirmBulkDelete(false);
+    if (!data?.ok) return showToast("Couldn't delete the selected FAQs", "error");
+    setFaqs((prev) => prev.filter((f) => !bulk.selected.has(f.id)));
+    showToast(`Deleted ${data.deleted} FAQ${data.deleted === 1 ? "" : "s"}.`, "success");
+    bulk.clear();
+  }
 
   async function addFaq() {
     if (!newQuestion.trim() || !newAnswer.trim()) return;
@@ -116,9 +143,21 @@ export default function FaqsManager({ initialFaqs }: { initialFaqs: FaqItem[] })
         </button>
       </div>
 
+      <BulkDeleteBar count={bulk.selected.size} itemLabel="FAQ" onDelete={() => setConfirmBulkDelete(true)} onClear={bulk.clear} busy={bulkDeleting} />
+
       {faqs.map((f) => (
-        <Row key={f.id} faq={f} onDeleted={(id) => setFaqs((prev) => prev.filter((x) => x.id !== id))} />
+        <Row key={f.id} faq={f} onDeleted={(id) => setFaqs((prev) => prev.filter((x) => x.id !== id))} checked={bulk.selected.has(f.id)} onToggle={() => bulk.toggle(f.id)} />
       ))}
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        title={`Delete ${bulk.selected.size} FAQ${bulk.selected.size === 1 ? "" : "s"}?`}
+        description="This can't be undone."
+        confirmLabel={bulkDeleting ? "Deleting…" : "Delete"}
+        tone="danger"
+        onConfirm={deleteSelected}
+        onCancel={() => setConfirmBulkDelete(false)}
+      />
     </div>
   );
 }

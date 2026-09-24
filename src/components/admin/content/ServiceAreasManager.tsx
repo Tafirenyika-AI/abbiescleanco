@@ -3,8 +3,12 @@
 import { useState } from "react";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 import type { ServiceAreaContent } from "@/lib/server/content";
+import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
+import BulkDeleteBar from "@/components/admin/ui/BulkDeleteBar";
+import { useToast } from "@/components/admin/ui/Toast";
+import { useBulkSelect } from "@/lib/admin/useBulkSelect";
 
-function Row({ area, onDeleted }: { area: ServiceAreaContent; onDeleted: (id: string) => void }) {
+function Row({ area, onDeleted, checked, onToggle }: { area: ServiceAreaContent; onDeleted: (id: string) => void; checked: boolean; onToggle: () => void }) {
   const [name, setName] = useState(area.name);
   const [zipCode, setZipCode] = useState(area.zipCode || "");
   const [isActive, setIsActive] = useState(area.isActive);
@@ -29,6 +33,7 @@ function Row({ area, onDeleted }: { area: ServiceAreaContent; onDeleted: (id: st
 
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-admin-border bg-admin-card p-3">
+      <input type="checkbox" checked={checked} onChange={onToggle} aria-label={`Select ${area.name}`} />
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
@@ -62,9 +67,29 @@ function Row({ area, onDeleted }: { area: ServiceAreaContent; onDeleted: (id: st
 }
 
 export default function ServiceAreasManager({ initialAreas }: { initialAreas: ServiceAreaContent[] }) {
+  const { showToast } = useToast();
   const [areas, setAreas] = useState(initialAreas);
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
+  const bulk = useBulkSelect(areas.map((a) => a.id));
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+
+  async function deleteSelected() {
+    setBulkDeleting(true);
+    const res = await fetch("/api/admin/service-areas/bulk", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [...bulk.selected] }),
+    });
+    const data = await res.json().catch(() => null);
+    setBulkDeleting(false);
+    setConfirmBulkDelete(false);
+    if (!data?.ok) return showToast("Couldn't delete the selected areas", "error");
+    setAreas((prev) => prev.filter((a) => !bulk.selected.has(a.id)));
+    showToast(`Deleted ${data.deleted} area${data.deleted === 1 ? "" : "s"}.`, "success");
+    bulk.clear();
+  }
 
   async function addArea() {
     if (!newName.trim()) return;
@@ -96,9 +121,21 @@ export default function ServiceAreasManager({ initialAreas }: { initialAreas: Se
         </button>
       </div>
 
+      <BulkDeleteBar count={bulk.selected.size} itemLabel="area" onDelete={() => setConfirmBulkDelete(true)} onClear={bulk.clear} busy={bulkDeleting} />
+
       {areas.map((a) => (
-        <Row key={a.id} area={a} onDeleted={(id) => setAreas((prev) => prev.filter((x) => x.id !== id))} />
+        <Row key={a.id} area={a} onDeleted={(id) => setAreas((prev) => prev.filter((x) => x.id !== id))} checked={bulk.selected.has(a.id)} onToggle={() => bulk.toggle(a.id)} />
       ))}
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        title={`Delete ${bulk.selected.size} area${bulk.selected.size === 1 ? "" : "s"}?`}
+        description="This can't be undone."
+        confirmLabel={bulkDeleting ? "Deleting…" : "Delete"}
+        tone="danger"
+        onConfirm={deleteSelected}
+        onCancel={() => setConfirmBulkDelete(false)}
+      />
     </div>
   );
 }

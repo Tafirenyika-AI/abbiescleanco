@@ -4,8 +4,12 @@ import { useState } from "react";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 import type { GalleryItemContent } from "@/lib/server/content";
 import ImageUploadField from "./ImageUploadField";
+import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
+import BulkDeleteBar from "@/components/admin/ui/BulkDeleteBar";
+import { useToast } from "@/components/admin/ui/Toast";
+import { useBulkSelect } from "@/lib/admin/useBulkSelect";
 
-function Row({ item, onDeleted }: { item: GalleryItemContent; onDeleted: (id: string) => void }) {
+function Row({ item, onDeleted, checked, onToggle }: { item: GalleryItemContent; onDeleted: (id: string) => void; checked: boolean; onToggle: () => void }) {
   const [form, setForm] = useState({
     imageUrl: item.imageUrl,
     altText: item.altText,
@@ -34,7 +38,9 @@ function Row({ item, onDeleted }: { item: GalleryItemContent; onDeleted: (id: st
   }
 
   return (
-    <div className="rounded-2xl border border-admin-border bg-admin-card p-4">
+    <div className="flex gap-2.5 rounded-2xl border border-admin-border bg-admin-card p-4">
+      <input type="checkbox" checked={checked} onChange={onToggle} aria-label={`Select image: ${item.altText}`} className="mt-2" />
+      <div className="flex-1">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <ImageUploadField
           label="Image"
@@ -99,15 +105,36 @@ function Row({ item, onDeleted }: { item: GalleryItemContent; onDeleted: (id: st
           </button>
         </div>
       </div>
+      </div>
     </div>
   );
 }
 
 export default function GalleryManager({ initialItems }: { initialItems: GalleryItemContent[] }) {
+  const { showToast } = useToast();
   const [items, setItems] = useState(initialItems);
   const [newImageUrl, setNewImageUrl] = useState("");
   const [newAltText, setNewAltText] = useState("");
   const [creating, setCreating] = useState(false);
+  const bulk = useBulkSelect(items.map((i) => i.id));
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+
+  async function deleteSelected() {
+    setBulkDeleting(true);
+    const res = await fetch("/api/admin/gallery/bulk", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [...bulk.selected] }),
+    });
+    const data = await res.json().catch(() => null);
+    setBulkDeleting(false);
+    setConfirmBulkDelete(false);
+    if (!data?.ok) return showToast("Couldn't delete the selected images", "error");
+    setItems((prev) => prev.filter((i) => !bulk.selected.has(i.id)));
+    showToast(`Deleted ${data.deleted} image${data.deleted === 1 ? "" : "s"}.`, "success");
+    bulk.clear();
+  }
 
   async function addItem() {
     if (!newImageUrl.trim() || !newAltText.trim()) return;
@@ -147,11 +174,23 @@ export default function GalleryManager({ initialItems }: { initialItems: Gallery
         </button>
       </div>
 
+      <BulkDeleteBar count={bulk.selected.size} itemLabel="image" onDelete={() => setConfirmBulkDelete(true)} onClear={bulk.clear} busy={bulkDeleting} />
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {items.map((item) => (
-          <Row key={item.id} item={item} onDeleted={(id) => setItems((prev) => prev.filter((x) => x.id !== id))} />
+          <Row key={item.id} item={item} onDeleted={(id) => setItems((prev) => prev.filter((x) => x.id !== id))} checked={bulk.selected.has(item.id)} onToggle={() => bulk.toggle(item.id)} />
         ))}
       </div>
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        title={`Delete ${bulk.selected.size} image${bulk.selected.size === 1 ? "" : "s"}?`}
+        description="This can't be undone."
+        confirmLabel={bulkDeleting ? "Deleting…" : "Delete"}
+        tone="danger"
+        onConfirm={deleteSelected}
+        onCancel={() => setConfirmBulkDelete(false)}
+      />
     </div>
   );
 }

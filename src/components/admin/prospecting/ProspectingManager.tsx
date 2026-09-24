@@ -5,7 +5,9 @@ import { Search, Loader2, X, Mail, Send, Ban, Sparkles, UserCog, Globe, Trash2, 
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
+import BulkDeleteBar from "@/components/admin/ui/BulkDeleteBar";
 import { useToast } from "@/components/admin/ui/Toast";
+import { useBulkSelect } from "@/lib/admin/useBulkSelect";
 import {
   type ProspectRow,
   type ProspectCategory,
@@ -84,6 +86,25 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
   }
 
   const filtered = statusFilter ? prospects.filter((p) => p.status === statusFilter) : prospects;
+  const bulk = useBulkSelect(filtered.map((p) => p.id));
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+
+  async function deleteSelected() {
+    setBulkDeleting(true);
+    const res = await fetch("/api/admin/prospecting/bulk", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [...bulk.selected] }),
+    });
+    const data = await res.json().catch(() => null);
+    setBulkDeleting(false);
+    setConfirmBulkDelete(false);
+    if (!data?.ok) return showToast(data?.error || "Couldn't remove the selected prospects", "error");
+    setProspects((prev) => prev.filter((p) => !bulk.selected.has(p.id)));
+    showToast(`Removed ${data.deleted} prospect${data.deleted === 1 ? "" : "s"}.`, "success");
+    bulk.clear();
+  }
 
   return (
     <div className="space-y-5">
@@ -153,6 +174,8 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
         <span className="text-xs text-admin-text-muted">{filtered.length} prospect{filtered.length === 1 ? "" : "s"}</span>
       </div>
 
+      <BulkDeleteBar count={bulk.selected.size} itemLabel="prospect" onDelete={() => setConfirmBulkDelete(true)} onClear={bulk.clear} busy={bulkDeleting} />
+
       {filtered.length === 0 ? (
         <EmptyState title="No prospects yet" description="Search above to find property managers, realtors, or local businesses in your service area." />
       ) : (
@@ -160,6 +183,7 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
           <table className="w-full text-sm">
             <thead className="bg-admin-bg text-left text-xs font-semibold uppercase text-admin-text-muted">
               <tr>
+                <th className="w-10 px-4 py-2.5"><input type="checkbox" checked={bulk.isAllSelected} onChange={bulk.toggleAll} aria-label="Select all prospects" /></th>
                 <th className="px-4 py-2.5">Business / contact</th>
                 <th className="px-4 py-2.5">Category</th>
                 <th className="px-4 py-2.5">Contact info</th>
@@ -174,6 +198,9 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
                 const fit = computeFitScore(p);
                 return (
                   <tr key={p.id} onClick={() => setSelected(p)} className="cursor-pointer border-t border-admin-border transition-colors duration-150 hover:bg-admin-bg">
+                    <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" checked={bulk.selected.has(p.id)} onChange={() => bulk.toggle(p.id)} aria-label={`Select ${p.businessName || p.contactName || "prospect"}`} />
+                    </td>
                     <td className="px-4 py-2.5 font-medium text-admin-text">{p.businessName || p.contactName || "Unnamed"}</td>
                     <td className="px-4 py-2.5 text-admin-text-muted">{prospectCategoryLabels[p.category]}</td>
                     <td className="px-4 py-2.5 text-admin-text-muted">{p.phone || p.email || "—"}</td>
@@ -203,6 +230,16 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        title={`Remove ${bulk.selected.size} prospect${bulk.selected.size === 1 ? "" : "s"}?`}
+        description="This removes them from the list for good. This can't be undone. Any that already became a lead are not affected."
+        confirmLabel={bulkDeleting ? "Removing…" : "Remove"}
+        tone="danger"
+        onConfirm={deleteSelected}
+        onCancel={() => setConfirmBulkDelete(false)}
+      />
     </div>
   );
 }

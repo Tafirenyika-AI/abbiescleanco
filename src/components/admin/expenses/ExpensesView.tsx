@@ -8,8 +8,10 @@ import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
+import BulkDeleteBar from "@/components/admin/ui/BulkDeleteBar";
 import { useToast } from "@/components/admin/ui/Toast";
 import { formatCalendarDate } from "@/lib/adminDate";
+import { useBulkSelect } from "@/lib/admin/useBulkSelect";
 
 const todayInput = () => new Date().toISOString().slice(0, 10);
 
@@ -26,6 +28,9 @@ export default function ExpensesView({ initialExpenses }: { initialExpenses: Exp
   const [isTaxDeductible, setIsTaxDeductible] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const bulk = useBulkSelect(expenses.map((e) => e.id));
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
   const total = expenses.reduce((sum, e) => sum + e.amount, 0);
   const byCategory = new Map<string, number>();
@@ -73,6 +78,22 @@ export default function ExpensesView({ initialExpenses }: { initialExpenses: Exp
       setExpenses((prev) => prev.filter((e) => e.id !== deleteTarget));
     }
     setDeleteTarget(null);
+  }
+
+  async function deleteSelected() {
+    setBulkDeleting(true);
+    const res = await fetch("/api/admin/expenses/bulk", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [...bulk.selected] }),
+    });
+    const data = await res.json().catch(() => null);
+    setBulkDeleting(false);
+    setConfirmBulkDelete(false);
+    if (!data?.ok) return showToast("Couldn't delete the selected expenses", "error");
+    setExpenses((prev) => prev.filter((e) => !bulk.selected.has(e.id)));
+    showToast(`Deleted ${data.deleted} expense${data.deleted === 1 ? "" : "s"}.`, "success");
+    bulk.clear();
   }
 
   return (
@@ -143,13 +164,18 @@ export default function ExpensesView({ initialExpenses }: { initialExpenses: Exp
         </Card>
       )}
 
-      <div className="mt-4 admin-table-surface overflow-x-auto rounded-2xl border border-admin-border bg-admin-card">
+      <div className="mt-4">
+        <BulkDeleteBar count={bulk.selected.size} itemLabel="expense" onDelete={() => setConfirmBulkDelete(true)} onClear={bulk.clear} busy={bulkDeleting} />
+      </div>
+
+      <div className="mt-2 admin-table-surface overflow-x-auto rounded-2xl border border-admin-border bg-admin-card">
         {expenses.length === 0 ? (
           <EmptyState icon={ReceiptIcon} title="No expenses yet" description="Track cleaning supplies, transportation, equipment, and other business costs here." />
         ) : (
           <table className="w-full min-w-[820px] text-left text-sm">
             <thead className="bg-admin-bg">
               <tr>
+                <th scope="col" className="w-10 p-3.5"><input type="checkbox" checked={bulk.isAllSelected} onChange={bulk.toggleAll} aria-label="Select all expenses" /></th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Date</th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Category</th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Vendor</th>
@@ -162,6 +188,7 @@ export default function ExpensesView({ initialExpenses }: { initialExpenses: Exp
             <tbody>
               {expenses.map((e) => (
                 <tr key={e.id} className="border-t border-admin-border">
+                  <td className="p-3.5"><input type="checkbox" checked={bulk.selected.has(e.id)} onChange={() => bulk.toggle(e.id)} aria-label="Select expense" /></td>
                   <td className="p-3.5 text-admin-text-muted">{formatCalendarDate(e.date)}</td>
                   <td className="p-3.5 text-admin-text">{expenseCategoryLabels[e.category]}</td>
                   <td className="p-3.5 text-admin-text">{e.vendor ?? "—"}</td>
@@ -188,6 +215,16 @@ export default function ExpensesView({ initialExpenses }: { initialExpenses: Exp
         tone="danger"
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        title={`Delete ${bulk.selected.size} expense${bulk.selected.size === 1 ? "" : "s"}?`}
+        description="This can't be undone."
+        confirmLabel={bulkDeleting ? "Deleting…" : "Delete"}
+        tone="danger"
+        onConfirm={deleteSelected}
+        onCancel={() => setConfirmBulkDelete(false)}
       />
     </div>
   );

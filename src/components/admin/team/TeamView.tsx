@@ -7,9 +7,11 @@ import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
+import BulkDeleteBar from "@/components/admin/ui/BulkDeleteBar";
 import { useToast } from "@/components/admin/ui/Toast";
+import { useBulkSelect } from "@/lib/admin/useBulkSelect";
 
-function Row({ member, onDeleted }: { member: TeamMemberItem; onDeleted: (id: string) => void }) {
+function Row({ member, onDeleted, checked, onToggle }: { member: TeamMemberItem; onDeleted: (id: string) => void; checked: boolean; onToggle: () => void }) {
   const { showToast } = useToast();
   const [form, setForm] = useState({
     name: member.name,
@@ -47,6 +49,9 @@ function Row({ member, onDeleted }: { member: TeamMemberItem; onDeleted: (id: st
 
   return (
     <Card>
+      <div className="flex items-start gap-2.5">
+        <input type="checkbox" checked={checked} onChange={onToggle} aria-label={`Select ${member.name}`} className="mt-2" />
+        <div className="flex-1">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="text-xs font-medium text-admin-text-muted">Name</span>
@@ -93,6 +98,8 @@ function Row({ member, onDeleted }: { member: TeamMemberItem; onDeleted: (id: st
           </button>
         </div>
       </div>
+        </div>
+      </div>
 
       <ConfirmDialog
         open={confirmDelete}
@@ -137,6 +144,25 @@ export default function TeamView({ initialMembers }: { initialMembers: TeamMembe
   }
 
   const activeCount = members.filter((m) => m.isActive).length;
+  const bulk = useBulkSelect(members.map((m) => m.id));
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+
+  async function deleteSelected() {
+    setBulkDeleting(true);
+    const res = await fetch("/api/admin/team/bulk", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [...bulk.selected] }),
+    });
+    const data = await res.json().catch(() => null);
+    setBulkDeleting(false);
+    setConfirmBulkDelete(false);
+    if (!data?.ok) return showToast("Couldn't remove the selected team members", "error");
+    setMembers((prev) => prev.filter((m) => !bulk.selected.has(m.id)));
+    showToast(`Removed ${data.deleted} team member${data.deleted === 1 ? "" : "s"}.`, "success");
+    bulk.clear();
+  }
 
   return (
     <div>
@@ -160,13 +186,35 @@ export default function TeamView({ initialMembers }: { initialMembers: TeamMembe
         </div>
       </Card>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-4">
+        <BulkDeleteBar count={bulk.selected.size} itemLabel="team member" onDelete={() => setConfirmBulkDelete(true)} onClear={bulk.clear} busy={bulkDeleting} />
+      </div>
+
+      <div className="mt-2 space-y-3">
         {members.length === 0 ? (
           <EmptyState icon={UsersRound} title="No team members yet" description="Add your cleaners above to start assigning them to bookings." />
         ) : (
-          members.map((m) => <Row key={m.id} member={m} onDeleted={(id) => setMembers((prev) => prev.filter((x) => x.id !== id))} />)
+          members.map((m) => (
+            <Row
+              key={m.id}
+              member={m}
+              onDeleted={(id) => setMembers((prev) => prev.filter((x) => x.id !== id))}
+              checked={bulk.selected.has(m.id)}
+              onToggle={() => bulk.toggle(m.id)}
+            />
+          ))
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        title={`Remove ${bulk.selected.size} team member${bulk.selected.size === 1 ? "" : "s"}?`}
+        description="This can't be undone."
+        confirmLabel={bulkDeleting ? "Removing…" : "Remove"}
+        tone="danger"
+        onConfirm={deleteSelected}
+        onCancel={() => setConfirmBulkDelete(false)}
+      />
     </div>
   );
 }

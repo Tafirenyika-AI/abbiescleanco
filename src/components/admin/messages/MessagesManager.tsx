@@ -8,8 +8,10 @@ import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
+import BulkDeleteBar from "@/components/admin/ui/BulkDeleteBar";
 import { useToast } from "@/components/admin/ui/Toast";
 import { formatDateTime } from "@/lib/adminDate";
+import { useBulkSelect } from "@/lib/admin/useBulkSelect";
 
 const statusTone: Record<ContactMessageStatusValue, "neutral" | "info" | "success" | "error" | "warning"> = {
   NEW: "info",
@@ -36,6 +38,9 @@ export default function MessagesManager({ messages: initialMessages }: { message
     () => (active === "all" ? messages : messages.filter((m) => m.status === active)),
     [active, messages]
   );
+  const bulk = useBulkSelect(filtered.map((m) => m.id));
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
   async function changeStatus(id: string, status: ContactMessageStatusValue) {
     const res = await fetch(`/api/admin/messages/${id}`, {
@@ -63,6 +68,22 @@ export default function MessagesManager({ messages: initialMessages }: { message
     showToast("Message deleted", "success");
   }
 
+  async function deleteSelected() {
+    setBulkDeleting(true);
+    const res = await fetch("/api/admin/messages/bulk", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [...bulk.selected] }),
+    });
+    const data = await res.json().catch(() => null);
+    setBulkDeleting(false);
+    setConfirmBulkDelete(false);
+    if (!data?.ok) return showToast("Couldn't delete the selected messages", "error");
+    setMessages((prev) => prev.filter((m) => !bulk.selected.has(m.id)));
+    showToast(`Deleted ${data.deleted} message${data.deleted === 1 ? "" : "s"}.`, "success");
+    bulk.clear();
+  }
+
   return (
     <div>
       <div>
@@ -83,14 +104,20 @@ export default function MessagesManager({ messages: initialMessages }: { message
         ))}
       </div>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-4">
+        <BulkDeleteBar count={bulk.selected.size} itemLabel="message" onDelete={() => setConfirmBulkDelete(true)} onClear={bulk.clear} busy={bulkDeleting} />
+      </div>
+
+      <div className="mt-2 space-y-3">
         {filtered.length === 0 ? (
           <Card><EmptyState icon={Mail} title="No messages" description="Contact form submissions will show up here." /></Card>
         ) : (
           filtered.map((m) => (
             <Card key={m.id}>
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
+                <div className="flex items-start gap-2.5">
+                  <input type="checkbox" checked={bulk.selected.has(m.id)} onChange={() => bulk.toggle(m.id)} aria-label={`Select message from ${m.name}`} className="mt-1" />
+                  <div>
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-admin-text">{m.name}</p>
                     {m.isUrgent && (
@@ -106,6 +133,7 @@ export default function MessagesManager({ messages: initialMessages }: { message
                     {" · "}{formatDateTime(m.createdAt)}
                   </p>
                   <p className="mt-2 whitespace-pre-wrap text-sm text-admin-text">{m.message}</p>
+                  </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <select
@@ -141,6 +169,16 @@ export default function MessagesManager({ messages: initialMessages }: { message
         tone="danger"
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        title={`Delete ${bulk.selected.size} message${bulk.selected.size === 1 ? "" : "s"}?`}
+        description="This can't be undone."
+        confirmLabel={bulkDeleting ? "Deleting…" : "Delete"}
+        tone="danger"
+        onConfirm={deleteSelected}
+        onCancel={() => setConfirmBulkDelete(false)}
       />
     </div>
   );

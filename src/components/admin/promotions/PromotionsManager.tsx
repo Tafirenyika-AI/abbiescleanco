@@ -6,8 +6,10 @@ import type { PromoCodeItem, DiscountType } from "@/lib/server/promoCodeStore";
 import Card from "@/components/admin/ui/Card";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
+import BulkDeleteBar from "@/components/admin/ui/BulkDeleteBar";
 import { useToast } from "@/components/admin/ui/Toast";
 import { formatDate } from "@/lib/adminDate";
+import { useBulkSelect } from "@/lib/admin/useBulkSelect";
 
 /** dollars in the UI, cents everywhere in the DB/API — same convention as every other money field in this app. */
 function toStoredValue(discountType: DiscountType, displayValue: number): number {
@@ -37,6 +39,9 @@ export default function PromotionsManager({ promoCodes: initialPromoCodes }: { p
   const [editMaxRedemptions, setEditMaxRedemptions] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const bulk = useBulkSelect(promoCodes.map((p) => p.id));
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
   async function submit() {
     if (!code || !discountValue) return;
@@ -127,6 +132,22 @@ export default function PromotionsManager({ promoCodes: initialPromoCodes }: { p
     }
     setPromoCodes((prev) => prev.filter((p) => p.id !== id));
     showToast("Promo code deleted", "success");
+  }
+
+  async function deleteSelected() {
+    setBulkDeleting(true);
+    const res = await fetch("/api/admin/promo-codes/bulk", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [...bulk.selected] }),
+    });
+    const data = await res.json().catch(() => null);
+    setBulkDeleting(false);
+    setConfirmBulkDelete(false);
+    if (!data?.ok) return showToast("Couldn't delete the selected promo codes", "error");
+    setPromoCodes((prev) => prev.filter((p) => !bulk.selected.has(p.id)));
+    showToast(`Deleted ${data.deleted} promo code${data.deleted === 1 ? "" : "s"}.`, "success");
+    bulk.clear();
   }
 
   return (
@@ -223,7 +244,11 @@ export default function PromotionsManager({ promoCodes: initialPromoCodes }: { p
         </Card>
       )}
 
-      <div className="mt-4 admin-table-surface overflow-x-auto rounded-2xl border border-admin-border bg-admin-card">
+      <div className="mt-4">
+        <BulkDeleteBar count={bulk.selected.size} itemLabel="promo code" onDelete={() => setConfirmBulkDelete(true)} onClear={bulk.clear} busy={bulkDeleting} />
+      </div>
+
+      <div className="mt-2 admin-table-surface overflow-x-auto rounded-2xl border border-admin-border bg-admin-card">
         {promoCodes.length === 0 ? (
           <EmptyState
             icon={Megaphone}
@@ -234,6 +259,7 @@ export default function PromotionsManager({ promoCodes: initialPromoCodes }: { p
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-admin-bg">
               <tr>
+                <th scope="col" className="w-10 p-3.5"><input type="checkbox" checked={bulk.isAllSelected} onChange={bulk.toggleAll} aria-label="Select all promo codes" /></th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Code</th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Description</th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Discount</th>
@@ -247,6 +273,7 @@ export default function PromotionsManager({ promoCodes: initialPromoCodes }: { p
               {promoCodes.map((p) =>
                 editingId === p.id ? (
                   <tr key={p.id} className="border-t border-admin-border bg-admin-bg">
+                    <td className="p-3.5"><input type="checkbox" checked={bulk.selected.has(p.id)} onChange={() => bulk.toggle(p.id)} aria-label={`Select ${p.code}`} /></td>
                     <td className="p-3.5 font-mono text-admin-text">{p.code}</td>
                     <td className="p-3.5" colSpan={5}>
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
@@ -308,6 +335,7 @@ export default function PromotionsManager({ promoCodes: initialPromoCodes }: { p
                   </tr>
                 ) : (
                   <tr key={p.id} className="border-t border-admin-border">
+                    <td className="p-3.5"><input type="checkbox" checked={bulk.selected.has(p.id)} onChange={() => bulk.toggle(p.id)} aria-label={`Select ${p.code}`} /></td>
                     <td className="p-3.5 font-mono text-admin-text">{p.code}</td>
                     <td className="p-3.5 text-admin-text-muted">{p.description ?? "—"}</td>
                     <td className="p-3.5 text-admin-text">
@@ -364,6 +392,16 @@ export default function PromotionsManager({ promoCodes: initialPromoCodes }: { p
         tone="danger"
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        title={`Delete ${bulk.selected.size} promo code${bulk.selected.size === 1 ? "" : "s"}?`}
+        description="Quotes that already used any of these keep their discount, this just removes the codes so they can't be used again."
+        confirmLabel={bulkDeleting ? "Deleting…" : "Delete"}
+        tone="danger"
+        onConfirm={deleteSelected}
+        onCancel={() => setConfirmBulkDelete(false)}
       />
     </div>
   );
