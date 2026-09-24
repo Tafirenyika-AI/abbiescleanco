@@ -26,6 +26,14 @@ const fields: FieldMeta[] = [
   { key: "sentryDsn", label: "Sentry DSN", isSecret: false, wired: false, help: "Error reporting is wired in, but the DSN must be set as the NEXT_PUBLIC_SENTRY_DSN environment variable (with a redeploy), it initializes at server startup, so it can't be hot-swapped from a value saved here the way other integrations are." },
   { key: "upstashRedisUrl", label: "Upstash Redis REST URL", isSecret: false, wired: true, help: "Makes rate limiting durable across server restarts/instances instead of in-memory only. Without this, rate limiting still works, just resets whenever the server restarts." },
   { key: "upstashRedisToken", label: "Upstash Redis REST Token", isSecret: true, wired: true, help: "" },
+  { key: "metaAppId", label: "Meta App ID", isSecret: false, wired: true, help: "From your Meta developer app -- powers \"Connect Facebook/Instagram\" on Marketing Studio. See docs/SOCIAL_ADS_SETUP.md for the exact app-creation steps and redirect URL." },
+  { key: "metaAppSecret", label: "Meta App Secret", isSecret: true, wired: true, help: "" },
+  { key: "googleAdsClientId", label: "Google Ads OAuth Client ID", isSecret: false, wired: true, help: "From a Google Cloud OAuth client -- powers \"Connect Google Ads\" on Marketing Studio. See docs/SOCIAL_ADS_SETUP.md." },
+  { key: "googleAdsClientSecret", label: "Google Ads OAuth Client Secret", isSecret: true, wired: true, help: "" },
+  { key: "googleAdsDeveloperToken", label: "Google Ads Developer Token", isSecret: true, wired: true, help: "From your Google Ads API Center. A test-account-only token works immediately; running real spend needs Google's Basic Access approval." },
+  { key: "googleAdsLoginCustomerId", label: "Google Ads Manager (MCC) Customer ID", isSecret: false, wired: true, help: "10-digit id, no dashes. Only needed if you connect through a manager account rather than a standalone Ads account." },
+  { key: "tiktokClientKey", label: "TikTok Client Key", isSecret: false, wired: true, help: "From your TikTok for Business developer app -- powers \"Connect TikTok\" on Marketing Studio. See docs/SOCIAL_ADS_SETUP.md." },
+  { key: "tiktokClientSecret", label: "TikTok Client Secret", isSecret: true, wired: true, help: "" },
 ];
 
 interface Status {

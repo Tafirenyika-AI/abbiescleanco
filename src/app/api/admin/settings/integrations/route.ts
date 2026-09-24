@@ -19,6 +19,14 @@ const schema = z.object({
   anthropicApiKey: z.string().trim().max(300).optional(),
   upstashRedisUrl: z.string().trim().max(300).optional(),
   upstashRedisToken: z.string().trim().max(300).optional(),
+  metaAppId: z.string().trim().max(300).optional(),
+  metaAppSecret: z.string().trim().max(300).optional(),
+  googleAdsClientId: z.string().trim().max(300).optional(),
+  googleAdsClientSecret: z.string().trim().max(300).optional(),
+  googleAdsDeveloperToken: z.string().trim().max(300).optional(),
+  googleAdsLoginCustomerId: z.string().trim().max(300).optional(),
+  tiktokClientKey: z.string().trim().max(300).optional(),
+  tiktokClientSecret: z.string().trim().max(300).optional(),
 });
 
 export async function GET(req: NextRequest) {

@@ -28,6 +28,17 @@ export interface IntegrationSettings {
   anthropicApiKey?: string;
   upstashRedisUrl?: string;
   upstashRedisToken?: string;
+  // Marketing/ad platform developer apps -- app-level credentials only. The per-account
+  // access/refresh tokens obtained by connecting a real Page/Ads/TikTok account through
+  // these apps live in the SocialConnection table, not here (see marketingConnections.ts).
+  metaAppId?: string;
+  metaAppSecret?: string;
+  googleAdsClientId?: string;
+  googleAdsClientSecret?: string;
+  googleAdsDeveloperToken?: string;
+  googleAdsLoginCustomerId?: string;
+  tiktokClientKey?: string;
+  tiktokClientSecret?: string;
 }
 
 const SECRET_FIELDS: (keyof IntegrationSettings)[] = [
@@ -40,6 +51,10 @@ const SECRET_FIELDS: (keyof IntegrationSettings)[] = [
   "turnstileSecretKey",
   "anthropicApiKey",
   "upstashRedisToken",
+  "metaAppSecret",
+  "googleAdsClientSecret",
+  "googleAdsDeveloperToken",
+  "tiktokClientSecret",
 ];
 
 async function getRaw(): Promise<IntegrationSettings> {
@@ -72,6 +87,14 @@ export async function getIntegrationStatus(): Promise<Record<keyof IntegrationSe
     anthropicApiKey: "ANTHROPIC_API_KEY",
     upstashRedisUrl: "UPSTASH_REDIS_REST_URL",
     upstashRedisToken: "UPSTASH_REDIS_REST_TOKEN",
+    metaAppId: "META_APP_ID",
+    metaAppSecret: "META_APP_SECRET",
+    googleAdsClientId: "GOOGLE_ADS_CLIENT_ID",
+    googleAdsClientSecret: "GOOGLE_ADS_CLIENT_SECRET",
+    googleAdsDeveloperToken: "GOOGLE_ADS_DEVELOPER_TOKEN",
+    googleAdsLoginCustomerId: "GOOGLE_ADS_LOGIN_CUSTOMER_ID",
+    tiktokClientKey: "TIKTOK_CLIENT_KEY",
+    tiktokClientSecret: "TIKTOK_CLIENT_SECRET",
   };
 
   const result = {} as Record<keyof IntegrationSettings, { configured: boolean; source: "database" | "environment" | "none"; value?: string }>;

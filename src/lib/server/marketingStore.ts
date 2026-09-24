@@ -163,19 +163,24 @@ export interface PostListItem {
   campaignName: string | null;
   channel: MarketingChannel;
   caption: string;
+  mediaUrl: string | null;
   status: PostStatusValue;
   scheduledFor: string | null;
   postedAt: string | null;
   createdAt: string;
   createdByName: string | null;
   approvedByName: string | null;
+  socialConnectionId: string | null;
+  connectedAccountName: string | null;
+  platformPostId: string | null;
+  publishError: string | null;
 }
 
 export async function listPosts(): Promise<PostListItem[]> {
   if (!isDatabaseConfigured || !prisma) return [];
   const posts = await db().marketingPost.findMany({
     orderBy: { createdAt: "desc" },
-    include: { campaign: { select: { name: true } }, createdBy: { select: { name: true } }, approvedBy: { select: { name: true } } },
+    include: { campaign: { select: { name: true } }, createdBy: { select: { name: true } }, approvedBy: { select: { name: true } }, socialConnection: { select: { accountName: true } } },
   });
   return posts.map((p) => ({
     id: p.id,
@@ -183,12 +188,17 @@ export async function listPosts(): Promise<PostListItem[]> {
     campaignName: p.campaign?.name ?? null,
     channel: p.channel as MarketingChannel,
     caption: p.caption,
+    mediaUrl: p.mediaUrl,
     status: p.status as PostStatusValue,
     scheduledFor: p.scheduledFor ? p.scheduledFor.toISOString() : null,
     postedAt: p.postedAt ? p.postedAt.toISOString() : null,
     createdAt: p.createdAt.toISOString(),
     createdByName: p.createdBy?.name ?? null,
     approvedByName: p.approvedBy?.name ?? null,
+    socialConnectionId: p.socialConnectionId,
+    connectedAccountName: p.socialConnection?.accountName ?? null,
+    platformPostId: p.platformPostId,
+    publishError: p.publishError,
   }));
 }
 
@@ -196,11 +206,22 @@ export async function createPost(input: {
   campaignId: string | null;
   channel: MarketingChannel;
   caption: string;
+  mediaUrl: string | null;
+  socialConnectionId: string | null;
   scheduledFor: Date | null;
   createdById: string;
 }): Promise<{ ok: boolean; error?: string; id?: string }> {
   const created = await db().marketingPost.create({
-    data: { campaignId: input.campaignId, channel: input.channel, caption: input.caption, scheduledFor: input.scheduledFor, createdById: input.createdById, status: "DRAFT" },
+    data: {
+      campaignId: input.campaignId,
+      channel: input.channel,
+      caption: input.caption,
+      mediaUrl: input.mediaUrl,
+      socialConnectionId: input.socialConnectionId,
+      scheduledFor: input.scheduledFor,
+      createdById: input.createdById,
+      status: "DRAFT",
+    },
   });
   await db().auditLog.create({ data: { adminUserId: input.createdById, action: "marketing_post.created", entityType: "MarketingPost", entityId: created.id } });
   return { ok: true, id: created.id };
@@ -215,7 +236,9 @@ export async function approvePost(id: string, adminUserId: string): Promise<{ ok
   return { ok: true };
 }
 
-/** The admin actually publishes the post themselves on the real platform, then marks it posted here -- this never publishes anything itself. */
+/** Manual fallback: the admin actually publishes the post themselves on the real platform (or
+ *  on a channel with no live connection yet), then marks it posted here -- this path never
+ *  calls any platform API itself. Prefer publishPost() below when a real connection exists. */
 export async function markPostPosted(id: string, adminUserId: string): Promise<{ ok: boolean; error?: string }> {
   const post = await db().marketingPost.findUnique({ where: { id } });
   if (!post) return { ok: false, error: "Post not found" };
@@ -223,6 +246,39 @@ export async function markPostPosted(id: string, adminUserId: string): Promise<{
   await db().marketingPost.update({ where: { id }, data: { status: "POSTED", postedAt: new Date() } });
   await db().auditLog.create({ data: { adminUserId, action: "marketing_post.posted", entityType: "MarketingPost", entityId: id } });
   return { ok: true };
+}
+
+/** Real automated publish, via the post's attached SocialConnection. Never marks a post POSTED
+ *  unless the platform's own API genuinely accepted it -- a failed call leaves the post
+ *  APPROVED with a real, visible publishError, so nothing silently "looks posted" when it isn't. */
+export async function publishPost(id: string, adminUserId: string): Promise<{ ok: boolean; error?: string; platformPostId?: string }> {
+  const post = await db().marketingPost.findUnique({ where: { id }, include: { socialConnection: true } });
+  if (!post) return { ok: false, error: "Post not found" };
+  if (post.status !== "APPROVED") return { ok: false, error: "Only approved posts can be published" };
+  if (!post.socialConnection) return { ok: false, error: "No connected account is attached to this post. Connect one under Marketing Studio → Connected accounts, or use Mark posted after publishing it yourself." };
+
+  const { publishToFacebookPage, publishToInstagram } = await import("./social/meta");
+  const connection = post.socialConnection;
+  let result: { ok: true; postId: string } | { ok: false; error: string };
+
+  if (post.channel === "META_FACEBOOK") {
+    result = await publishToFacebookPage(connection.accountId, connection.accessToken, post.caption, post.mediaUrl);
+  } else if (post.channel === "META_INSTAGRAM") {
+    if (!post.mediaUrl) result = { ok: false, error: "Instagram requires an image -- add one to this post first." };
+    else result = await publishToInstagram(connection.accountId, connection.accessToken, post.caption, post.mediaUrl);
+  } else {
+    result = { ok: false, error: `Automated publishing to ${post.channel} isn't built yet -- the account is connected, but posting through it is a separate next step.` };
+  }
+
+  if (!result.ok) {
+    await db().marketingPost.update({ where: { id }, data: { publishError: result.error } });
+    await db().auditLog.create({ data: { adminUserId, action: "marketing_post.publish_failed", entityType: "MarketingPost", entityId: id, after: { error: result.error } } });
+    return { ok: false, error: result.error };
+  }
+
+  await db().marketingPost.update({ where: { id }, data: { status: "POSTED", postedAt: new Date(), platformPostId: result.postId, publishError: null } });
+  await db().auditLog.create({ data: { adminUserId, action: "marketing_post.published", entityType: "MarketingPost", entityId: id, after: { platformPostId: result.postId } } });
+  return { ok: true, platformPostId: result.postId };
 }
 
 export async function cancelPost(id: string, adminUserId: string): Promise<{ ok: boolean; error?: string }> {

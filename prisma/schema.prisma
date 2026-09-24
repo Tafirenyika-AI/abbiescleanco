@@ -149,6 +149,7 @@ model AdminUser {
   marketingCampaigns MarketingCampaign[]
   createdMarketingPosts MarketingPost[] @relation("MarketingPostCreatedBy")
   approvedMarketingPosts MarketingPost[] @relation("MarketingPostApprovedBy")
+  socialConnections SocialConnection[]
 
   @@index([email])
   @@map("admin_users")
@@ -996,9 +997,16 @@ model MarketingPost {
 
   channel      MarketingChannel
   caption      String
+  mediaUrl     String? // real public HTTPS image URL (via the existing upload pipeline) -- required by Instagram's publish API, optional for Facebook
   status       PostStatus @default(DRAFT)
   scheduledFor DateTime?
-  postedAt     DateTime? // set when an admin marks it posted, after actually publishing it themselves
+  postedAt     DateTime? // set the moment a real publish call to the platform succeeds (auto), or when an admin manually marks it posted for a channel with no live connection
+
+  // Real automated publishing, once a SocialConnection exists for this channel.
+  socialConnectionId String?
+  socialConnection    SocialConnection? @relation(fields: [socialConnectionId], references: [id])
+  platformPostId      String? // the real id the platform returned (Facebook post id / IG media id / TikTok publish id) -- proof this actually posted, not just marked posted
+  publishError        String? // the real error message from the last failed publish attempt, cleared on success -- never silently swallowed
 
   createdById  String?
   createdBy    AdminUser? @relation("MarketingPostCreatedBy", fields: [createdById], references: [id])
@@ -1010,6 +1018,37 @@ model MarketingPost {
 
   @@index([status])
   @@map("marketing_posts")
+}
+
+// ---------- Social & ad platform connections (real OAuth-authorized accounts) ----------
+// A connection is a real, admin-authorized link to one Facebook Page, Instagram Business
+// account, Google Ads customer account, or TikTok advertiser account -- obtained via a real
+// OAuth flow against a developer app the business owner registered themselves (this code can
+// never create that app; it can only use it once the owner has). Storing raw tokens in a DB
+// column (not an app-level encrypted vault) matches this project's existing, documented
+// tradeoff for integration credentials (see integrationSettings.ts) -- same risk class as the
+// Stripe/Twilio/Resend keys already stored the same way.
+model SocialConnection {
+  id        String           @id @default(cuid())
+  platform  MarketingChannel
+  accountId String // Page id / IG business account id / Google Ads customer id / TikTok advertiser id
+  accountName String
+
+  accessToken    String
+  refreshToken   String?
+  tokenExpiresAt DateTime?
+  metadata       Json? // e.g. { instagramAccountId } linking a connected Facebook Page to its paired IG business account
+
+  connectedById String?
+  connectedBy   AdminUser? @relation(fields: [connectedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  posts MarketingPost[]
+
+  @@unique([platform, accountId])
+  @@map("social_connections")
 }
 
 // ---------- Admin notification center ----------

@@ -14,6 +14,8 @@ const schema = z.object({
   campaignId: z.string().trim().min(1).nullable(),
   channel: z.enum(MARKETING_CHANNELS),
   caption: z.string().trim().min(1).max(5000),
+  mediaUrl: z.string().trim().url().nullable(),
+  socialConnectionId: z.string().trim().min(1).nullable(),
   scheduledFor: z.string().nullable(),
 });
 
@@ -29,6 +31,8 @@ export async function POST(req: NextRequest) {
     campaignId: data.campaignId,
     channel: data.channel,
     caption: data.caption,
+    mediaUrl: data.mediaUrl,
+    socialConnectionId: data.socialConnectionId,
     scheduledFor: data.scheduledFor ? new Date(data.scheduledFor) : null,
     createdById: admin.id,
   });

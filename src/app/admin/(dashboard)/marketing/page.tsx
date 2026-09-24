@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { verifyAdminSessionToken, ADMIN_SESSION_COOKIE } from "@/lib/server/adminAuth";
 import { getAdminProfile, hasPermission } from "@/lib/server/adminUsers";
 import { listCampaigns, listPosts } from "@/lib/server/marketingStore";
+import { listConnections } from "@/lib/server/marketingConnections";
 import MarketingManager from "@/components/admin/marketing/MarketingManager";
 
 export default async function AdminMarketingPage() {
@@ -11,7 +12,7 @@ export default async function AdminMarketingPage() {
   const admin = session ? await getAdminProfile(session.adminUserId) : null;
   if (!admin || !hasPermission(admin, "MANAGE_CONTENT")) redirect("/admin");
 
-  const [campaigns, posts] = await Promise.all([listCampaigns(), listPosts()]);
+  const [campaigns, posts, connections] = await Promise.all([listCampaigns(), listPosts(), listConnections()]);
 
-  return <MarketingManager initialCampaigns={campaigns} initialPosts={posts} />;
+  return <MarketingManager initialCampaigns={campaigns} initialPosts={posts} initialConnections={connections} />;
 }
