@@ -49,7 +49,7 @@ export default function GuestAssistantWidget() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label={open ? "Close assistant" : "Open Abbie Assistant"}
+        aria-label={open ? "Close assistant" : "Open Abbie AI"}
         className="ios-press fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex size-14 items-center justify-center rounded-full bg-teal-600 text-white shadow-[0_8px_24px_rgba(13,143,131,0.4)] sm:bottom-6"
       >
         {open ? <X className="size-5" aria-hidden /> : <MessageCircleQuestion className="size-6" aria-hidden />}
@@ -60,7 +60,7 @@ export default function GuestAssistantWidget() {
           <div className="flex items-center gap-2 border-b border-surface-200 px-4 py-3">
             <span className="flex size-8 items-center justify-center rounded-full bg-teal-100 text-teal-700"><Sparkles className="size-4" aria-hidden /></span>
             <div>
-              <p className="text-sm font-semibold text-navy-950">Abbie Assistant</p>
+              <p className="text-sm font-semibold text-navy-950">Abbie AI</p>
               <p className="text-xs text-surface-700">Real answers about our services</p>
             </div>
           </div>

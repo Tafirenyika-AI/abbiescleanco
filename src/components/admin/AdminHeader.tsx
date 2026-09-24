@@ -157,8 +157,8 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
             onChange={(e) => { setQuery(e.target.value); setAnswer(null); setPendingAction(null); }}
             onFocus={() => setSearchOpen(true)}
             onKeyDown={(e) => e.key === "Escape" ? setSearchOpen(false) : e.key === "Enter" && ask()}
-            aria-label="Ask Abbie Assistant or search admin"
-            placeholder="Ask Abbie Assistant or search admin…"
+            aria-label="Ask Abbie AI or search admin"
+            placeholder="Ask Abbie AI or search admin…"
             className="w-full bg-transparent text-sm text-admin-text placeholder:text-admin-text-muted focus:outline-none"
           />
           {asking && <Loader2 className="size-4 shrink-0 animate-spin text-admin-text-muted" aria-hidden />}
@@ -215,7 +215,7 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
               </div>
             )}
             {!answer && matches.length === 0 && query.trim() && (
-              <p className="flex items-center gap-1.5 px-2.5 py-2 text-xs text-admin-text-muted"><Search className="size-3.5" aria-hidden /> Press Enter to ask Abbie Assistant</p>
+              <p className="flex items-center gap-1.5 px-2.5 py-2 text-xs text-admin-text-muted"><Search className="size-3.5" aria-hidden /> Press Enter to ask Abbie AI</p>
             )}
           </div>
         )}
