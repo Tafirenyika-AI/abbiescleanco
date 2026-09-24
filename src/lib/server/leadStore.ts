@@ -286,21 +286,49 @@ export async function getLeadByReference(reference: string): Promise<StoredLead 
   return leads.find((l) => l.reference.toUpperCase() === ref) ?? null;
 }
 
-export async function deleteLead(id: string, adminUserId: string): Promise<boolean> {
+export interface DeleteLeadResult {
+  ok: boolean;
+  error?: string;
+}
+
+/**
+ * Real bug fixed (2026-09-24): deleting a lead only soft-deleted the Lead row itself -- its
+ * Quotes stayed fully live (deletedAt: null), so an ACCEPTED quote's value kept counting in
+ * revenue/net-revenue figures (reportsStore.ts, financeStore.ts, the Abbie Assistant's
+ * get_net_revenue tool) even after the lead it belonged to was "deleted." Now: if the lead has a
+ * real PAID payment anywhere in its Quote -> Booking -> Payment chain, deletion is refused
+ * outright (real collected money must never silently vanish from the record -- void the
+ * quote/invoice instead if it needs to be corrected). Otherwise, deleting the lead also soft-
+ * deletes its quotes in the same transaction, so revenue figures correctly reflect the deletion.
+ */
+export async function deleteLead(id: string, adminUserId: string): Promise<DeleteLeadResult> {
   if (isDatabaseConfigured && prisma) {
-    const before = await prisma.lead.findUnique({ where: { id } });
-    if (!before || before.deletedAt) return false;
-    await prisma.lead.update({ where: { id }, data: { deletedAt: new Date() } });
-    await prisma.auditLog.create({
-      data: { adminUserId, action: "lead.deleted", entityType: "lead", entityId: id, before: { reference: before.reference } },
+    const before = await prisma.lead.findUnique({
+      where: { id },
+      include: { quotes: { where: { deletedAt: null }, include: { bookings: { include: { payments: { select: { status: true } } } } } } },
     });
-    return true;
+    if (!before || before.deletedAt) return { ok: false, error: "Not found" };
+
+    const hasRealPayment = before.quotes.some((q) => q.bookings.some((b) => b.payments.some((p) => p.status === "PAID")));
+    if (hasRealPayment) {
+      return { ok: false, error: "This lead has a real payment on file and can't be deleted. Cancel/void the quote or invoice instead if it needs to be corrected." };
+    }
+
+    const quoteIds = before.quotes.map((q) => q.id);
+    await prisma.$transaction([
+      ...(quoteIds.length > 0 ? [prisma.quote.updateMany({ where: { id: { in: quoteIds } }, data: { deletedAt: new Date() } })] : []),
+      prisma.lead.update({ where: { id }, data: { deletedAt: new Date() } }),
+    ]);
+    await prisma.auditLog.create({
+      data: { adminUserId, action: "lead.deleted", entityType: "lead", entityId: id, before: { reference: before.reference, cascadedQuoteIds: quoteIds } },
+    });
+    return { ok: true };
   }
   const leads = await readMockLeads();
   const next = leads.filter((l) => l.id !== id);
-  if (next.length === leads.length) return false;
+  if (next.length === leads.length) return { ok: false, error: "Not found" };
   await writeMockLeads(next);
-  return true;
+  return { ok: true };
 }
 
 export async function updateLeadStatus(

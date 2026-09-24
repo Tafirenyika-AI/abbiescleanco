@@ -117,12 +117,14 @@ export default function LeadDetailDrawer({
   async function confirmDeleteLead() {
     setDeleting(true);
     const res = await fetch(`/api/admin/leads/${lead.id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => null);
     setDeleting(false);
-    setConfirmDelete(false);
-    if (!res.ok) {
-      showToast("Couldn't delete lead", "error");
+    if (!res.ok || !data?.ok) {
+      setConfirmDelete(false);
+      showToast(data?.error || "Couldn't delete lead", "error");
       return;
     }
+    setConfirmDelete(false);
     showToast("Lead deleted", "success");
     onClose();
   }
