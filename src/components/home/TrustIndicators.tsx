@@ -34,7 +34,7 @@ export default function TrustIndicators() {
         {indicators.map(({ icon: Icon, title, description }) => (
           <div
             key={title}
-            className="flex flex-col items-start gap-2.5 rounded-2xl border border-surface-200 bg-white p-5 transition-colors duration-300 hover:border-teal-200"
+            className="flex flex-col items-start gap-2.5 glass-card rounded-2xl border border-surface-200 bg-white p-5 transition-colors duration-300 hover:border-teal-200"
           >
             <span className="flex size-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600 ring-1 ring-teal-100">
               <Icon className="size-5" aria-hidden />

@@ -94,7 +94,7 @@ export default function AccountDashboard({
   const router = useRouter();
 
   return (
-    <div>
+    <div className="account-workspace">
       <div className="ios-segment" role="tablist" aria-label="Account sections">
         {tabs.map((t) => (
           <button
@@ -118,7 +118,7 @@ export default function AccountDashboard({
               <EmptyRow label="No estimate requests yet." />
             ) : (
               requests.map((r) => (
-                <button type="button" key={r.id} onClick={() => setSheet({ kind: "request", id: r.id, heading: r.serviceName, status: r.status, instructions: r.instructions })} className="ios-press block w-full rounded-[20px] bg-white p-4 text-left shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
+                <button type="button" key={r.id} onClick={() => setSheet({ kind: "request", id: r.id, heading: r.serviceName, status: r.status, instructions: r.instructions })} className="ios-press block w-full glass-card rounded-[20px] bg-white p-4 text-left shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold text-navy-950">{r.serviceName}</p>
                     <Pill tone={leadTone(r.status)}>{titleCase(r.status)}</Pill>
@@ -139,7 +139,7 @@ export default function AccountDashboard({
               <EmptyRow label="No quotes yet — once we build one for you, it'll show up here." />
             ) : (
               quotes.map((q) => (
-                <button type="button" key={q.id} onClick={() => setSheet({ kind: "quote", id: q.id, heading: q.quoteNumber })} className="ios-press block w-full rounded-[20px] bg-white p-4 text-left shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
+                <button type="button" key={q.id} onClick={() => setSheet({ kind: "quote", id: q.id, heading: q.quoteNumber })} className="ios-press block w-full glass-card rounded-[20px] bg-white p-4 text-left shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold text-navy-950">{q.quoteNumber} — {money(q.total)}</p>
                     <Pill tone={quoteTone(q.status)}>{titleCase(q.status)}</Pill>
@@ -166,7 +166,7 @@ export default function AccountDashboard({
               <EmptyRow label="No bookings yet." />
             ) : (
               bookings.map((b) => (
-                <button type="button" key={b.id} onClick={() => setSheet({ kind: "booking", id: b.id, heading: b.serviceName })} className="ios-press block w-full rounded-[20px] bg-white p-4 text-left shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
+                <button type="button" key={b.id} onClick={() => setSheet({ kind: "booking", id: b.id, heading: b.serviceName })} className="ios-press block w-full glass-card rounded-[20px] bg-white p-4 text-left shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold text-navy-950">{b.serviceName}</p>
                     <Pill tone={bookingTone(b.status)}>{titleCase(b.status)}</Pill>
@@ -188,7 +188,7 @@ export default function AccountDashboard({
               <EmptyRow label="No payments on file yet." />
             ) : (
               payments.map((p) => (
-                <div key={p.id} className="rounded-[20px] bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
+                <div key={p.id} className="glass-card rounded-[20px] bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold text-navy-950">{money(p.amount)} — {titleCase(p.kind.replace(/_/g, " "))}</p>
                     <Pill tone={paymentTone(p.status)}>{titleCase(p.status)}</Pill>

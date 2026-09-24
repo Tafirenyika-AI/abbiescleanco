@@ -7,7 +7,7 @@ export default function TopBar({ contact, hours }: { contact: ContactInfo; hours
   const hoursLabel = hours.map((h) => `${h.days} ${h.time}`).join(" · ") || "Contact us for hours";
 
   return (
-    <div className="hidden bg-navy-950 text-white sm:block">
+    <div className="public-topbar hidden sm:block">
       <Container className="flex h-10 items-center justify-between text-sm">
         <div className="flex items-center gap-6">
           <a href={telHref(contact.phoneE164)} className="flex items-center gap-1.5 hover:text-teal-300">
@@ -19,7 +19,7 @@ export default function TopBar({ contact, hours }: { contact: ContactInfo; hours
             {contact.email}
           </a>
         </div>
-        <div className="flex items-center gap-1.5 truncate text-surface-200">
+        <div className="hours-label flex items-center gap-1.5 truncate">
           <Clock className="size-3.5 shrink-0" aria-hidden />
           <span className="truncate">{hoursLabel} · {business.city}, {business.region}</span>
         </div>

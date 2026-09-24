@@ -98,7 +98,7 @@ export default async function AdminDashboardPage() {
   const activeTeam = team.filter((t) => t.isActive);
 
   return (
-    <div>
+    <div className="admin-dashboard">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-admin-text sm:text-[28px]">{greeting()}</h1>
@@ -116,9 +116,9 @@ export default async function AdminDashboardPage() {
         </p>
       )}
 
-      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
+      <div className="mt-6 grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1fr)_280px] xl:items-start">
         <div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="admin-stats">
             <StatCard label="Pipeline value" value={money(pipelineValue)} icon={TrendingUp} href="/admin/quotes" hint={`${sentQuotes.length} quote${sentQuotes.length === 1 ? "" : "s"} awaiting a decision`} />
             <StatCard label="New leads" value={String(newLeads.length)} icon={Inbox} href="/admin/leads" hint={`${leadsThisWeek} this week`} spark={leadsPerDay} />
             <StatCard label="Bookings, next 7 days" value={String(upcomingBookings.length)} icon={CalendarClock} href="/admin/bookings" hint={unconfirmedBookings.length > 0 ? `${unconfirmedBookings.length} need confirming` : "all confirmed"} />
@@ -143,7 +143,7 @@ export default async function AdminDashboardPage() {
           )}
 
           {attentionItems.length > 0 && (
-            <Card className="mt-4 border-none bg-gradient-to-br from-admin-navy to-admin-teal text-white shadow-[0_8px_24px_rgba(11,23,57,0.18)]">
+            <Card className="admin-attention mt-4 text-white">
               <div className="flex items-center gap-2">
                 <span className="flex size-8 items-center justify-center rounded-full bg-white/15">
                   <AlertCircle className="size-4" aria-hidden />

@@ -60,7 +60,7 @@ export default function SiteHeader({ logoUrl, contact, hours }: { logoUrl?: stri
   }, [pathname]);
 
   return (
-    <header className="ios-glass sticky top-0 z-50 border-b border-black/[0.06]">
+    <header className="public-header ios-glass sticky top-0 z-50 border-b border-black/[0.06]">
       <TopBar contact={contact} hours={hours} />
       <Container className="flex items-center justify-between py-3">
         <Link href="/" className="flex items-center gap-2.5" aria-label={`${"Abbie's Clean Method"} — Home`}>
@@ -79,7 +79,7 @@ export default function SiteHeader({ logoUrl, contact, hours }: { logoUrl?: stri
               priority
             />
           )}
-          <span className="font-display text-lg font-semibold text-navy-950 sm:text-xl">
+          <span className="brand-name font-display text-lg font-semibold text-navy-950 sm:text-xl">
             Abbie&apos;s Clean Method
           </span>
         </Link>
@@ -89,6 +89,7 @@ export default function SiteHeader({ logoUrl, contact, hours }: { logoUrl?: stri
             <Link
               key={link.href}
               href={link.href}
+              aria-current={pathname === link.href || pathname.startsWith(`${link.href}/`) ? "page" : undefined}
               className="text-sm font-medium text-navy-800 transition-colors duration-150 hover:text-teal-600"
             >
               {link.label}
@@ -96,7 +97,7 @@ export default function SiteHeader({ logoUrl, contact, hours }: { logoUrl?: stri
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 lg:flex">
+        <div className="header-actions hidden items-center gap-3 lg:flex">
           <a
             href={telHref(contact.phoneE164)}
             aria-label="Call us"
@@ -145,6 +146,7 @@ export default function SiteHeader({ logoUrl, contact, hours }: { logoUrl?: stri
                 <Link
                   key={link.href}
                   href={link.href}
+              aria-current={pathname === link.href || pathname.startsWith(`${link.href}/`) ? "page" : undefined}
                   className={`ios-press flex items-center justify-between px-4 py-3.5 text-[17px] font-medium text-navy-950 active:bg-surface-100 ${i > 0 ? "border-t border-black/[0.06]" : ""}`}
                 >
                   {link.label}

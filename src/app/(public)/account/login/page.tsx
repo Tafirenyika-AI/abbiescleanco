@@ -40,7 +40,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="mx-auto max-w-sm rounded-3xl border border-surface-200 bg-white p-8 shadow-sm">
+    <div className="mx-auto max-w-sm glass-card rounded-3xl border border-surface-200 bg-white p-8 shadow-sm">
       <h1 className="text-2xl font-semibold text-navy-950">Sign in</h1>
       <p className="mt-1 text-sm text-surface-700">Track your requests and manage your details.</p>
 

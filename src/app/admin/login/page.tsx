@@ -68,67 +68,67 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-16">
+    <div className="flex min-h-screen items-center justify-center px-4 py-16">
       <div className="w-full max-w-sm">
-        <div className="mb-6 flex items-center justify-center gap-2 text-white">
-          <ShieldCheck className="size-6 text-admin-aqua" aria-hidden />
+        <div className="mb-6 flex items-center justify-center gap-2 text-admin-text">
+          <ShieldCheck className="size-6 text-admin-teal-hover" aria-hidden />
           <span className="font-display text-lg font-semibold">Abbie&apos;s Admin</span>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-xl">
+        <div className="glass-card rounded-2xl border border-admin-border bg-admin-card p-8 shadow-xl">
           {step === "credentials" ? (
             <>
-              <h1 className="text-xl font-semibold text-white">Sign in</h1>
-              <p className="mt-1 text-sm text-slate-400">Internal access only.</p>
+              <h1 className="text-xl font-semibold text-admin-text">Sign in</h1>
+              <p className="mt-1 text-sm text-admin-text-muted">Internal access only.</p>
 
               <form onSubmit={onSubmitCredentials} className="mt-6 space-y-4">
                 <label className="block">
-                  <span className="text-sm font-medium text-slate-300">Email</span>
+                  <span className="text-sm font-medium text-admin-text">Email</span>
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-admin-teal focus:outline-none"
+                    className="mt-1.5 w-full rounded-lg border border-admin-border bg-white px-3.5 py-2.5 text-sm text-admin-text placeholder:text-slate-500 focus:border-admin-teal focus:outline-none"
                   />
                 </label>
                 <label className="block">
-                  <span className="text-sm font-medium text-slate-300">Password</span>
+                  <span className="text-sm font-medium text-admin-text">Password</span>
                   <input
                     type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-sm text-white focus:border-admin-teal focus:outline-none"
+                    className="mt-1.5 w-full rounded-lg border border-admin-border bg-white px-3.5 py-2.5 text-sm text-admin-text focus:border-admin-teal focus:outline-none"
                   />
                 </label>
                 {error && (
-                  <p role="alert" className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400">
+                  <p role="alert" className="rounded-lg bg-red-500/10 p-3 text-sm text-red-700">
                     {error}
                   </p>
                 )}
                 <button
                   type="submit"
                   disabled={loading}
-                  className="ios-press flex w-full items-center justify-center gap-2 rounded-lg bg-admin-teal px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-admin-teal-hover disabled:opacity-60"
+                  className="admin-button admin-button-primary ios-press flex w-full items-center justify-center gap-2 rounded-lg bg-admin-teal px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-admin-teal-hover disabled:opacity-60"
                 >
                   {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
                   {loading ? "Signing in…" : "Sign in"}
                 </button>
               </form>
 
-              <Link href="/admin/forgot-password" className="mt-4 block text-center text-sm text-slate-500 hover:text-slate-300">
+              <Link href="/admin/forgot-password" className="mt-4 block text-center text-sm text-slate-500 hover:text-admin-text">
                 Forgot password?
               </Link>
             </>
           ) : (
             <>
-              <h1 className="text-xl font-semibold text-white">Two-factor code</h1>
-              <p className="mt-1 text-sm text-slate-400">Enter the 6-digit code from your authenticator app, or a backup code.</p>
+              <h1 className="text-xl font-semibold text-admin-text">Two-factor code</h1>
+              <p className="mt-1 text-sm text-admin-text-muted">Enter the 6-digit code from your authenticator app, or a backup code.</p>
 
               <form onSubmit={onSubmitCode} className="mt-6 space-y-4">
                 <label className="block">
-                  <span className="text-sm font-medium text-slate-300">Code</span>
+                  <span className="text-sm font-medium text-admin-text">Code</span>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -137,18 +137,18 @@ export default function AdminLoginPage() {
                     value={code}
                     onChange={(e) => setCode(e.target.value)}
                     placeholder="123456"
-                    className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-800 px-3.5 py-2.5 text-center text-lg tracking-[0.3em] text-white placeholder:tracking-normal placeholder:text-slate-500 focus:border-admin-teal focus:outline-none"
+                    className="mt-1.5 w-full rounded-lg border border-admin-border bg-white px-3.5 py-2.5 text-center text-lg tracking-[0.3em] text-admin-text placeholder:tracking-normal placeholder:text-slate-500 focus:border-admin-teal focus:outline-none"
                   />
                 </label>
                 {error && (
-                  <p role="alert" className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400">
+                  <p role="alert" className="rounded-lg bg-red-500/10 p-3 text-sm text-red-700">
                     {error}
                   </p>
                 )}
                 <button
                   type="submit"
                   disabled={loading}
-                  className="ios-press flex w-full items-center justify-center gap-2 rounded-lg bg-admin-teal px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-admin-teal-hover disabled:opacity-60"
+                  className="admin-button admin-button-primary ios-press flex w-full items-center justify-center gap-2 rounded-lg bg-admin-teal px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-admin-teal-hover disabled:opacity-60"
                 >
                   {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
                   {loading ? "Verifying…" : "Verify"}
@@ -162,7 +162,7 @@ export default function AdminLoginPage() {
                   setCode("");
                   setError(null);
                 }}
-                className="mt-4 block w-full text-center text-sm text-slate-500 hover:text-slate-300"
+                className="mt-4 block w-full text-center text-sm text-slate-500 hover:text-admin-text"
               >
                 ← Back
               </button>
@@ -170,7 +170,7 @@ export default function AdminLoginPage() {
           )}
         </div>
 
-        <Link href="/" className="mt-6 block text-center text-sm text-slate-500 hover:text-slate-300">
+        <Link href="/" className="mt-6 block text-center text-sm text-slate-500 hover:text-admin-text">
           ← Back to public site
         </Link>
       </div>

@@ -1,22 +1,23 @@
 @import "tailwindcss";
+@import "../styles/glass.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #0f2438;
+  --background: #edf2f7;
+  --foreground: #34455d;
 
   /* Brand: deep midnight navy (trust) */
-  --color-brand-navy-950: #060f1c;
-  --color-brand-navy-900: #0b1f33;
-  --color-brand-navy-800: #122d49;
-  --color-brand-navy-700: #1b3f63;
-  --color-brand-navy-600: #26547f;
+  --color-brand-navy-950: #2d3d54;
+  --color-brand-navy-900: #354761;
+  --color-brand-navy-800: #435874;
+  --color-brand-navy-700: #526782;
+  --color-brand-navy-600: #557896;
 
   /* Brand: fresh aqua/teal (primary accent) */
-  --color-brand-teal-600: #0d8f83;
-  --color-brand-teal-500: #14b3a3;
-  --color-brand-teal-400: #3fd0bd;
-  --color-brand-teal-300: #86e4d6;
-  --color-brand-teal-100: #e3f9f4;
+  --color-brand-teal-600: #247b8d;
+  --color-brand-teal-500: #3094a6;
+  --color-brand-teal-400: #65bbca;
+  --color-brand-teal-300: #b0e4ed;
+  --color-brand-teal-100: #e1f1f5;
 
   /* Warm accent, used sparingly for highlights */
   --color-brand-warm-600: #c9702f;
@@ -24,27 +25,27 @@
   --color-brand-warm-100: #fbe9d8;
 
   /* Cool neutral surfaces */
-  --color-surface-50: #f7f9fb;
-  --color-surface-100: #eef2f5;
-  --color-surface-200: #e2e8ee;
-  --color-surface-700: #4a5a6a;
+  --color-surface-50: #f1f6fa;
+  --color-surface-100: #eaf0f7;
+  --color-surface-200: #d6e1ed;
+  --color-surface-700: #58697e;
 
   /* Admin workspace — a distinct "clean operations" palette from the
      marketing site's, used only under /admin */
-  --color-admin-navy: #0b1739;
-  --color-admin-sidebar: #0d172a;
-  --color-admin-teal: #0f9d8a;
-  --color-admin-teal-hover: #0b7f70;
-  --color-admin-aqua: #37cdb4;
-  --color-admin-bg: #f5f8fc;
-  --color-admin-card: #ffffff;
-  --color-admin-text: #14213d;
-  --color-admin-text-muted: #64748b;
-  --color-admin-border: #e2e8f0;
-  --color-admin-success: #16a34a;
-  --color-admin-warning: #f59e0b;
-  --color-admin-error: #dc2626;
-  --color-admin-info: #2563eb;
+  --color-admin-navy: #42577b;
+  --color-admin-sidebar: #edf5fb;
+  --color-admin-teal: #36849c;
+  --color-admin-teal-hover: #256c85;
+  --color-admin-aqua: #74bdc6;
+  --color-admin-bg: #eaf0f7;
+  --color-admin-card: #fafdff;
+  --color-admin-text: #374861;
+  --color-admin-text-muted: #5f7188;
+  --color-admin-border: #d9e3ef;
+  --color-admin-success: #287b58;
+  --color-admin-warning: #97691e;
+  --color-admin-error: #bd415a;
+  --color-admin-info: #4b68aa;
 }
 
 @theme inline {
@@ -87,11 +88,11 @@
   --color-admin-error: var(--color-admin-error);
   --color-admin-info: var(--color-admin-info);
 
-  --font-sans: var(--font-inter);
-  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
 }
 
-/* iOS-style type: SF Pro on Apple devices (via -apple-system), Inter elsewhere. */
+/* Native system type: SF Pro on Apple devices, with no external font request. */
 body {
   background: var(--background);
   color: var(--foreground);

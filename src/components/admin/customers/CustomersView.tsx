@@ -55,7 +55,7 @@ export default function CustomersView({ customers }: { customers: CustomerSummar
         />
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-2xl border border-admin-border bg-admin-card">
+      <div className="mt-4 admin-table-surface overflow-x-auto rounded-2xl border border-admin-border bg-admin-card">
         {filtered.length === 0 ? (
           <EmptyState
             icon={UserSquare2}

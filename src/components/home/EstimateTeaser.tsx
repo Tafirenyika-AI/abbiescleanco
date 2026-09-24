@@ -69,7 +69,7 @@ export default function EstimateTeaser({
           </p>
         </div>
 
-        <div className="rounded-3xl border border-surface-200 bg-surface-50 p-6 sm:p-8">
+        <div className="glass-card rounded-3xl border border-surface-200 bg-surface-50 p-6 sm:p-8">
           <div className="grid grid-cols-1 gap-5">
             <label className="block">
               <span className="text-sm font-semibold text-navy-900">Service</span>
@@ -114,7 +114,7 @@ export default function EstimateTeaser({
             </div>
           </div>
 
-          <div className="mt-6 rounded-2xl bg-navy-950 p-5 text-center text-white">
+          <div className="estimate-highlight mt-6 rounded-2xl bg-navy-950 p-5 text-center text-white">
             <p className="text-xs uppercase tracking-wide text-teal-300">Preliminary estimate</p>
             {estimate.requiresManualQuote ? (
               <p className="mt-1 text-xl font-semibold">Manual quote required</p>

@@ -25,9 +25,9 @@ export default function StatCard({
   spark?: number[];
 }) {
   const body = (
-    <Card className="group h-full transition-shadow hover:shadow-[0_4px_16px_rgba(15,23,42,0.08)]">
+    <Card className="admin-stat group h-full transition-shadow hover:shadow-[0_4px_16px_rgba(15,23,42,0.08)]">
       <div className="flex items-start justify-between">
-        <span className="flex size-9 items-center justify-center rounded-xl bg-admin-teal/10 text-admin-teal-hover">
+        <span className="admin-stat-icon flex size-9 items-center justify-center rounded-xl bg-admin-teal/10 text-admin-teal-hover">
           <Icon className="size-4.5" aria-hidden />
         </span>
         {spark && spark.some((v) => v > 0) && <Sparkline values={spark} className="text-admin-teal/70" />}
@@ -47,10 +47,10 @@ export default function StatCard({
         )}
       </div>
       <p className="mt-3.5 text-sm font-medium text-admin-text-muted">{label}</p>
-      <p className="mt-1 text-[28px] font-semibold leading-tight tracking-tight text-admin-text">{value}</p>
+      <p className="admin-stat-value mt-1 text-[28px] font-semibold leading-tight tracking-tight text-admin-text">{value}</p>
       {hint && <p className="mt-1 text-xs text-admin-text-muted">{hint}</p>}
       {href && (
-        <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-admin-teal-hover opacity-0 transition-opacity group-hover:opacity-100">
+        <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-admin-teal-hover opacity-80 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
           View <ArrowRight className="size-3" aria-hidden />
         </span>
       )}

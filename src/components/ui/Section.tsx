@@ -16,7 +16,7 @@ export default function Section({
   ariaLabelledby?: string;
 }) {
   return (
-    <section id={id} aria-labelledby={ariaLabelledby} className={clsx("py-16 sm:py-20", className)}>
+    <section id={id} aria-labelledby={ariaLabelledby} className={clsx("public-section py-12 sm:py-16", className)}>
       <Container className={containerClassName}>{children}</Container>
     </section>
   );

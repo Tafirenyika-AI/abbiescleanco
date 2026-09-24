@@ -20,7 +20,7 @@ export default async function ContactPage() {
 
   return (
     <>
-      <Section className="bg-navy-950 py-14 sm:py-16">
+      <Section className="public-page-heading py-14 sm:py-16">
         <div className="max-w-2xl">
           <Eyebrow>Contact</Eyebrow>
           <h1 className="mt-2 text-4xl font-semibold text-white sm:text-5xl">Get in touch</h1>

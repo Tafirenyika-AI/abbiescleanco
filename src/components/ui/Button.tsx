@@ -39,7 +39,7 @@ type ButtonAsButton = CommonProps &
 
 export default function Button(props: ButtonAsLink | ButtonAsButton) {
   const { variant = "primary", size = "md", className, children } = props;
-  const classes = clsx(base, variants[variant], sizes[size], className);
+  const classes = clsx(base, "glass-button", `glass-button-${variant}`, variants[variant], sizes[size], className);
 
   if ("href" in props && props.href) {
     const { href, external } = props;

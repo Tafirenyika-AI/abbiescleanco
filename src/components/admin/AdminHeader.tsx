@@ -125,17 +125,18 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
   }
 
   return (
-    <header className="ios-glass sticky top-0 z-20 flex items-center gap-3 border-b border-admin-border/70 px-4 py-3 sm:px-6">
+    <header className="admin-header ios-glass sticky top-0 z-20 flex items-center gap-3 border-b border-admin-border/70 px-4 py-3 sm:px-6">
       <button
         type="button"
         onClick={onOpenMenu}
         className="ios-press flex size-9 items-center justify-center rounded-lg text-admin-text-muted hover:bg-admin-bg lg:hidden"
         aria-label="Open menu"
+        aria-controls="admin-directory"
       >
         <Menu className="size-5" aria-hidden />
       </button>
 
-      <div className="min-w-0 flex-1">
+      <div className="admin-header-title min-w-0 flex-1">
         <nav aria-label="Breadcrumb" className="hidden items-center gap-1.5 text-xs text-admin-text-muted sm:flex">
           <span>Admin</span>
           {activeItem && (
@@ -148,14 +149,15 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
         <h1 className="truncate text-lg font-semibold text-admin-text sm:text-xl">{activeItem?.label ?? "Admin"}</h1>
       </div>
 
-      <div ref={searchRef} className="relative hidden sm:block sm:w-64 lg:w-96">
+      <div ref={searchRef} className="admin-search">
         <div className="flex items-center gap-2 rounded-full border border-admin-border bg-admin-bg px-3.5 py-2.5">
           <Sparkles className="size-4 shrink-0 text-admin-teal-hover" aria-hidden />
           <input
             value={query}
             onChange={(e) => { setQuery(e.target.value); setAnswer(null); setPendingAction(null); }}
             onFocus={() => setSearchOpen(true)}
-            onKeyDown={(e) => e.key === "Enter" && ask()}
+            onKeyDown={(e) => e.key === "Escape" ? setSearchOpen(false) : e.key === "Enter" && ask()}
+            aria-label="Ask Abbie Assistant or search admin"
             placeholder="Ask Abbie Assistant or search admin…"
             className="w-full bg-transparent text-sm text-admin-text placeholder:text-admin-text-muted focus:outline-none"
           />
@@ -220,7 +222,7 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
       </div>
 
       <details className="relative">
-        <summary className="ios-press flex size-9 cursor-pointer list-none items-center justify-center rounded-lg text-admin-text-muted hover:bg-admin-bg [&::-webkit-details-marker]:hidden">
+        <summary aria-label="Notifications" className="ios-press flex size-9 cursor-pointer list-none items-center justify-center rounded-lg text-admin-text-muted hover:bg-admin-bg [&::-webkit-details-marker]:hidden">
           <span className="relative">
             <Bell className="size-5" aria-hidden />
             {!!unreadCount && (
@@ -266,7 +268,7 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
       </details>
 
       <details className="relative">
-        <summary className="ios-press flex list-none items-center gap-1.5 rounded-full bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white shadow-[0_1px_2px_rgba(15,157,138,0.25),0_6px_16px_rgba(15,157,138,0.22)] hover:bg-admin-teal-hover [&::-webkit-details-marker]:hidden">
+        <summary aria-label="Create new item" className="ios-press flex list-none items-center gap-1.5 rounded-full bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white shadow-[0_1px_2px_rgba(15,157,138,0.25),0_6px_16px_rgba(15,157,138,0.22)] hover:bg-admin-teal-hover [&::-webkit-details-marker]:hidden">
           <Plus className="size-4" aria-hidden />
           <span className="hidden sm:inline">Create</span>
         </summary>
@@ -291,7 +293,7 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
       </details>
 
       <details className="relative">
-        <summary className="ios-press flex cursor-pointer list-none items-center gap-2 rounded-lg py-1 pl-1 pr-2 hover:bg-admin-bg [&::-webkit-details-marker]:hidden">
+        <summary aria-label="Account menu" className="ios-press flex cursor-pointer list-none items-center gap-2 rounded-lg py-1 pl-1 pr-2 hover:bg-admin-bg [&::-webkit-details-marker]:hidden">
           <span className="flex size-8 items-center justify-center rounded-full bg-admin-teal/15 text-sm font-semibold text-admin-teal-hover">
             {adminName.charAt(0).toUpperCase()}
           </span>

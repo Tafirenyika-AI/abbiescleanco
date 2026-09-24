@@ -29,7 +29,7 @@ export default async function TestimonialsSection() {
       <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2">
         {reviews.map((r, i) => (
           <Reveal key={r.id} delayMs={i * 100}>
-            <figure className="h-full rounded-2xl bg-white p-6 shadow-sm ring-1 ring-surface-200 transition-shadow duration-300 hover:shadow-md">
+            <figure className="h-full glass-card rounded-2xl bg-white p-6 shadow-sm ring-1 ring-surface-200 transition-shadow duration-300 hover:shadow-md">
               <div className="flex items-center justify-between">
                 <Quote className="size-6 text-teal-400" aria-hidden />
                 <Stars rating={r.rating} />

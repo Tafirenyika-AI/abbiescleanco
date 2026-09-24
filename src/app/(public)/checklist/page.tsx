@@ -18,7 +18,7 @@ export const revalidate = 60;
 export default function ChecklistPage() {
   return (
     <>
-      <Section className="bg-navy-950 py-14 sm:py-16">
+      <Section className="public-page-heading py-14 sm:py-16">
         <div className="max-w-2xl">
           <Eyebrow>Transparency, room by room</Eyebrow>
           <h1 className="mt-2 text-4xl font-semibold text-white sm:text-5xl">Cleaning checklist</h1>

@@ -25,7 +25,7 @@ const values = [
 export default function AboutPage() {
   return (
     <>
-      <Section className="bg-navy-950 py-16 sm:py-20">
+      <Section className="public-page-heading py-16 sm:py-20">
         <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
           <div>
             <Eyebrow>Our story</Eyebrow>

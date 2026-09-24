@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test.describe("Primary customer journey", () => {
   test("visitor can browse the homepage and reach the estimate wizard", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "Come home to clean." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Your home, spotless." })).toBeVisible();
 
     await page.getByRole("link", { name: "Get My Free Estimate" }).first().click();
     await expect(page).toHaveURL(/\/estimate/);
@@ -29,6 +29,8 @@ test.describe("Primary customer journey", () => {
     await page.getByRole("button", { name: "Next" }).click();
 
     // Step 4: Review & submit
+    await expect(page.getByRole("heading", { name: "Review your request" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Submit request" })).toBeVisible();
     await expect(page.getByText("Preliminary estimate", { exact: true })).toBeVisible();
     await page.locator('input[name="policiesAccepted"]').check();
     // Submitting swaps this button out of the DOM almost immediately (the

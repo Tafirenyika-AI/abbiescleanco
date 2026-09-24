@@ -18,8 +18,8 @@ const variants: Record<Variant, string> = {
 };
 
 const sizes: Record<Size, string> = {
-  sm: "px-3 py-1.5 text-xs",
-  md: "px-4 py-2 text-sm",
+  sm: "min-h-9 px-3 py-1.5 text-xs",
+  md: "min-h-10 px-4 py-2 text-sm",
 };
 
 interface CommonProps {
@@ -41,7 +41,7 @@ type ButtonAsButton = CommonProps &
 
 export default function Button(props: ButtonAsLink | ButtonAsButton) {
   const { variant = "primary", size = "md", className, loading, children } = props;
-  const classes = clsx(base, variants[variant], sizes[size], className);
+  const classes = clsx(base, "admin-button", `admin-button-${variant}`, variants[variant], sizes[size], className);
 
   if ("href" in props && props.href) {
     return (

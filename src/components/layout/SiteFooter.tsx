@@ -12,7 +12,7 @@ export default async function SiteFooter({ contact, social }: { contact: Contact
   const branding = await getBranding();
 
   return (
-    <footer className="bg-navy-950 text-surface-200">
+    <footer className="public-footer">
       <Container className="grid grid-cols-1 gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <div className="flex items-center gap-2.5">

@@ -42,7 +42,7 @@ function ResetPasswordForm() {
   }
 
   return (
-    <div className="mx-auto max-w-sm rounded-3xl border border-surface-200 bg-white p-8 shadow-sm">
+    <div className="mx-auto max-w-sm glass-card rounded-3xl border border-surface-200 bg-white p-8 shadow-sm">
       <h1 className="text-2xl font-semibold text-navy-950">Choose a new password</h1>
 
       {state === "done" ? (

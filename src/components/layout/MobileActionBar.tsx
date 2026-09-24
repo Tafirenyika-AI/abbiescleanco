@@ -8,7 +8,7 @@ export default function MobileActionBar({ contact }: { contact: ContactInfo }) {
   return (
     <nav
       aria-label="Quick actions"
-      className="ios-glass fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.08] pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="public-mobile-actions ios-glass fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.08] pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       <div className="mx-auto flex max-w-md items-stretch gap-1 px-3 pt-1.5 pb-1">
         <a href={telHref(contact.phoneE164)} className={tab} data-analytics="phone-click">

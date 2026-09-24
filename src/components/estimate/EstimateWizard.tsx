@@ -232,13 +232,13 @@ export default function EstimateWizard({
   }
 
   return (
-    <div>
+    <div className="glass-card p-5 sm:p-8">
       <ol className="flex items-center gap-2" aria-label="Progress">
         {steps.map((label, i) => (
           <li key={label} className="flex flex-1 items-center gap-2">
             <div
               className={`flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
-                i <= step ? "bg-teal-500 text-navy-950" : "bg-surface-200 text-surface-700"
+                i <= step ? "bg-teal-600 text-white" : "bg-surface-200 text-surface-700"
               }`}
               aria-current={i === step ? "step" : undefined}
             >
@@ -491,7 +491,7 @@ export default function EstimateWizard({
               </dl>
             </div>
 
-            <div className="mt-6 rounded-2xl bg-navy-950 p-6 text-center text-white">
+            <div className="estimate-highlight mt-6 rounded-2xl bg-navy-950 p-6 text-center text-white">
               <p className="text-xs uppercase tracking-wide text-teal-300">Preliminary estimate</p>
               <p className="mt-1 text-3xl font-semibold">{estimateLabel}</p>
               <p className="mt-2 text-xs text-surface-200">
@@ -530,11 +530,11 @@ export default function EstimateWizard({
           </Button>
 
           {step < steps.length - 1 ? (
-            <Button type="button" onClick={goNext}>
+            <Button key="next-step" type="button" onClick={goNext}>
               Next <ChevronRight className="size-4" aria-hidden />
             </Button>
           ) : (
-            <Button type="submit" disabled={submitState.status === "submitting"}>
+            <Button key="submit-request" type="submit" disabled={submitState.status === "submitting"}>
               {submitState.status === "submitting" ? (
                 <>
                   <Loader2 className="size-4 animate-spin" aria-hidden /> Submitting…

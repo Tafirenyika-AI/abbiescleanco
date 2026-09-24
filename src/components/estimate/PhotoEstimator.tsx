@@ -112,7 +112,7 @@ export default function PhotoEstimator({ addOnLabels, serviceNames, isLoggedIn }
 
   if (sent) {
     return (
-      <div className="rounded-[28px] bg-white p-8 text-center shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
+      <div className="glass-card rounded-[28px] bg-white p-8 text-center shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
         <CheckCircle2 className="mx-auto size-10 text-teal-600" aria-hidden />
         <h2 className="mt-3 text-2xl font-semibold text-navy-950">Request sent</h2>
         <p className="mt-2 text-surface-700">Reference <strong>{sent.reference}</strong>. Your photos went to our team so we can confirm the price and bring the right supplies. Check your email for a confirmation.</p>
@@ -123,7 +123,7 @@ export default function PhotoEstimator({ addOnLabels, serviceNames, isLoggedIn }
   if (result) {
     return (
       <div className="space-y-5">
-        <div className="rounded-[28px] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
+        <div className="glass-card rounded-[28px] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
           <p className="flex items-center gap-1.5 text-sm font-semibold text-teal-700"><Sparkles className="size-4" aria-hidden /> {result.mode === "ai" ? "Estimate from your photos" : "Preliminary estimate"}</p>
           <p className="mt-2 text-4xl font-semibold text-navy-950">{result.requiresManualQuote ? "Custom quote" : `$${result.low}–$${result.high}`}</p>
           <p className="mt-1 text-sm text-surface-700">
@@ -146,7 +146,7 @@ export default function PhotoEstimator({ addOnLabels, serviceNames, isLoggedIn }
         </div>
 
         {(result.supplies.length > 0 || result.staffNotes) && (
-          <div className="rounded-[28px] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
+          <div className="glass-card rounded-[28px] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
             <h3 className="text-lg font-semibold text-navy-950">Review your photo assessment</h3>
             <p className="mt-1 text-sm text-surface-700">This is exactly what our team will see if you choose to share it. Add anything to correct or clarify before you send your request.</p>
             {result.staffNotes && <p className="mt-3 rounded-2xl bg-surface-100 px-3.5 py-2.5 text-sm text-navy-950">{result.staffNotes}</p>}
@@ -167,7 +167,7 @@ export default function PhotoEstimator({ addOnLabels, serviceNames, isLoggedIn }
           </div>
         )}
 
-        <div className="rounded-[28px] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
+        <div className="glass-card rounded-[28px] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
           <h3 className="text-lg font-semibold text-navy-950">Send this to our team</h3>
           <p className="mt-1 text-sm text-surface-700">We&apos;ll review your photos, confirm the price and reply with available times.{isLoggedIn ? " It will appear in your account." : ""}</p>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -193,7 +193,7 @@ export default function PhotoEstimator({ addOnLabels, serviceNames, isLoggedIn }
   }
 
   return (
-    <div className="space-y-5 rounded-[28px] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
+    <div className="space-y-5 glass-card rounded-[28px] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
       <div>
         <h2 className="text-lg font-semibold text-navy-950">1. Show us what needs cleaning</h2>
         <p className="mt-1 text-sm text-surface-700">Add up to 6 photos — kitchen, bathrooms, floors, anything you&apos;re worried about. Wide shots and close-ups both help.</p>

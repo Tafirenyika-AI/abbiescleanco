@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import "../globals.css";
 import SiteHeader from "@/components/layout/SiteHeader";
 import SiteFooter from "@/components/layout/SiteFooter";
@@ -10,17 +9,11 @@ import { business } from "@/lib/data/business";
 import { getBranding, getContactInfo, getBusinessHours, getSocialLinks } from "@/lib/server/siteSettings";
 import { listServiceAreas } from "@/lib/server/content";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
-
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover", // lets the tab bar and header extend under the iPhone notch/home-indicator safely
-  themeColor: "#0b1f33",
+  themeColor: "#e7eff5",
 };
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://abbiescleanco.com";
@@ -87,9 +80,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   };
 
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+    <html lang="en" className="h-full antialiased">
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="manifest" href="/manifest.webmanifest" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -100,18 +92,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }}
         />
       </head>
-      <body className="min-h-full flex flex-col bg-white text-navy-950">
+      <body className="public-site min-h-full flex flex-col text-navy-950">
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded-md focus:bg-navy-900 focus:px-4 focus:py-2 focus:text-white"
         >
           Skip to main content
         </a>
+        <div className="public-frame flex flex-1 flex-col">
         <SiteHeader logoUrl={branding.logoUrl} contact={contact} hours={hours} />
         <main id="main-content" className="flex-1 has-mobile-actionbar">
           {children}
         </main>
         <SiteFooter contact={contact} social={social} />
+        </div>
         <MobileActionBar contact={contact} />
         <InstallPrompt />
         <GuestAssistantWidget />

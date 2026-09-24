@@ -121,7 +121,7 @@ export default function ProspectingManager({ initialProspects, placesConfigured 
       {filtered.length === 0 ? (
         <EmptyState title="No prospects yet" description="Search above to find property managers, realtors, or local businesses in your service area." />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-admin-border bg-admin-card">
+        <div className="admin-table-surface overflow-hidden rounded-xl border border-admin-border bg-admin-card">
           <table className="w-full text-sm">
             <thead className="bg-admin-bg text-left text-xs font-semibold uppercase text-admin-text-muted">
               <tr>

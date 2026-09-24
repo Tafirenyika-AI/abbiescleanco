@@ -40,7 +40,7 @@ export default function InvoicesView({ invoices }: { invoices: InvoiceListItem[]
       {invoices.length === 0 ? (
         <EmptyState icon={FileStack} title="No invoices yet" description="Issue an invoice from any accepted quote." />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-admin-border bg-admin-card">
+        <div className="admin-table-surface overflow-hidden rounded-xl border border-admin-border bg-admin-card">
           <table className="w-full text-sm">
             <thead className="bg-admin-bg text-left text-xs font-semibold uppercase text-admin-text-muted">
               <tr>

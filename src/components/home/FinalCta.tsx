@@ -6,7 +6,7 @@ import { getContactInfo } from "@/lib/server/siteSettings";
 export default async function FinalCta() {
   const contact = await getContactInfo();
   return (
-    <Section className="bg-teal-500" ariaLabelledby="final-cta-heading">
+    <Section className="public-final-cta" ariaLabelledby="final-cta-heading">
       <div className="text-center">
         <h2 id="final-cta-heading" className="text-3xl font-semibold text-navy-950 sm:text-4xl">
           Ready to come home to clean?

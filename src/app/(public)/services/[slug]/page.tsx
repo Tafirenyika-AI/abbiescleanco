@@ -62,7 +62,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
 
-      <div className="bg-navy-950 py-10">
+      <div className="public-page-heading py-10">
         <Container>
           <Link href="/services" className="inline-flex items-center gap-1.5 text-sm font-medium text-teal-300 hover:text-teal-200">
             <ArrowLeft className="size-4" aria-hidden /> All services

@@ -38,7 +38,7 @@ export default function WhyChooseUs() {
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {points.map(({ icon: Icon, title, description }, i) => (
               <Reveal key={title} delayMs={i * 70}>
-                <div className="h-full rounded-2xl border border-surface-200 p-4.5 transition-colors duration-300 hover:border-teal-200">
+                <div className="h-full glass-card rounded-2xl border border-surface-200 p-4.5 transition-colors duration-300 hover:border-teal-200">
                   <span className="flex size-9 items-center justify-center rounded-xl bg-teal-50 text-teal-600 ring-1 ring-teal-100">
                     <Icon className="size-4.5" aria-hidden />
                   </span>

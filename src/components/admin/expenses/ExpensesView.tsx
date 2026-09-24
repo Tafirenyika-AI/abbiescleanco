@@ -143,7 +143,7 @@ export default function ExpensesView({ initialExpenses }: { initialExpenses: Exp
         </Card>
       )}
 
-      <div className="mt-4 overflow-x-auto rounded-2xl border border-admin-border bg-admin-card">
+      <div className="mt-4 admin-table-surface overflow-x-auto rounded-2xl border border-admin-border bg-admin-card">
         {expenses.length === 0 ? (
           <EmptyState icon={ReceiptIcon} title="No expenses yet" description="Track cleaning supplies, transportation, equipment, and other business costs here." />
         ) : (

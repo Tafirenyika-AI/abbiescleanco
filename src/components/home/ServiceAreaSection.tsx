@@ -5,7 +5,7 @@ import { business } from "@/lib/data/business";
 
 export default function ServiceAreaSection({ areas = [...business.areaServed] }: { areas?: string[] }) {
   return (
-    <Section className="bg-navy-950" ariaLabelledby="service-area-heading">
+    <Section className="public-page-heading" ariaLabelledby="service-area-heading">
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:items-center">
         <div>
           <Eyebrow>Service area</Eyebrow>

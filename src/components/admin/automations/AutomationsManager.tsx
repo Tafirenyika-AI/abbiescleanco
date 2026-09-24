@@ -148,7 +148,7 @@ export default function AutomationsManager({
 
       <div className="mt-6">
         <h2 className="font-semibold text-admin-text">Recent events</h2>
-        <div className="mt-3 overflow-x-auto rounded-2xl border border-admin-border bg-admin-card">
+        <div className="mt-3 admin-table-surface overflow-x-auto rounded-2xl border border-admin-border bg-admin-card">
           {events.length === 0 ? (
             <EmptyState icon={Zap} title="No automation events yet" description="Scheduled follow-ups, reminders, and thank-you emails will show up here." />
           ) : (

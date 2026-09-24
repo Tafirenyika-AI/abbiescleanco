@@ -1,149 +1,119 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronsLeft, ChevronsRight, Sparkles, X } from "lucide-react";
-import { navGroups } from "@/lib/admin/nav";
+import { navGroups, findNavItem } from "@/lib/admin/nav";
 import type { AdminPermission } from "@/lib/permissions";
 
 const COLLAPSE_KEY = "admin-sidebar-collapsed";
+const COLLAPSE_EVENT = "admin-sidebar-preference";
+let fallbackCollapsed = true;
 
-export default function AdminSidebar({
-  permissions,
-  open,
-  onClose,
-}: {
+function readCollapsed() {
+  try {
+    const saved = localStorage.getItem(COLLAPSE_KEY);
+    return saved === null ? fallbackCollapsed : saved === "1";
+  } catch { return fallbackCollapsed; }
+}
+function subscribeCollapsed(notify: () => void) {
+  window.addEventListener("storage", notify);
+  window.addEventListener(COLLAPSE_EVENT, notify);
+  return () => {
+    window.removeEventListener("storage", notify);
+    window.removeEventListener(COLLAPSE_EVENT, notify);
+  };
+}
+
+export default function AdminSidebar({ permissions, open, onClose }: {
   permissions: AdminPermission[];
   open: boolean;
   onClose: () => void;
 }) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const activeItem = findNavItem(pathname);
+  const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => true);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const closeRef = useRef(onClose);
+  useEffect(() => { closeRef.current = onClose; }, [onClose]);
 
   useEffect(() => {
-    try {
-      setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1");
-    } catch {
-      // ignore — per-viewer convenience only
+    if (!open) return;
+    const previous = document.activeElement as HTMLElement | null;
+    sidebarRef.current?.focus();
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") closeRef.current();
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(sidebarRef.current?.querySelectorAll<HTMLElement>('a[href], button') ?? [])
+        .filter((element) => element.getClientRects().length > 0);
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === sidebarRef.current)) {
+        event.preventDefault(); last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first?.focus();
+      }
     }
-  }, []);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("keydown", onKey); previous?.focus(); };
+  }, [open]);
 
   function toggleCollapsed() {
-    setCollapsed((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
-      } catch {
-        // ignore
-      }
-      return next;
-    });
+    fallbackCollapsed = !collapsed;
+    try { localStorage.setItem(COLLAPSE_KEY, fallbackCollapsed ? "1" : "0"); } catch { /* Optional preference. */ }
+    window.dispatchEvent(new Event(COLLAPSE_EVENT));
   }
 
-  const groups = navGroups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter((item) => !item.permission || permissions.includes(item.permission)),
-    }))
-    .filter((group) => group.items.length > 0);
+  const groups = navGroups.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => !item.permission || permissions.includes(item.permission)),
+  })).filter((group) => group.items.length > 0);
+  const labelClass = collapsed ? "lg:hidden" : "";
 
   return (
     <>
-      {open && (
-        <button
-          type="button"
-          aria-label="Close menu"
-          onClick={onClose}
-          className="fixed inset-0 z-30 bg-slate-950/50 lg:hidden"
-        />
-      )}
+      {open && <button type="button" aria-label="Close menu backdrop" onClick={onClose} className="fixed inset-0 z-30 bg-slate-800/30 backdrop-blur-sm lg:hidden" tabIndex={-1} />}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 shrink-0 bg-admin-sidebar transition-[transform,width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:translate-x-0 ${
-          open ? "translate-x-0" : "-translate-x-full"
-        } ${collapsed ? "lg:w-[76px]" : "w-64 lg:w-64"}`}
+        ref={sidebarRef}
+        id="admin-directory"
+        tabIndex={-1}
+        aria-label="All admin modules"
+        role={open ? "dialog" : undefined}
+        aria-modal={open ? true : undefined}
+        className={`admin-sidebar fixed inset-y-0 left-0 z-40 w-[280px] shrink-0 transition-[transform,width] duration-300 lg:sticky lg:z-auto lg:visible lg:translate-x-0 ${open ? "visible translate-x-0" : "invisible -translate-x-full"} ${collapsed ? "lg:w-[76px]" : "lg:w-[270px]"}`}
       >
         <div className="flex h-full flex-col">
-          <div className={`flex items-center justify-between gap-2 px-5 py-5 ${collapsed ? "lg:justify-center lg:px-3" : ""}`}>
-            <Link href="/admin" className="flex items-center gap-2 overflow-hidden">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-admin-teal text-white">
-                <Sparkles className="size-4" aria-hidden />
-              </span>
-              {!collapsed && (
-                <span className="min-w-0">
-                  <span className="block truncate font-display text-sm font-semibold text-white">Abbie&apos;s Clean Method</span>
-                  <span className="block text-[11px] text-slate-400">Admin workspace</span>
-                </span>
-              )}
+          <div className={`flex items-center justify-between gap-2 px-4 py-5 ${collapsed ? "lg:justify-center lg:px-3" : ""}`}>
+            <Link href="/admin" aria-label="Abbie's Clean Method dashboard" className="flex items-center gap-2" onClick={onClose}>
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-indigo-400 text-white shadow-sm"><Sparkles className="size-4" aria-hidden /></span>
+              <span className={labelClass}><span className="admin-sidebar-brand block text-sm font-semibold">Abbie&apos;s Clean Method</span><span className="block text-xs text-admin-text-muted">Admin workspace</span></span>
             </Link>
-            <button type="button" onClick={onClose} className="text-slate-400 lg:hidden" aria-label="Close menu">
-              <X className="size-5" aria-hidden />
-            </button>
+            <button type="button" onClick={onClose} className="flex size-10 items-center justify-center rounded-xl text-admin-text-muted lg:hidden" aria-label="Close menu"><X className="size-5" aria-hidden /></button>
           </div>
-
-          <nav aria-label="Admin" className="flex-1 space-y-5 overflow-y-auto px-3 pb-4">
+          <nav aria-label="Admin" className="min-h-0 flex-1 space-y-4 overflow-y-auto px-2 pb-4">
             {groups.map((group) => (
               <div key={group.label}>
-                {!collapsed && (
-                  <p className="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{group.label}</p>
-                )}
-                <div className={`space-y-0.5 ${!collapsed ? "mt-1.5" : ""}`}>
-                  {group.items.map((item) => {
-                    const active = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
-                    const Icon = item.icon;
-                    const content = (
-                      <>
-                        <span
-                          className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${
-                            active ? "bg-white/15" : "bg-white/5 group-hover:bg-white/10"
-                          }`}
-                        >
-                          <Icon className="size-[17px]" aria-hidden />
-                        </span>
-                        {!collapsed && (
-                          <span className="min-w-0 flex-1">
-                            <span className="flex items-center gap-1.5">
-                              <span className="truncate">{item.label}</span>
-                              {!item.built && (
-                                <span className="shrink-0 rounded-full bg-slate-700/60 px-1.5 py-0.5 text-[10px] font-semibold text-slate-300">
-                                  Soon
-                                </span>
-                              )}
-                            </span>
-                            <span className={`block truncate text-xs font-normal ${active ? "text-white/70" : "text-slate-500"}`}>{item.description}</span>
-                          </span>
-                        )}
-                      </>
-                    );
-                    const className = `ios-press group flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-semibold transition-[background-color,color,box-shadow] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-                      collapsed ? "lg:justify-center" : ""
-                    } ${
-                      active
-                        ? "bg-admin-teal text-white shadow-[0_4px_12px_rgba(15,157,138,0.35)]"
-                        : !item.built
-                          ? "text-slate-400 hover:bg-white/5 hover:text-slate-200"
-                          : "text-slate-300 hover:bg-white/5 hover:text-white"
-                    }`;
-
-                    return (
-                      <Link key={item.href} href={item.href} className={className} title={collapsed ? item.label : !item.built ? `${item.label} — not built yet, see what's planned` : undefined}>
-                        {content}
-                      </Link>
-                    );
-                  })}
+                <p className={`px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-admin-text-muted ${labelClass}`}>{group.label}</p>
+                <div className="space-y-1">
+                  {group.items.map((item) => (
+                    <Link key={item.href} href={item.href} onClick={onClose} aria-label={`${item.label}${item.built ? "" : " (coming soon)"}`} aria-current={activeItem?.href === item.href ? "page" : undefined}
+                      title={`${item.label}${item.built ? "" : " — coming soon"}`}
+                      className={`admin-sidebar-link ios-press group flex min-h-11 items-center gap-2 rounded-xl px-2 py-1.5 text-sm ${collapsed ? "lg:justify-center" : ""}`}>
+                      <span className="admin-sidebar-link-icon flex size-8 shrink-0 items-center justify-center rounded-lg"><item.icon className="size-[17px]" aria-hidden /></span>
+                      <span className={`min-w-0 flex-1 ${labelClass}`}>
+                        <span className="flex items-center gap-1.5"><span className="truncate">{item.label}</span>{!item.built && <span className="admin-soon">Soon</span>}</span>
+                        <span className="admin-sidebar-link-description block truncate text-[11px] font-normal">{item.description}</span>
+                      </span>
+                    </Link>
+                  ))}
                 </div>
               </div>
             ))}
           </nav>
-
-          <div className="border-t border-white/10 px-3 py-3">
-            <button
-              type="button"
-              onClick={toggleCollapsed}
-              className="ios-press hidden w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-400 hover:bg-white/5 hover:text-white lg:flex"
-            >
-              {collapsed ? <ChevronsRight className="size-4" aria-hidden /> : <ChevronsLeft className="size-4" aria-hidden />}
-              {!collapsed && "Collapse"}
+          <div className="border-t border-white px-3 py-3">
+            <button type="button" onClick={toggleCollapsed} aria-label={collapsed ? "Expand all modules" : "Collapse sidebar"} aria-expanded={!collapsed} className="sidebar-toggle ios-press hidden w-full items-center justify-center gap-2 rounded-xl px-2 py-2 text-xs font-medium lg:flex">
+              {collapsed ? <ChevronsRight className="size-4" aria-hidden /> : <><ChevronsLeft className="size-4" aria-hidden /> Collapse</>}
             </button>
           </div>
         </div>

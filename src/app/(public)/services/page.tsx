@@ -26,7 +26,7 @@ export default async function ServicesPage() {
 
   return (
     <>
-      <Section className="bg-navy-950 py-14 sm:py-16" ariaLabelledby="services-page-heading">
+      <Section className="public-page-heading py-14 sm:py-16" ariaLabelledby="services-page-heading">
         <div className="max-w-2xl">
           <Eyebrow>Our services</Eyebrow>
           <h1 id="services-page-heading" className="mt-2 text-4xl font-semibold text-white sm:text-5xl">
