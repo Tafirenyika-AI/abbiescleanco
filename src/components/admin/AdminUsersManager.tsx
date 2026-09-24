@@ -166,7 +166,7 @@ export default function AdminUsersManager({
     <div className="space-y-6">
       {!databaseConfigured && (
         <p className="rounded-xl bg-warm-100 p-3 text-sm text-admin-text">
-          No DATABASE_URL is configured — only the single demo admin account exists. Connect a database to create
+          No DATABASE_URL is configured, only the single demo admin account exists. Connect a database to create
           and manage additional admin users with individual permissions.
         </p>
       )}

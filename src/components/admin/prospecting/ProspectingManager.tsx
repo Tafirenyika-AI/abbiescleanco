@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, Loader2, X, Mail, Send, Ban, Sparkles, UserCog, Globe } from "lucide-react";
+import { Search, Loader2, X, Mail, Send, Ban, Sparkles, UserCog, Globe, Trash2 } from "lucide-react";
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
 import { useToast } from "@/components/admin/ui/Toast";
 import {
   type ProspectRow,
@@ -62,7 +63,7 @@ export default function ProspectingManager({ initialProspects, placesConfigured 
     const data = await res.json().catch(() => null);
     setSearching(false);
     if (!data?.ok) return showToast(data?.error || "Search failed", "error");
-    showToast(`Found ${data.found} — ${data.new} new, ${data.duplicates} already known.`, "success");
+    showToast(`Found ${data.found}, ${data.new} new, ${data.duplicates} already known.`, "success");
     await refresh();
   }
 
@@ -73,13 +74,13 @@ export default function ProspectingManager({ initialProspects, placesConfigured 
       <div>
         <h1 className="text-xl font-semibold text-admin-text">Prospecting</h1>
         <p className="mt-1 text-sm text-admin-text-muted">
-          Find potential customers — property managers, realtors, local businesses — and reach out. Every message is drafted for your review; nothing sends without you clicking Send.
+          Find potential customers, property managers, realtors, local businesses, and reach out. Every message is drafted for your review; nothing sends without you clicking Send.
         </p>
       </div>
 
       {!placesConfigured && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          Google Places search isn&apos;t configured yet — add a Google Maps API key in <span className="font-semibold">Settings → Integrations</span> to search for real businesses. You can still view/manage prospects added manually.
+          Google Places search isn&apos;t configured yet, add a Google Maps API key in <span className="font-semibold">Settings → Integrations</span> to search for real businesses. You can still view/manage prospects added manually.
         </div>
       )}
 
@@ -162,13 +163,17 @@ export default function ProspectingManager({ initialProspects, placesConfigured 
             setSelected(p);
             setProspects((prev) => prev.map((x) => (x.id === p.id ? p : x)));
           }}
+          onDeleted={(id) => {
+            setSelected(null);
+            setProspects((prev) => prev.filter((x) => x.id !== id));
+          }}
         />
       )}
     </div>
   );
 }
 
-function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRow; onClose: () => void; onUpdated: (p: ProspectRow) => void }) {
+function ProspectDrawer({ prospect, onClose, onUpdated, onDeleted }: { prospect: ProspectRow; onClose: () => void; onUpdated: (p: ProspectRow) => void; onDeleted: (id: string) => void }) {
   const { showToast } = useToast();
   const [subject, setSubject] = useState(prospect.draftSubject || "");
   const [body, setBody] = useState(prospect.draftBody || "");
@@ -179,6 +184,7 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
   const [address, setAddress] = useState(prospect.address || "");
   const [busy, setBusy] = useState<string | null>(null);
   const [admins, setAdmins] = useState<{ id: string; name: string }[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const fit = computeFitScore(prospect);
 
   useEffect(() => {
@@ -221,7 +227,7 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
     setBusy(null);
     if (!data?.ok) return showToast(data?.error || "Couldn't convert to a lead", "error");
     onUpdated({ ...prospect, status: "CONVERTED", convertedLeadId: data.leadId, convertedLeadReference: data.leadReference });
-    showToast(`Converted — lead ${data.leadReference} created.`, "success");
+    showToast(`Converted, lead ${data.leadReference} created.`, "success");
   }
 
   async function research() {
@@ -243,7 +249,7 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
     setSubject(data.prospect.draftSubject || "");
     setBody(data.prospect.draftBody || "");
     onUpdated(data.prospect);
-    showToast("Draft ready — review before sending.", "success");
+    showToast("Draft ready, review before sending.", "success");
   }
 
   async function saveDraft() {
@@ -270,6 +276,17 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
     showToast(`Sent to ${prospect.email}.`, "success");
     const refreshed = await fetch(`/api/admin/prospecting/${prospect.id}`).then((r) => r.json());
     if (refreshed?.ok) onUpdated(refreshed.prospect);
+  }
+
+  async function deleteProspect() {
+    setBusy("delete");
+    const res = await fetch(`/api/admin/prospecting/${prospect.id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => null);
+    setBusy(null);
+    setConfirmDelete(false);
+    if (!data?.ok) return showToast(data?.error || "Couldn't remove this prospect", "error");
+    onDeleted(prospect.id);
+    showToast("Prospect removed.", "success");
   }
 
   async function setStatus(status: ProspectStatus) {
@@ -301,7 +318,7 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
         <div className="mt-4 space-y-2 text-sm">
           <label className="block">
             <span className="text-xs text-admin-text-muted">Contact name</span>
-            <input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Optional — a specific person at the business" className="mt-0.5 w-full rounded-lg border border-admin-border bg-admin-bg px-2.5 py-1.5 text-sm text-admin-text" />
+            <input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Optional, a specific person at the business" className="mt-0.5 w-full rounded-lg border border-admin-border bg-admin-bg px-2.5 py-1.5 text-sm text-admin-text" />
           </label>
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
@@ -321,7 +338,7 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
           <button type="button" onClick={saveContact} disabled={busy === "contact"} className="ios-press rounded-full bg-admin-bg px-3 py-1.5 text-xs font-semibold text-admin-text disabled:opacity-50">
             {busy === "contact" ? "Saving…" : "Save contact info"}
           </button>
-          {!prospect.email && <p className="text-xs text-amber-700">No email on file — outreach can&apos;t be sent until one is added.</p>}
+          {!prospect.email && <p className="text-xs text-amber-700">No email on file, outreach can&apos;t be sent until one is added.</p>}
         </div>
 
         <div className="mt-5 rounded-lg bg-admin-bg p-3">
@@ -353,13 +370,13 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
             <>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Converted</h3>
               <p className="mt-1 text-sm text-admin-text">
-                This prospect became lead <span className="font-semibold text-admin-text">{prospect.convertedLeadReference}</span> — <a href="/admin/leads" className="font-semibold text-admin-teal-hover hover:underline">search for it in Leads</a> to build their quote and booking.
+                This prospect became lead <span className="font-semibold text-admin-text">{prospect.convertedLeadReference}</span>, <a href="/admin/leads" className="font-semibold text-admin-teal-hover hover:underline">search for it in Leads</a> to build their quote and booking.
               </p>
             </>
           ) : (
             <>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Convert to lead</h3>
-              <p className="mt-1 text-xs text-admin-text-muted">Once they&apos;re ready to book, turn this into a real lead in the same pipeline as every other customer — you&apos;ll quote and schedule them from there. Needs a real email, phone, and a ZIP code in the address.</p>
+              <p className="mt-1 text-xs text-admin-text-muted">Once they&apos;re ready to book, turn this into a real lead in the same pipeline as every other customer, you&apos;ll quote and schedule them from there. Needs a real email, phone, and a ZIP code in the address.</p>
               <button type="button" onClick={convertToLead} disabled={busy === "convert"} className="ios-press mt-2 inline-flex items-center gap-1.5 rounded-full bg-admin-navy px-3.5 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
                 {busy === "convert" && <Loader2 className="size-3.5 animate-spin" aria-hidden />} Convert to lead
               </button>
@@ -374,7 +391,7 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
               {busy === "research" ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Search className="size-3.5" aria-hidden />} {prospect.researchNotes ? "Research again" : "Research"}
             </button>
           </div>
-          {busy === "research" && <p className="mt-1.5 text-xs text-admin-text-muted">Searching the real web for public info about this business — this can take up to a minute.</p>}
+          {busy === "research" && <p className="mt-1.5 text-xs text-admin-text-muted">Searching the real web for public info about this business, this can take up to a minute.</p>}
           {prospect.researchNotes && (
             <div className="mt-2 rounded-lg bg-admin-bg p-3">
               <p className="whitespace-pre-wrap text-xs text-admin-text">{prospect.researchNotes}</p>
@@ -390,12 +407,12 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
               {prospect.researchedAt && <p className="mt-2 text-[11px] text-admin-text-muted">Researched {when(prospect.researchedAt)}</p>}
             </div>
           )}
-          {!prospect.researchNotes && <p className="mt-1.5 text-xs text-admin-text-muted">Not researched yet — this looks up real, public info (reviews, mentions) related to cleaning needs.</p>}
+          {!prospect.researchNotes && <p className="mt-1.5 text-xs text-admin-text-muted">Not researched yet, this looks up real, public info (reviews, mentions) related to cleaning needs.</p>}
         </div>
 
         <div className="mt-5">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Outreach draft</h3>
-          <p className="mt-1 text-xs text-admin-text-muted">This is exactly what will be sent — edit freely before sending.</p>
+          <p className="mt-1 text-xs text-admin-text-muted">This is exactly what will be sent, edit freely before sending.</p>
           <button type="button" onClick={draft} disabled={busy === "draft"} className="ios-press mt-2 inline-flex items-center gap-1.5 rounded-full bg-admin-bg px-3 py-1.5 text-xs font-semibold text-admin-text disabled:opacity-50">
             {busy === "draft" ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Sparkles className="size-3.5" aria-hidden />} {subject ? "Regenerate draft" : "Generate draft"}
           </button>
@@ -423,7 +440,20 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
               <Ban className="size-4" aria-hidden /> Do not contact
             </button>
           )}
+          <button type="button" onClick={() => setConfirmDelete(true)} disabled={!!busy} className="ios-press inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-admin-text-muted hover:bg-red-50 hover:text-red-700 disabled:opacity-50">
+            <Trash2 className="size-4" aria-hidden /> Remove
+          </button>
         </div>
+
+        <ConfirmDialog
+          open={confirmDelete}
+          title="Remove this prospect?"
+          description={`This removes ${prospect.businessName || prospect.contactName || "this prospect"} from the list for good. This can't be undone.${prospect.convertedLeadId ? ` The lead it became (${prospect.convertedLeadReference}) is not affected.` : ""}`}
+          confirmLabel={busy === "delete" ? "Removing…" : "Remove"}
+          tone="danger"
+          onConfirm={deleteProspect}
+          onCancel={() => setConfirmDelete(false)}
+        />
 
         {prospect.status === "SENT" && (
           <div className="mt-4 flex gap-2">
@@ -432,7 +462,7 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
           </div>
         )}
 
-        <p className="mt-6 flex items-start gap-1.5 text-xs text-admin-text-muted"><Mail className="mt-0.5 size-3.5 shrink-0" aria-hidden /> Outreach is only ever sent by you clicking Send — nothing here contacts anyone automatically.</p>
+        <p className="mt-6 flex items-start gap-1.5 text-xs text-admin-text-muted"><Mail className="mt-0.5 size-3.5 shrink-0" aria-hidden /> Outreach is only ever sent by you clicking Send, nothing here contacts anyone automatically.</p>
       </div>
     </div>
   );

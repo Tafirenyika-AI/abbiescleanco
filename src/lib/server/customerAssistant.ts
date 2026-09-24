@@ -29,7 +29,7 @@ const tools: Tool[] = [
         .sort((a, b) => new Date(a.scheduledStart!).getTime() - new Date(b.scheduledStart!).getTime())[0];
       if (!upcoming) return { type: "answer", text: "You don't have an upcoming booking scheduled right now. Head to the Bookings tab, or get a new estimate, to set one up." };
       const label = new Date(upcoming.scheduledStart!).toLocaleString("en-US", { timeZone: "America/Los_Angeles", weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
-      return { type: "answer", text: `Your next visit is ${label} — ${upcoming.serviceName} at ${upcoming.address}.` };
+      return { type: "answer", text: `Your next visit is ${label}, ${upcoming.serviceName} at ${upcoming.address}.` };
     },
   },
   {
@@ -64,7 +64,7 @@ const tools: Tool[] = [
       const quotes = await getMyQuotes(customerId);
       const sent = quotes.filter((q2) => q2.status === "SENT");
       if (sent.length === 0) return { type: "answer", text: "No quotes are waiting on a decision from you right now." };
-      return { type: "answer", text: `${sent.length} quote${sent.length === 1 ? " is" : "s are"} waiting on your decision — check the Quotes tab to accept or decline.` };
+      return { type: "answer", text: `${sent.length} quote${sent.length === 1 ? " is" : "s are"} waiting on your decision, check the Quotes tab to accept or decline.` };
     },
   },
   {
@@ -85,5 +85,5 @@ export async function resolveCustomerAssistantQuery(customerId: string, rawQuery
   for (const tool of tools) {
     if (tool.match(q)) return tool.run(customerId);
   }
-  return { type: "unknown", text: `I don't have an answer for that yet — try: ${EXAMPLES.join(", ")}. For anything else, send us a note from a booking or request.` };
+  return { type: "unknown", text: `I don't have an answer for that yet, try: ${EXAMPLES.join(", ")}. For anything else, send us a note from a booking or request.` };
 }

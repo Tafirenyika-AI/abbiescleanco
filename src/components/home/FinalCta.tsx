@@ -12,7 +12,7 @@ export default async function FinalCta() {
           Ready to come home to clean?
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-navy-900/80">
-          Request your free preliminary estimate today, or reach out directly — we&apos;re happy to
+          Request your free preliminary estimate today, or reach out directly, we&apos;re happy to
           answer any questions first.
         </p>
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">

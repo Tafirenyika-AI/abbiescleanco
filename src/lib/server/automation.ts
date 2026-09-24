@@ -54,7 +54,7 @@ export async function sendFinalQuoteFollowUp(recipient: RecipientInfo, reference
     subject: `Last check-in on estimate ${reference}`,
     html: `<p>Hi ${escapeHtml(
       recipient.name
-    )}, we'll close out this estimate soon unless we hear from you. No worries either way — just reply or reach out if you'd like to move forward.</p>`,
+    )}, we'll close out this estimate soon unless we hear from you. No worries either way, just reply or reach out if you'd like to move forward.</p>`,
   });
 }
 
@@ -70,7 +70,7 @@ export async function sendBookingConfirmation(
   });
   return sendEmail({
     to: recipient.email,
-    subject: `Your ${details.serviceName} visit is confirmed — ${dateLabel}`,
+    subject: `Your ${details.serviceName} visit is confirmed, ${dateLabel}`,
     html: `
       <p>Hi ${escapeHtml(recipient.name)}, your ${escapeHtml(details.serviceName)} visit is confirmed for
       ${dateLabel}${details.arrivalWindow ? ` (${escapeHtml(details.arrivalWindow)})` : ""}.</p>
@@ -116,7 +116,7 @@ export async function sendPostServiceFollowUp(recipient: RecipientInfo) {
       <p>Hi ${escapeHtml(recipient.name)}, thank you for choosing ${business.name}! We'd love to know
       how your cleaning went.</p>
       <p>If everything was great, we'd be grateful for a review. If anything fell short, please reply
-      here directly so we can make it right — no public link needed.</p>
+      here directly so we can make it right, no public link needed.</p>
     `,
   });
 }

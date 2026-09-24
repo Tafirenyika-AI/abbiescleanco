@@ -25,7 +25,7 @@ export default async function ContactPage() {
           <Eyebrow>Contact</Eyebrow>
           <h1 className="mt-2 text-4xl font-semibold text-white sm:text-5xl">Get in touch</h1>
           <p className="mt-4 text-surface-200">
-            Questions, a same-day request, or ready to book — reach us however&apos;s easiest.
+            Questions, a same-day request, or ready to book, reach us however&apos;s easiest.
           </p>
         </div>
       </Section>

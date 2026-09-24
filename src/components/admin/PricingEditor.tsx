@@ -10,8 +10,8 @@ import Button from "@/components/ui/Button";
 import TestEstimateTool from "@/components/admin/pricing/TestEstimateTool";
 
 const serviceFieldMeta: { key: keyof ServicePricing; label: string; hint?: string; step?: string }[] = [
-  { key: "baseLow", label: "Base price — low ($)" },
-  { key: "baseHigh", label: "Base price — high ($)" },
+  { key: "baseLow", label: "Base price: low ($)" },
+  { key: "baseHigh", label: "Base price: high ($)" },
   { key: "baseBedrooms", label: "Base bedrooms", hint: "Bedroom count the base price assumes" },
   { key: "baseBathrooms", label: "Base bathrooms" },
   { key: "baseSqFt", label: "Base sq ft" },
@@ -19,8 +19,8 @@ const serviceFieldMeta: { key: keyof ServicePricing; label: string; hint?: strin
   { key: "perExtraBathroom", label: "$ per extra bathroom" },
   { key: "perExtraSqFt", label: "$ per extra sq ft", step: "0.01" },
   { key: "manualQuoteAboveSqFt", label: "Manual quote above (sq ft)", hint: "0 = always manual quote" },
-  { key: "durationHoursLow", label: "Duration — low (hrs)" },
-  { key: "durationHoursHigh", label: "Duration — high (hrs)" },
+  { key: "durationHoursLow", label: "Duration: low (hrs)" },
+  { key: "durationHoursHigh", label: "Duration: high (hrs)" },
 ];
 
 type SaveState = { status: "idle" } | { status: "saving" } | { status: "success" } | { status: "error"; message: string };
@@ -234,7 +234,7 @@ export default function PricingEditor({ initialConfig }: { initialConfig: Pricin
           </label>
         </div>
         <p className="mt-1 text-sm text-admin-text-muted">
-          Off by default — savings language only appears on the site once this is enabled.
+          Off by default, savings language only appears on the site once this is enabled.
         </p>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
           {(Object.keys(frequencyLabels) as Frequency[]).map((frequency) => (
@@ -280,7 +280,7 @@ export default function PricingEditor({ initialConfig }: { initialConfig: Pricin
         </Button>
         {saveState.status === "success" && (
           <span className="flex items-center gap-1.5 text-sm text-admin-teal-hover">
-            <CheckCircle2 className="size-4" aria-hidden /> Saved — live on the site now.
+            <CheckCircle2 className="size-4" aria-hidden /> Saved, live on the site now.
           </span>
         )}
         {saveState.status === "error" && (

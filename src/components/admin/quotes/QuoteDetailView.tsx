@@ -190,7 +190,7 @@ export default function QuoteDetailView({
         showToast(json.error || "Couldn't send quote", "error");
         return;
       }
-      showToast(json.mode === "mock" ? "Quote marked sent (no email provider configured — see Settings)" : "Quote emailed to customer", "success");
+      showToast(json.mode === "mock" ? "Quote marked sent (no email provider configured, see Settings)" : "Quote emailed to customer", "success");
       router.refresh();
     } finally {
       setSending(false);
@@ -342,7 +342,7 @@ export default function QuoteDetailView({
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-admin-teal/10 p-3">
                 <p className="flex items-center gap-2 text-sm text-admin-text">
                   <Tag className="size-4 text-admin-teal" aria-hidden />
-                  Customer entered promo code <strong className="font-mono">{validPromo.code}</strong> —{" "}
+                  Customer entered promo code <strong className="font-mono">{validPromo.code}</strong>,{" "}
                   {validPromo.discountType === "PERCENT" ? `${validPromo.discountValue}% off` : `$${(validPromo.discountValue / 100).toFixed(2)} off`}
                 </p>
                 <button type="button" onClick={applyPromo} className="ios-press rounded-full bg-admin-teal px-3 py-1.5 text-xs font-semibold text-white hover:bg-admin-teal-hover">
@@ -498,7 +498,7 @@ export default function QuoteDetailView({
                 <p className="font-semibold">This overlaps with:</p>
                 <ul className="mt-1 list-disc pl-4">
                   {bookingConflicts.map((c) => (
-                    <li key={c.reference}>{c.customerName} — {c.scheduledStart ? formatDateTime(c.scheduledStart) : ""}</li>
+                    <li key={c.reference}>{c.customerName}, {c.scheduledStart ? formatDateTime(c.scheduledStart) : ""}</li>
                   ))}
                 </ul>
                 <button type="button" onClick={() => createBooking(true)} disabled={creatingBooking} className="mt-2 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-60">

@@ -9,7 +9,7 @@ export async function GET() {
   const manifest = {
     name: "Abbie's Clean Method",
     short_name: "Abbie's Clean",
-    description: "Come home to clean — book a cleaning in Spokane Valley, WA.",
+    description: "Come home to clean, book a cleaning in Spokane Valley, WA.",
     start_url: "/",
     scope: "/",
     display: "standalone",

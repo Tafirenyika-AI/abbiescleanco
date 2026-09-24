@@ -346,7 +346,7 @@ export default function LeadDetailDrawer({
           <div className="ios-modal-in w-full max-w-sm rounded-2xl bg-admin-card p-6 shadow-[0_8px_24px_rgba(15,23,42,0.1),0_24px_64px_rgba(15,23,42,0.16)]">
             <h2 className="text-base font-semibold text-admin-text">Schedule this cleaning</h2>
             <p className="mt-1 text-xs text-admin-text-muted">
-              Creates an accepted quote and a confirmed booking together — skips building a quote by hand.
+              Creates an accepted quote and a confirmed booking together, skips building a quote by hand.
             </p>
             <div className="mt-3 space-y-3">
               <label className="block">

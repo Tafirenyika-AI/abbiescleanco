@@ -29,7 +29,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       await notifyAdmins(
         parsed.data.status === "ACCEPTED" ? "QUOTE_ACCEPTED" : "QUOTE_DECLINED",
         `Quote ${parsed.data.status === "ACCEPTED" ? "accepted" : "declined"}: ${quote.quoteNumber}`,
-        `${quote.customerName} — $${(quote.total / 100).toFixed(2)}`,
+        `${quote.customerName}, $${(quote.total / 100).toFixed(2)}`,
         `/admin/quotes/${id}`
       );
     }

@@ -135,7 +135,7 @@ export default function PromotionsManager({ promoCodes: initialPromoCodes }: { p
         <div>
           <h1 className="text-2xl font-semibold text-admin-text sm:text-[28px]">Promotions</h1>
           <p className="mt-1 text-sm text-admin-text-muted">
-            {promoCodes.length} code{promoCodes.length === 1 ? "" : "s"} — customers can enter one on the estimate form; apply it when you build their quote.
+            {promoCodes.length} code{promoCodes.length === 1 ? "" : "s"}, customers can enter one on the estimate form; apply it when you build their quote.
           </p>
         </div>
         <button
@@ -165,7 +165,7 @@ export default function PromotionsManager({ promoCodes: initialPromoCodes }: { p
               <input
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Spring promo — 10% off"
+                placeholder="Spring promo, 10% off"
                 className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text"
               />
             </label>
@@ -228,7 +228,7 @@ export default function PromotionsManager({ promoCodes: initialPromoCodes }: { p
           <EmptyState
             icon={Megaphone}
             title="No promo codes yet"
-            description="Create a code and share it with customers — they can enter it on the estimate form."
+            description="Create a code and share it with customers, they can enter it on the estimate form."
           />
         ) : (
           <table className="w-full min-w-[760px] text-left text-sm">
@@ -359,7 +359,7 @@ export default function PromotionsManager({ promoCodes: initialPromoCodes }: { p
       <ConfirmDialog
         open={!!deleteTarget}
         title="Delete this promo code?"
-        description="Quotes that already used it keep their discount — this just removes the code so it can't be used again."
+        description="Quotes that already used it keep their discount, this just removes the code so it can't be used again."
         confirmLabel="Delete"
         tone="danger"
         onConfirm={confirmDelete}

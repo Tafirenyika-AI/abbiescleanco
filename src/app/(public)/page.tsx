@@ -17,7 +17,7 @@ import { listGalleryItems, listServiceAreas } from "@/lib/server/content";
 export const metadata: Metadata = {
   title: "House Cleaning in Spokane Valley, WA",
   description:
-    "Come home to clean. Thoughtful, dependable house cleaning in Spokane Valley — standard, deep, move-in/move-out & recurring service. Get a free preliminary estimate.",
+    "Come home to clean. Thoughtful, dependable house cleaning in Spokane Valley: standard, deep, move-in/move-out & recurring service. Get a free preliminary estimate.",
   alternates: { canonical: "/" },
 };
 

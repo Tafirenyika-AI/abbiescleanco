@@ -121,7 +121,7 @@ export default function InvoiceDetailView({
             <ul className="mt-1 space-y-0.5 text-sm text-navy-950">
               {invoice.payments.map((p) => (
                 <li key={p.id} className="flex justify-between">
-                  <span>{formatDate(p.createdAt)} — {p.method || "—"} — {p.status}</span>
+                  <span>{formatDate(p.createdAt)}, {p.method || "—"}, {p.status}</span>
                   <span>{money(p.amount)}</span>
                 </li>
               ))}

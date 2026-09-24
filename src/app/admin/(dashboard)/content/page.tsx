@@ -31,12 +31,12 @@ export default async function AdminContentPage() {
     <div>
       <h1 className="text-2xl font-semibold text-slate-900">Content</h1>
       <p className="mt-1 text-sm text-slate-600">
-        Edit what&apos;s actually shown on the public site — service descriptions, FAQs, gallery
+        Edit what&apos;s actually shown on the public site: service descriptions, FAQs, gallery
         photos, and the list of areas you serve.
       </p>
       {!isDatabaseConfigured && (
         <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-slate-900">
-          No DATABASE_URL is configured — content edits save to local mock files instead of Postgres,
+          No DATABASE_URL is configured, content edits save to local mock files instead of Postgres,
           and some actions (new FAQs, gallery images, service areas) are disabled.
         </p>
       )}

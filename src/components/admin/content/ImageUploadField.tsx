@@ -34,7 +34,7 @@ export default function ImageUploadField({
       onChange(json.url);
       onCommit?.(json.url);
     } catch {
-      setError("Upload failed — check your connection and try again.");
+      setError("Upload failed, check your connection and try again.");
     } finally {
       setUploading(false);
     }

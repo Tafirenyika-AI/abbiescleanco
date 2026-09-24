@@ -17,13 +17,13 @@ const fields: FieldMeta[] = [
   { key: "twilioAccountSid", label: "Twilio Account SID", isSecret: true, wired: true, help: "SMS notifications when a customer opts in." },
   { key: "twilioAuthToken", label: "Twilio Auth Token", isSecret: true, wired: true, help: "" },
   { key: "twilioFromNumber", label: "Twilio From Number", isSecret: false, wired: true, help: "e.g. +16505551234" },
-  { key: "stripeSecretKey", label: "Stripe Secret Key", isSecret: true, wired: true, help: "Powers admin-generated payment links (Checkout) — Apple Pay/Google Pay are offered automatically, no extra setup." },
-  { key: "stripeWebhookSecret", label: "Stripe Webhook Signing Secret", isSecret: true, wired: true, help: "From the webhook endpoint in your Stripe dashboard — confirms payments were really completed." },
+  { key: "stripeSecretKey", label: "Stripe Secret Key", isSecret: true, wired: true, help: "Powers admin-generated payment links (Checkout), Apple Pay/Google Pay are offered automatically, no extra setup." },
+  { key: "stripeWebhookSecret", label: "Stripe Webhook Signing Secret", isSecret: true, wired: true, help: "From the webhook endpoint in your Stripe dashboard, confirms payments were really completed." },
   { key: "anthropicApiKey", label: "Anthropic API key (photo estimates)", isSecret: true, wired: true, help: "Powers the AI photo estimate: customers upload room photos and get a condition-based estimate, and your team sees what needs cleaning and what to bring." },
-  { key: "googleMapsApiKey", label: "Google Maps API Key", isSecret: true, wired: false, help: "Not used yet — ZIP is free-text today." },
+  { key: "googleMapsApiKey", label: "Google Maps API Key", isSecret: true, wired: false, help: "Not used yet, ZIP is free-text today." },
   { key: "turnstileSiteKey", label: "Turnstile Site Key", isSecret: false, wired: false, help: "Not wired into any form yet." },
   { key: "turnstileSecretKey", label: "Turnstile Secret Key", isSecret: true, wired: false, help: "Not wired into any form yet." },
-  { key: "sentryDsn", label: "Sentry DSN", isSecret: false, wired: false, help: "Error reporting is wired in, but the DSN must be set as the NEXT_PUBLIC_SENTRY_DSN environment variable (with a redeploy) — it initializes at server startup, so it can't be hot-swapped from a value saved here the way other integrations are." },
+  { key: "sentryDsn", label: "Sentry DSN", isSecret: false, wired: false, help: "Error reporting is wired in, but the DSN must be set as the NEXT_PUBLIC_SENTRY_DSN environment variable (with a redeploy), it initializes at server startup, so it can't be hot-swapped from a value saved here the way other integrations are." },
   { key: "upstashRedisUrl", label: "Upstash Redis REST URL", isSecret: false, wired: true, help: "Makes rate limiting durable across server restarts/instances instead of in-memory only. Without this, rate limiting still works, just resets whenever the server restarts." },
   { key: "upstashRedisToken", label: "Upstash Redis REST Token", isSecret: true, wired: true, help: "" },
 ];
@@ -71,7 +71,7 @@ export default function IntegrationsManager({ initialStatus }: { initialStatus: 
       <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 p-3.5 text-sm text-admin-text">
         <ShieldAlert className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden />
         <p>
-          These are stored in the database, not a dedicated secrets vault — reasonable for a small
+          These are stored in the database, not a dedicated secrets vault, reasonable for a small
           business site behind admin login, but not the same guarantee as your host&apos;s
           encrypted environment variables. Values you save here take priority over environment
           variables of the same name.
@@ -103,7 +103,7 @@ export default function IntegrationsManager({ initialStatus }: { initialStatus: 
               <div className="mt-3 flex items-center gap-2">
                 <input
                   type={field.isSecret ? "password" : "text"}
-                  placeholder={current?.value || (current?.configured ? "•••• saved — enter a new value to replace" : "Not set")}
+                  placeholder={current?.value || (current?.configured ? "•••• saved, enter a new value to replace" : "Not set")}
                   value={drafts[field.key] || ""}
                   onChange={(e) => setDrafts((prev) => ({ ...prev, [field.key]: e.target.value }))}
                   className="flex-1 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm"

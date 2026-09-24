@@ -199,7 +199,7 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
       </div>
 
       <p className="mt-4 text-xs text-admin-text-muted">
-        Team-member-level performance breakdowns aren&apos;t available yet — see the Team page for per-cleaner assigned/completed job counts.
+        Team-member-level performance breakdowns aren&apos;t available yet, see the Team page for per-cleaner assigned/completed job counts.
       </p>
     </div>
   );

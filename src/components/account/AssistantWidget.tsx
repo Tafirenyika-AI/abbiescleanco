@@ -21,7 +21,7 @@ export default function AssistantWidget() {
     const res = await fetch("/api/account/assistant", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: text }) });
     const data = await res.json().catch(() => null);
     setBusy(false);
-    setMessages((m) => [...m, { role: "assistant", text: data?.ok ? data.result.text : "Something went wrong — please try again." }]);
+    setMessages((m) => [...m, { role: "assistant", text: data?.ok ? data.result.text : "Something went wrong, please try again." }]);
   }
 
   return (

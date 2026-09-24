@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/server/requireAdmin";
-import { getProspectById, updateProspect, PROSPECT_STATUSES } from "@/lib/server/prospectStore";
+import { getProspectById, updateProspect, deleteProspect, PROSPECT_STATUSES } from "@/lib/server/prospectStore";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin(req, "MANAGE_LEADS");
@@ -41,4 +41,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const prospect = await updateProspect(id, parsed.data);
   if (!prospect) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
   return NextResponse.json({ ok: true, prospect });
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const admin = await requireAdmin(req, "MANAGE_LEADS");
+  if (!admin) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  const { id } = await params;
+  const result = await deleteProspect(id);
+  return NextResponse.json(result, { status: result.ok ? 200 : 404 });
 }

@@ -15,7 +15,7 @@ export default function AdminMarketingPage() {
         "Draft and schedule social posts and ad campaigns for approval before anything goes out",
         "Track cost per lead and cost per booked customer by channel",
         "Only recommend promoting in areas you actually have capacity to serve",
-        "Every publish requires your explicit approval — nothing posts automatically",
+        "Every publish requires your explicit approval, nothing posts automatically",
       ]}
     />
   );

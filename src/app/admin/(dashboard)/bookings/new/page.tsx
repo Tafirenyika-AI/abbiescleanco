@@ -9,7 +9,7 @@ export default function NewBookingPage() {
         <ArrowLeft className="size-4" aria-hidden /> Back to bookings
       </Link>
       <h1 className="mt-3 text-2xl font-semibold text-admin-text sm:text-[28px]">New booking</h1>
-      <p className="mt-1 text-sm text-admin-text-muted">For an existing customer booking again — skips the estimate/quote review and confirms directly.</p>
+      <p className="mt-1 text-sm text-admin-text-muted">For an existing customer booking again, skips the estimate/quote review and confirms directly.</p>
       <div className="mt-6">
         <NewBookingForm />
       </div>

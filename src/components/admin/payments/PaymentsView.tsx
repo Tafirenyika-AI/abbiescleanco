@@ -122,7 +122,7 @@ export default function PaymentsView({
               <select value={bookingId} onChange={(e) => setBookingId(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text">
                 <option value="">Select a booking…</option>
                 {bookingsAwaitingPayment.map((b) => (
-                  <option key={b.bookingId} value={b.bookingId}>{b.reference} — {b.customerName}</option>
+                  <option key={b.bookingId} value={b.bookingId}>{b.reference}, {b.customerName}</option>
                 ))}
               </select>
             </label>
@@ -158,7 +158,7 @@ export default function PaymentsView({
             </label>
           </div>
           <div className="mt-3 max-w-sm">
-            <ImageUploadField label="Proof of payment (optional — receipt or screenshot)" value={proofUrl} onChange={setProofUrl} />
+            <ImageUploadField label="Proof of payment (optional, receipt or screenshot)" value={proofUrl} onChange={setProofUrl} />
           </div>
           <button type="button" onClick={submit} disabled={!bookingId || !amount || saving} className="ios-press mt-3 flex items-center gap-2 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
             {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null} Save

@@ -54,7 +54,7 @@ export function customerConfirmationEmail(params: {
 }) {
   const { firstName, reference, serviceName, estimateLabel } = params;
   return {
-    subject: `We received your estimate request — ${reference}`,
+    subject: `We received your estimate request, ${reference}`,
     html: `
       <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
         <h2 style="color:#0b1f33">Thanks, ${escapeHtml(firstName)}!</h2>
@@ -81,7 +81,7 @@ export function businessNotificationEmail(params: {
 }) {
   const { reference, name, phone, email, serviceName, estimateLabel, preferredContactMethod, zip } = params;
   return {
-    subject: `New lead: ${name} — ${serviceName} (${reference})`,
+    subject: `New lead: ${name}, ${serviceName} (${reference})`,
     html: `
       <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
         <h2>New estimate request</h2>
@@ -117,7 +117,7 @@ export function welcomeEmail(params: { firstName: string }) {
 
 export function adminInviteEmail(params: { name: string; loginUrl: string }) {
   return {
-    subject: `You've been added as an admin — ${business.name}`,
+    subject: `You've been added as an admin, ${business.name}`,
     html: `
       <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
         <h2 style="color:#0b1f33">Hi ${escapeHtml(params.name)},</h2>
@@ -162,7 +162,7 @@ export function quoteEmail(params: {
     )
     .join("");
   return {
-    subject: `Your quote from ${business.name} — ${params.quoteNumber}`,
+    subject: `Your quote from ${business.name}, ${params.quoteNumber}`,
     html: `
       <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
         <h2 style="color:#0b1f33">Hi ${escapeHtml(params.firstName)},</h2>
@@ -185,7 +185,7 @@ export function quoteEmail(params: {
 
 export function paymentLinkEmail(params: { firstName: string; amountLabel: string; description: string; url: string }) {
   return {
-    subject: `Payment request from ${business.name} — ${params.amountLabel}`,
+    subject: `Payment request from ${business.name}, ${params.amountLabel}`,
     html: `
       <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
         <h2 style="color:#0b1f33">Hi ${escapeHtml(params.firstName)},</h2>
@@ -209,13 +209,13 @@ export function bookingRequestReceivedEmail(params: {
   scheduledStartLabel: string;
 }) {
   return {
-    subject: `We've got your booking request — ${params.reference}`,
+    subject: `We've got your booking request, ${params.reference}`,
     html: `
       <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
         <h2 style="color:#0b1f33">Thanks, ${escapeHtml(params.firstName)}!</h2>
         <p>We received your request for <strong>${escapeHtml(params.serviceName)}</strong> on <strong>${escapeHtml(params.scheduledStartLabel)}</strong>.</p>
         <p><strong>Reference number:</strong> ${escapeHtml(params.reference)}</p>
-        <p>This time slot is being held for you, but not confirmed yet — a member of our team will review it shortly and confirm your appointment.</p>
+        <p>This time slot is being held for you, but not confirmed yet. A member of our team will review it shortly and confirm your appointment.</p>
         <p>Questions in the meantime? Call or text us at ${business.phoneDisplay}.</p>
         <p style="margin-top:24px;color:#4a5a6a;font-size:14px">${business.name} · ${business.city}, ${business.region}</p>
       </div>
@@ -225,7 +225,7 @@ export function bookingRequestReceivedEmail(params: {
 
 export function paymentReceiptEmail(params: { firstName: string; amountLabel: string; description: string; receiptUrl?: string | null; methodLabel?: string }) {
   return {
-    subject: `Payment received — ${params.amountLabel} — ${business.name}`,
+    subject: `${business.name}: payment received (${params.amountLabel})`,
     html: `
       <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
         <h2 style="color:#0b1f33">Thanks, ${escapeHtml(params.firstName)}!</h2>

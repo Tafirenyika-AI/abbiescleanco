@@ -105,7 +105,7 @@ export default function GalleryGrid({ items = defaultGalleryItems }: { items?: G
               <Image src={active.src} alt={active.alt} fill sizes="90vw" quality={95} className="object-cover" />
             </div>
             <p className="mt-3 text-center text-sm text-white">
-              {active.caption} — {active.serviceType}
+              {active.caption}, {active.serviceType}
             </p>
 
             <button

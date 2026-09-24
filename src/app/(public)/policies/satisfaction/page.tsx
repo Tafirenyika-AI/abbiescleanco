@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function SatisfactionPolicyPage() {
   return (
-    <PolicyLayout title="Satisfaction & Re-clean Policy" updated="Draft — pending client confirmation">
+    <PolicyLayout title="Satisfaction & Re-clean Policy" updated="Draft, pending client confirmation">
       <p>
         We want you to be happy with your cleaning. If something was missed, here&apos;s what to
         do.
@@ -39,8 +39,8 @@ export default function SatisfactionPolicyPage() {
 
       <h2>Honest feedback</h2>
       <p>
-        We never ask customers to change genuine feedback, and satisfied customers are welcome —
-        never required — to leave a public review.
+        We never ask customers to change genuine feedback, and satisfied customers are welcome,
+        never required, to leave a public review.
       </p>
     </PolicyLayout>
   );

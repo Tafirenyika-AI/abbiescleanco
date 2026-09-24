@@ -51,7 +51,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   await notifyAdmins(
     "BOOKING_REQUESTED",
     `Booking requested: ${result.customerName}`,
-    `${result.serviceName} — ${scheduledStartLabel}`,
+    `${result.serviceName}, ${scheduledStartLabel}`,
     `/admin/bookings/${result.id}`
   );
 

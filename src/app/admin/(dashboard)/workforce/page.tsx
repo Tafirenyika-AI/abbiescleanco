@@ -6,7 +6,7 @@ export default function AdminWorkforcePage() {
     <ComingSoonModule
       icon={HardHat}
       title="Workforce & Subcontractors"
-      tagline="Onboard cleaners and subcontractors with real logins, documents, and job offers — beyond the name/role roster in Team today."
+      tagline="Onboard cleaners and subcontractors with real logins, documents, and job offers. Goes beyond the name/role roster in Team today."
       blocked={{
         reason: "Needs your decision on how cleaners are classified and paid.",
         detail: "Employee vs. subcontractor classification, insurance/licensing requirements, and pay structure are real legal and financial decisions for this business, not something to guess at in code. See docs/IMPLEMENTATION_PLAN.md Phase 4.",

@@ -120,7 +120,7 @@ export async function withdrawRequest(customerId: string, leadId: string, reason
   if (["COMPLETED", "CANCELLED", "LOST"].includes(l.status)) return { ok: false, error: "This request is already closed" };
   if (l.bookings.some((b) => !["CANCELLED", "COMPLETED"].includes(b.status))) return { ok: false, error: "Cancel the booking first, then withdraw the request" };
   await db().lead.update({ where: { id: leadId }, data: { status: "CANCELLED", lostReason: reason?.slice(0, 300) || "Withdrawn by customer" } });
-  await notifyAdmins("GENERAL", "Client withdrew a request", `${l.reference}${reason ? ` — ${reason.slice(0, 120)}` : ""}`, `/admin/leads`);
+  await notifyAdmins("GENERAL", "Client withdrew a request", `${l.reference}${reason ? `, ${reason.slice(0, 120)}` : ""}`, `/admin/leads`);
   return { ok: true };
 }
 
@@ -142,21 +142,21 @@ export async function getMyQuoteDetail(customerId: string, quoteId: string) {
 export async function respondToQuote(customerId: string, quoteId: string, action: "ACCEPT" | "DECLINE", reason?: string): Promise<Result<{ status: string }>> {
   const q = await db().quote.findFirst({ where: { id: quoteId, deletedAt: null, lead: { customerId } }, include: { lead: { include: { customer: true } } } });
   if (!q) return { ok: false, error: "Not found" };
-  if (q.status !== "SENT") return { ok: false, error: q.status === "ACCEPTED" ? "You've already accepted this quote" : "This quote can no longer be answered online — contact us" };
+  if (q.status !== "SENT") return { ok: false, error: q.status === "ACCEPTED" ? "You've already accepted this quote" : "This quote can no longer be answered online, contact us" };
   if (q.expiresAt && q.expiresAt < new Date()) {
     await db().quote.update({ where: { id: quoteId }, data: { status: "EXPIRED" } });
-    return { ok: false, error: "This quote has expired — ask us for a fresh one" };
+    return { ok: false, error: "This quote has expired, ask us for a fresh one" };
   }
   const name = q.lead.customer ? `${q.lead.customer.firstName} ${q.lead.customer.lastName}`.trim() : "A customer";
   if (action === "ACCEPT") {
     await db().quote.update({ where: { id: quoteId }, data: { status: "ACCEPTED" } });
     await db().lead.update({ where: { id: q.leadId }, data: { status: "CONFIRMED" } });
-    await notifyAdmins("QUOTE_ACCEPTED", `Quote accepted: ${name}`, `${q.quoteNumber} — $${(q.total / 100).toFixed(2)}`, `/admin/quotes/${q.id}`);
+    await notifyAdmins("QUOTE_ACCEPTED", `Quote accepted: ${name}`, `${q.quoteNumber}, $${(q.total / 100).toFixed(2)}`, `/admin/quotes/${q.id}`);
     return { ok: true, status: "ACCEPTED" };
   }
   await db().quote.update({ where: { id: quoteId }, data: { status: "DECLINED" } });
   if (reason?.trim()) await db().clientNote.create({ data: { customerId, leadId: q.leadId, body: reason.trim().slice(0, 2000), kind: "QUOTE_DECLINE", authorName: name } });
-  await notifyAdmins("QUOTE_DECLINED", `Quote declined: ${name}`, `${q.quoteNumber}${reason ? ` — ${reason.slice(0, 120)}` : ""}`, `/admin/quotes/${q.id}`);
+  await notifyAdmins("QUOTE_DECLINED", `Quote declined: ${name}`, `${q.quoteNumber}${reason ? `, ${reason.slice(0, 120)}` : ""}`, `/admin/quotes/${q.id}`);
   return { ok: true, status: "DECLINED" };
 }
 
@@ -185,12 +185,12 @@ const CANCEL_CUTOFF_HOURS = 24;
 export async function cancelMyBooking(customerId: string, bookingId: string, reason?: string): Promise<Result<{ lateCancellation: boolean }>> {
   const b = await db().booking.findFirst({ where: { id: bookingId, customerId, deletedAt: null }, include: { customer: true } });
   if (!b) return { ok: false, error: "Not found" };
-  if (["CANCELLED", "COMPLETED", "IN_PROGRESS"].includes(b.status)) return { ok: false, error: `A ${b.status.toLowerCase().replace("_", " ")} booking can't be cancelled online — please call us` };
+  if (["CANCELLED", "COMPLETED", "IN_PROGRESS"].includes(b.status)) return { ok: false, error: `A ${b.status.toLowerCase().replace("_", " ")} booking can't be cancelled online, please call us` };
   const late = !!b.scheduledStart && b.scheduledStart.getTime() - Date.now() < CANCEL_CUTOFF_HOURS * 3600_000;
   await db().booking.update({ where: { id: bookingId }, data: { status: "CANCELLED" } });
   await db().bookingStatusHistory.create({ data: { bookingId, fromStatus: b.status, toStatus: "CANCELLED", note: `Cancelled by customer${late ? ` (inside ${CANCEL_CUTOFF_HOURS}h of start)` : ""}${reason ? `: ${reason.slice(0, 300)}` : ""}` } });
   if (reason?.trim()) await db().clientNote.create({ data: { customerId, bookingId, leadId: b.leadId, body: reason.trim().slice(0, 2000), kind: "CANCELLATION", authorName: `${b.customer.firstName} ${b.customer.lastName}`.trim() } });
-  await notifyAdmins("BOOKING_CANCELLED", `Booking cancelled by ${b.customer.firstName} ${b.customer.lastName}`.trim(), `${b.reference}${late ? " — LATE (under 24h)" : ""}${reason ? ` — ${reason.slice(0, 100)}` : ""}`, `/admin/bookings/${bookingId}`);
+  await notifyAdmins("BOOKING_CANCELLED", `Booking cancelled by ${b.customer.firstName} ${b.customer.lastName}`.trim(), `${b.reference}${late ? ", LATE (under 24h)" : ""}${reason ? `, ${reason.slice(0, 100)}` : ""}`, `/admin/bookings/${bookingId}`);
   return { ok: true, lateCancellation: late };
 }
 
@@ -207,8 +207,8 @@ export async function requestReschedule(customerId: string, bookingId: string, s
 
   const dateISO = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).format(start);
   const slots = await getAvailableSlots(slug as (typeof serviceIds)[number], dateISO, await getPricingConfig());
-  if (!slots.some((s) => s.startISO === start.toISOString() && s.endISO === end.toISOString())) return { ok: false, error: "That time isn't available — please pick another" };
-  if ((await findConflicts(start, end, bookingId)).length > 0) return { ok: false, error: "That time was just taken — please pick another" };
+  if (!slots.some((s) => s.startISO === start.toISOString() && s.endISO === end.toISOString())) return { ok: false, error: "That time isn't available, please pick another" };
+  if ((await findConflicts(start, end, bookingId)).length > 0) return { ok: false, error: "That time was just taken, please pick another" };
 
   try {
     await withSlotLock(async (tx) => {
@@ -216,11 +216,11 @@ export async function requestReschedule(customerId: string, bookingId: string, s
       await tx.booking.update({ where: { id: bookingId }, data: { scheduledStart: start, scheduledEnd: end, status: "REQUESTED" } });
     });
   } catch (err) {
-    if (err instanceof SlotConflictError) return { ok: false, error: "That time was just taken — please pick another" };
+    if (err instanceof SlotConflictError) return { ok: false, error: "That time was just taken, please pick another" };
     throw err;
   }
   const label = start.toLocaleString("en-US", { timeZone: "America/Los_Angeles", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-  await db().bookingStatusHistory.create({ data: { bookingId, fromStatus: b.status, toStatus: "REQUESTED", note: `Customer requested a new time: ${label}${reason ? ` — ${reason.slice(0, 300)}` : ""}` } });
+  await db().bookingStatusHistory.create({ data: { bookingId, fromStatus: b.status, toStatus: "REQUESTED", note: `Customer requested a new time: ${label}${reason ? `, ${reason.slice(0, 300)}` : ""}` } });
   await db().clientNote.create({ data: { customerId, bookingId, leadId: b.leadId, kind: "RESCHEDULE_REQUEST", body: `Asked to move to ${label}.${reason ? ` ${reason.slice(0, 500)}` : ""}`, authorName: `${b.customer.firstName} ${b.customer.lastName}`.trim() } });
   await notifyAdmins("BOOKING_REQUESTED", `Reschedule requested: ${b.customer.firstName} ${b.customer.lastName}`.trim(), `${b.reference} → ${label}`, `/admin/bookings/${bookingId}`);
   return { ok: true };

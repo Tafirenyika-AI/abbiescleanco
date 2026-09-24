@@ -91,7 +91,7 @@ export default function MediaThread({ target, readOnly = false }: { target: { le
     setError("");
     for (const original of Array.from(files)) {
       if (original.type.startsWith("video/") && original.size > MAX_VIDEO_BYTES) {
-        setError("Videos can be up to 60MB — try a shorter clip.");
+        setError("Videos can be up to 60MB, try a shorter clip.");
         continue;
       }
       if (original.type.startsWith("audio/") && original.size > MAX_AUDIO_BYTES) {

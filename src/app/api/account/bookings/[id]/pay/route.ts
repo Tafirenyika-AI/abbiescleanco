@@ -19,7 +19,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const session = await createCheckoutSession({
     bookingId: id,
     amount: balance,
-    description: `${booking.serviceName} — Balance (${booking.reference})`,
+    description: `${booking.serviceName}, Balance (${booking.reference})`,
     customerEmail: auth.ctx.email || undefined,
     successUrl: `${siteUrl}/pay/success`,
     cancelUrl: `${siteUrl}/account`,

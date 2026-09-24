@@ -227,7 +227,7 @@ function NotesTab({ customer }: { customer: CustomerDetail }) {
           value={form.accessInstructions}
           onChange={(e) => setForm((f) => ({ ...f, accessInstructions: e.target.value }))}
           rows={2}
-          placeholder="Gate codes, lockbox location, etc. — never sent by email or analytics."
+          placeholder="Gate codes, lockbox location, etc. (never sent by email or analytics)"
           className="mt-2 w-full rounded-lg border border-admin-border px-3 py-2 text-sm text-admin-text"
         />
       </Card>

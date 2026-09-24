@@ -285,7 +285,7 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
                   <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
                     <p className="font-semibold">This overlaps with:</p>
                     <ul className="mt-1 list-disc pl-4">
-                      {conflicts.map((c) => <li key={c.reference}>{c.customerName} — {c.scheduledStart ? formatDateTime(c.scheduledStart) : ""}</li>)}
+                      {conflicts.map((c) => <li key={c.reference}>{c.customerName}, {c.scheduledStart ? formatDateTime(c.scheduledStart) : ""}</li>)}
                     </ul>
                     <button type="button" onClick={() => saveReschedule(true)} disabled={savingSchedule} className="mt-2 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-60">Reschedule anyway</button>
                   </div>
@@ -305,7 +305,7 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
               <ul className="mt-2 space-y-2 text-sm">
                 {booking.statusHistory.map((h) => (
                   <li key={h.id} className="rounded-lg border border-admin-border p-2.5">
-                    <p className="text-admin-text">{bookingStatusLabels[h.toStatus as BookingStatusValue] ?? h.toStatus}{h.note ? ` — ${h.note}` : ""}</p>
+                    <p className="text-admin-text">{bookingStatusLabels[h.toStatus as BookingStatusValue] ?? h.toStatus}{h.note ? `, ${h.note}` : ""}</p>
                     <p className="text-xs text-admin-text-muted">{formatDateTime(h.createdAt)}</p>
                   </li>
                 ))}
@@ -317,7 +317,7 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
         <div className="space-y-4">
           <Card>
             <h2 className="flex items-center gap-1.5 font-semibold text-admin-text"><CreditCard className="size-4" aria-hidden /> Request payment</h2>
-            <p className="mt-1 text-xs text-admin-text-muted">Creates a secure Stripe Checkout link — card, Apple Pay, and Google Pay are all accepted automatically.</p>
+            <p className="mt-1 text-xs text-admin-text-muted">Creates a secure Stripe Checkout link. Card, Apple Pay, and Google Pay are all accepted automatically.</p>
             <div className="mt-3 space-y-2">
               <div className="flex gap-2">
                 <label className="flex-1 block">
@@ -415,7 +415,7 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
             <Card>
               <h2 className="flex items-center gap-1.5 font-semibold text-admin-text"><Star className="size-4" aria-hidden /> Review request</h2>
               <p className="mt-1 text-sm text-admin-text-muted">
-                Only send this after confirming the customer is happy — it&apos;s never sent automatically.
+                Only send this after confirming the customer is happy, it&apos;s never sent automatically.
               </p>
               <button
                 type="button"
@@ -450,7 +450,7 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
                 value={earlyNote}
                 onChange={(e) => setEarlyNote(e.target.value)}
                 rows={3}
-                placeholder="e.g. Customer asked us to come at 8am instead — confirmed by phone"
+                placeholder="e.g. Customer asked us to come at 8am instead, confirmed by phone"
                 className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text"
               />
             </label>

@@ -36,7 +36,7 @@ export default async function Hero() {
         <div>
           <p className="hero-location"><Sparkles className="size-4" aria-hidden /> Serving {business.city}, {business.region}</p>
           <h1 id="hero-heading" className="hero-title">Your home,<br /><span>spotless.</span></h1>
-          <p className="hero-description">Thoughtful, dependable home cleaning throughout Spokane Valley — personalized to your space, schedule, and priorities.</p>
+          <p className="hero-description">Thoughtful, dependable home cleaning throughout Spokane Valley, personalized to your space, schedule, and priorities.</p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Button href="/estimate" size="lg">Get My Free Estimate</Button>
             <Button href={whatsappLink("Hi Abbie's Clean Method! I'd like to ask about a cleaning.", contact.whatsappE164)} external variant="outline" size="lg">Message Us on WhatsApp</Button>

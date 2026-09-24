@@ -131,7 +131,7 @@ export default function ProfileForm({
     return (
       <p className="rounded-xl bg-amber-50 p-4 text-sm text-admin-text">
         You&apos;re signed in as the demo admin (env-based login, no DATABASE_URL configured).
-        Profile changes require a real database — see README.md.
+        Profile changes require a real database, see README.md.
       </p>
     );
   }
@@ -237,7 +237,7 @@ export default function ProfileForm({
           <div className="mt-4 space-y-3">
             <p className="rounded-lg bg-green-50 p-3 text-sm font-medium text-green-800">Two-factor authentication is now enabled.</p>
             <p className="text-sm text-admin-text">
-              Save these one-time backup codes somewhere safe — each works once if you lose access to your authenticator app. They won&apos;t be shown again.
+              Save these one-time backup codes somewhere safe, each works once if you lose access to your authenticator app. They won&apos;t be shown again.
             </p>
             <div className="grid grid-cols-2 gap-2 rounded-lg bg-admin-bg p-3 font-mono text-sm text-admin-text sm:grid-cols-4">
               {backupCodes.map((code) => (

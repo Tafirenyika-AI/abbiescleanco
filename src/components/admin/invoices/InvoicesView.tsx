@@ -118,7 +118,7 @@ function NewInvoicePicker({ onClose }: { onClose: () => void }) {
             {quotes.map((q) => (
               <li key={q.id} className="flex items-center justify-between rounded-lg border border-admin-border px-3.5 py-2.5">
                 <div>
-                  <p className="text-sm font-medium text-admin-text">{q.quoteNumber} — {q.customerName}</p>
+                  <p className="text-sm font-medium text-admin-text">{q.quoteNumber}, {q.customerName}</p>
                   <p className="text-xs text-admin-text-muted">{money(q.total)}{q.bookingReference ? ` · ${q.bookingReference}` : ""}</p>
                 </div>
                 <button

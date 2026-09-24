@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
 
   const pending = verifyAdmin2faPendingToken(req.cookies.get(ADMIN_2FA_PENDING_COOKIE)?.value);
   if (!pending) {
-    return NextResponse.json({ ok: false, error: "Session expired — sign in again." }, { status: 401 });
+    return NextResponse.json({ ok: false, error: "Session expired, sign in again." }, { status: 401 });
   }
 
   let body: unknown;

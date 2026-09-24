@@ -70,7 +70,7 @@ export default function AutomationsManager({
       showToast("Couldn't run automations", "error");
       return;
     }
-    showToast(`Processed ${json.processed} — ${json.sent} sent, ${json.skipped} skipped, ${json.failed} failed`, "success");
+    showToast(`Processed ${json.processed}, ${json.sent} sent, ${json.skipped} skipped, ${json.failed} failed`, "success");
     window.location.reload();
   }
 
@@ -81,7 +81,7 @@ export default function AutomationsManager({
           <h1 className="text-2xl font-semibold text-admin-text sm:text-[28px]">Automations</h1>
           <p className="mt-1 text-sm text-admin-text-muted">
             Time-delayed emails that fire automatically after a lead or booking event. A cron job checks for due
-            events hourly — use &ldquo;Run now&rdquo; to process any due events immediately.
+            events hourly, use &ldquo;Run now&rdquo; to process any due events immediately.
           </p>
         </div>
         <button
@@ -106,7 +106,7 @@ export default function AutomationsManager({
                 <div>
                   <p className="text-sm font-medium text-admin-text">{automationRuleLabels[type]}</p>
                   {type === "WIN_BACK" && (
-                    <p className="text-xs text-admin-text-muted">Off by default — review timing/tone before enabling.</p>
+                    <p className="text-xs text-admin-text-muted">Off by default, review timing/tone before enabling.</p>
                   )}
                 </div>
                 <div className="flex items-center gap-3">

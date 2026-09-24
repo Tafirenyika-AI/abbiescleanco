@@ -74,7 +74,7 @@ export default function TestEstimateTool({ config }: { config: PricingConfig }) 
 
       <div className="mt-4 rounded-xl bg-admin-bg p-4">
         {result.requiresManualQuote ? (
-          <p className="text-sm font-semibold text-admin-text">Requires a manual quote — no automatic price shown to the customer.</p>
+          <p className="text-sm font-semibold text-admin-text">Requires a manual quote, no automatic price shown to the customer.</p>
         ) : (
           <>
             <p className="text-2xl font-semibold text-admin-text">${result.totalLow} – ${result.totalHigh}</p>

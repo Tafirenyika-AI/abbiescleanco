@@ -8,7 +8,7 @@ import { getServicesContent } from "@/lib/server/servicesContent";
 import { verifyCustomerSessionToken, CUSTOMER_SESSION_COOKIE } from "@/lib/server/customerAuth";
 
 export const metadata: Metadata = {
-  title: "Get a Free Cleaning Estimate — Spokane Valley, WA",
+  title: "Get a Free Cleaning Estimate in Spokane Valley, WA",
   description:
     "Get a free, preliminary cleaning estimate in minutes. Tell us about your home and get a quote reference number, sent straight to your email.",
   alternates: { canonical: "/estimate" },
@@ -32,7 +32,7 @@ export default async function EstimatePage() {
         </h1>
         <p className="mt-4 text-surface-700">
           A few quick questions and you&apos;ll have a preliminary estimate and a reference
-          number — no obligation.
+          number, no obligation.
         </p>
         <p className="mt-3 text-sm">
           <a href="/estimate/photos" className="font-semibold text-teal-700 underline">Rather show us? Get an estimate from photos →</a>

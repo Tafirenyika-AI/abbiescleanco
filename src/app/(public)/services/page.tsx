@@ -34,7 +34,7 @@ export default async function ServicesPage() {
           </h1>
           <p className="mt-4 text-surface-200">
             Every service below includes what&apos;s normally covered, optional add-ons, and how
-            often we recommend it. Pricing shown across the site is a preliminary estimate —
+            often we recommend it. Pricing shown across the site is a preliminary estimate,
             final pricing is confirmed after reviewing your property.
           </p>
         </div>
@@ -54,7 +54,7 @@ export default async function ServicesPage() {
       <Section className="bg-surface-50 text-center">
         <h2 className="text-2xl font-semibold text-navy-950">Not sure which service fits?</h2>
         <p className="mx-auto mt-2 max-w-md text-surface-700">
-          Start an estimate and tell us a bit about your home — we&apos;ll point you in the right
+          Start an estimate and tell us a bit about your home, we&apos;ll point you in the right
           direction.
         </p>
         <div className="mt-6">

@@ -111,7 +111,7 @@ export default async function AdminDashboardPage() {
 
       {!isDatabaseConfigured && (
         <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-admin-text">
-          No DATABASE_URL is configured — showing leads from the local mock store
+          No DATABASE_URL is configured, showing leads from the local mock store
           (<code>.data/leads.json</code>). Set DATABASE_URL to switch to Postgres/Supabase.
         </p>
       )}
@@ -291,7 +291,7 @@ export default async function AdminDashboardPage() {
               <Link href="/admin/activity" className="text-xs font-semibold text-admin-teal-hover hover:underline">View all</Link>
             </div>
             {activity.length === 0 ? (
-              <p className="mt-3 text-xs text-admin-text-muted">Nothing yet — activity across leads, quotes, bookings and payments will show up here.</p>
+              <p className="mt-3 text-xs text-admin-text-muted">Nothing yet, activity across leads, quotes, bookings and payments will show up here.</p>
             ) : (
               <ul className="mt-3 space-y-3">
                 {activity.map((item) => (
@@ -314,7 +314,7 @@ export default async function AdminDashboardPage() {
               <Link href="/admin/team" className="text-xs font-semibold text-admin-teal-hover hover:underline">Manage</Link>
             </div>
             {activeTeam.length === 0 ? (
-              <p className="mt-3 text-xs text-admin-text-muted">No active team members yet — add your cleaners to assign them to jobs.</p>
+              <p className="mt-3 text-xs text-admin-text-muted">No active team members yet, add your cleaners to assign them to jobs.</p>
             ) : (
               <ul className="mt-3 space-y-3">
                 {activeTeam.slice(0, 5).map((m) => (

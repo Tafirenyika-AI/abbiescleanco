@@ -7,7 +7,7 @@ import { services } from "@/lib/data/services";
 import { verifyCustomerSessionToken, CUSTOMER_SESSION_COOKIE } from "@/lib/server/customerAuth";
 
 export const metadata: Metadata = {
-  title: "Photo Estimate — Snap, Upload, Get a Price",
+  title: "Photo Estimate: Snap, Upload, Get a Price",
   description: "Upload photos of your kitchen, bathrooms or living areas and get a cleaning estimate based on what we can see.",
   alternates: { canonical: "/estimate/photos" },
 };
@@ -26,7 +26,7 @@ export default async function PhotoEstimatePage() {
       <div className="mx-auto max-w-2xl text-center">
         <Eyebrow>Snap &amp; estimate</Eyebrow>
         <h1 className="mt-2 text-4xl font-semibold text-navy-950 sm:text-5xl">Show us, and we&apos;ll price it</h1>
-        <p className="mt-4 text-surface-700">Upload a few photos and we&apos;ll assess how much cleaning each area needs, so your estimate reflects your home — and our crew arrives with the right supplies.</p>
+        <p className="mt-4 text-surface-700">Upload a few photos and we&apos;ll assess how much cleaning each area needs, so your estimate reflects your home, and our crew arrives with the right supplies.</p>
       </div>
       <div className="mx-auto mt-10 max-w-2xl">
         <PhotoEstimator addOnLabels={addOnLabels} serviceNames={serviceNames} isLoggedIn={isLoggedIn} />

@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   // Each call can cost real money (vision model), so this is much tighter than the form limiter.
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   const rate = await checkRateLimit(`photo-estimate:${ip}`, 4, 10 * 60 * 1000);
-  if (!rate.allowed) return NextResponse.json({ ok: false, error: "You've run several photo estimates — please try again in a few minutes." }, { status: 429 });
+  if (!rate.allowed) return NextResponse.json({ ok: false, error: "You've run several photo estimates, please try again in a few minutes." }, { status: 429 });
 
   let form: FormData;
   try {
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     const urls: string[] = [];
     for (const f of files) {
       const head = Buffer.from(await f.slice(0, 16).arrayBuffer());
-      if (sniffMedia(head)?.kind !== "IMAGE") throw new MediaError("Photo estimates need photos (JPG, PNG, WEBP or HEIC) — videos can be added to your request afterwards.");
+      if (sniffMedia(head)?.kind !== "IMAGE") throw new MediaError("Photo estimates need photos (JPG, PNG, WEBP or HEIC), videos can be added to your request afterwards.");
       const prepared = await prepareImageForAnalysis(f);
       if (!prepared) throw new MediaError("We couldn't read one of those photos.");
       images.push({ base64: prepared.base64 });

@@ -14,7 +14,7 @@ export default async function AdminActivityPage() {
       <div>
         <h1 className="text-2xl font-semibold text-admin-text sm:text-[28px]">Activity</h1>
         <p className="mt-1 text-sm text-admin-text-muted">
-          A combined, at-a-glance feed of recent events — new leads and payments alongside admin status changes.
+          A combined, at-a-glance feed of recent events, new leads and payments alongside admin status changes.
           For a filterable record of exactly what changed, see the <Link href="/admin/audit-log" className="text-admin-teal-hover hover:underline">audit log</Link>.
         </p>
       </div>

@@ -33,7 +33,7 @@ export default function ClaimAccountPrompt({ email }: { email: string }) {
   if (state === "done") {
     return (
       <div className="mt-6 flex items-center justify-center gap-2 rounded-2xl bg-white p-4 text-sm text-teal-700">
-        <CheckCircle2 className="size-4" aria-hidden /> Account created — you can track this request from{" "}
+        <CheckCircle2 className="size-4" aria-hidden /> Account created, you can track this request from{" "}
         <a href="/account" className="underline">My account</a>.
       </div>
     );
@@ -43,7 +43,7 @@ export default function ClaimAccountPrompt({ email }: { email: string }) {
     <form onSubmit={onSubmit} className="mt-6 rounded-2xl bg-white p-5 text-left">
       <p className="text-sm font-semibold text-navy-950">Want to track this request? Create an account</p>
       <p className="mt-1 text-xs text-surface-700">
-        We&apos;ll use the name, email, and phone you already entered — just set a password.
+        We&apos;ll use the name, email, and phone you already entered, just set a password.
       </p>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
         <input

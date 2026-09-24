@@ -90,7 +90,7 @@ export default async function AdminCalendarPage({ searchParams }: { searchParams
       </div>
 
       <p className="mt-3 text-xs text-admin-text-muted">
-        Drag-and-drop rescheduling isn&apos;t built yet — click a booking below, then use Reschedule on its detail page.
+        Drag-and-drop rescheduling isn&apos;t built yet, click a booking below, then use Reschedule on its detail page.
       </p>
 
       <Card className="mt-4" padded={false}>
@@ -116,7 +116,7 @@ export default async function AdminCalendarPage({ searchParams }: { searchParams
                       href={`/admin/bookings/${b.id}`}
                       className="block truncate rounded px-1.5 py-0.5 text-[11px] font-medium hover:opacity-80"
                       style={{ backgroundColor: "var(--color-admin-teal)", color: "white", opacity: 0.85 }}
-                      title={`${b.customerName} — ${bookingStatusLabels[b.status]}`}
+                      title={`${b.customerName}, ${bookingStatusLabels[b.status]}`}
                     >
                       {b.scheduledStart && businessTimeLabel(b.scheduledStart)} {b.customerName}
                     </Link>

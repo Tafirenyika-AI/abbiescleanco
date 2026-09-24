@@ -5,7 +5,7 @@ import Button from "@/components/ui/Button";
 import { checklist, tierOrder, tierLabels, tierIncludes } from "@/lib/data/checklist";
 
 export const metadata: Metadata = {
-  title: "Cleaning Checklist — Compare Standard, Deep & Move-In/Out",
+  title: "Cleaning Checklist: Compare Standard, Deep & Move-In/Out",
   description:
     "A transparent, room-by-room cleaning checklist. Compare exactly what's included in Standard Cleaning, Deep Cleaning, and Move-In/Move-Out Cleaning.",
   alternates: { canonical: "/checklist" },

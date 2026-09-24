@@ -63,7 +63,7 @@ export default function SiteHeader({ logoUrl, contact, hours }: { logoUrl?: stri
     <header className="public-header ios-glass sticky top-0 z-50 border-b border-black/[0.06]">
       <TopBar contact={contact} hours={hours} />
       <Container className="flex items-center justify-between py-3">
-        <Link href="/" className="flex items-center gap-2.5" aria-label={`${"Abbie's Clean Method"} — Home`}>
+        <Link href="/" className="flex items-center gap-2.5" aria-label={`${"Abbie's Clean Method"}, Home`}>
           {logoUrl ? (
             // Admin-uploaded logo can be any host — plain <img> avoids requiring
             // every possible source in next.config's remotePatterns.

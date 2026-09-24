@@ -58,10 +58,10 @@ export interface ProspectRow {
  * a deterministic hint to help triage, never a claim about what they've actually asked for.
  */
 export const likelyServiceHints: Record<ProspectCategory, string> = {
-  PROPERTY_MANAGER: "Turnover cleaning between tenants — often recurring, multi-unit.",
+  PROPERTY_MANAGER: "Turnover cleaning between tenants, often recurring, multi-unit.",
   REALTOR: "Move-in / move-out cleaning ahead of showings or closings.",
   LOCAL_BUSINESS: "Recurring commercial cleaning on a set schedule.",
-  HOMEOWNER: "Residential cleaning — one-time or recurring.",
+  HOMEOWNER: "Residential cleaning, one-time or recurring.",
   OTHER: "General residential or commercial cleaning.",
 };
 

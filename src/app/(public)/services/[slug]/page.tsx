@@ -149,7 +149,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
         </div>
 
         <p className="mt-10 text-xs text-surface-700">
-          Pricing shown for this service is a preliminary estimate only — final pricing is
+          Pricing shown for this service is a preliminary estimate only, final pricing is
           confirmed after we review your property&apos;s specific details.
         </p>
       </Section>

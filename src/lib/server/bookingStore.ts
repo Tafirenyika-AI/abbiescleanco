@@ -215,7 +215,7 @@ export async function updateBookingStatus(id: string, status: BookingStatusValue
       approvedEarly = true;
     }
   }
-  const historyNote = approvedEarly ? `Started early — approved: ${note!.trim()}` : note;
+  const historyNote = approvedEarly ? `Started early, approved: ${note!.trim()}` : note;
 
   await db().booking.update({ where: { id }, data: { status } });
   await db().bookingStatusHistory.create({
@@ -290,7 +290,7 @@ export async function createSelfServiceBooking(
   });
   if (!lead) return { ok: false, error: "Request not found" };
   if (!lead.customerId || !lead.addressId || !lead.customer) return { ok: false, error: "This request is missing contact details" };
-  if (lead.quoteRequest?.requiresManualQuote) return { ok: false, error: "This service needs a manual quote — we'll be in touch to confirm pricing first" };
+  if (lead.quoteRequest?.requiresManualQuote) return { ok: false, error: "This service needs a manual quote, we'll be in touch to confirm pricing first" };
   if (lead.bookings.some((b) => b.status !== "CANCELLED")) return { ok: false, error: "This request already has a booking" };
 
   const start = new Date(data.scheduledStart);
@@ -299,7 +299,7 @@ export async function createSelfServiceBooking(
     return { ok: false, error: "Invalid time slot" };
   }
   const conflicts = await findConflicts(start, end);
-  if (conflicts.length > 0) return { ok: false, error: "That time was just booked — please pick another" };
+  if (conflicts.length > 0) return { ok: false, error: "That time was just booked, please pick another" };
 
   await db().address.update({
     where: { id: lead.addressId },
@@ -341,7 +341,7 @@ export async function createSelfServiceBooking(
       });
     });
   } catch (err) {
-    if (err instanceof SlotConflictError) return { ok: false, error: "That time was just booked — please pick another" };
+    if (err instanceof SlotConflictError) return { ok: false, error: "That time was just booked, please pick another" };
     throw err;
   }
 

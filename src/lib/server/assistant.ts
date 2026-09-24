@@ -66,14 +66,14 @@ const tools: Tool[] = [
     match: (q) => /\b(mark|set|change)\b/.test(q) && REFERENCE_RE.test(q),
     run: async (q) => {
       const refMatch = q.match(REFERENCE_RE);
-      if (!refMatch) return { type: "unknown", text: `I couldn't find a reference number in that — try something like "mark ACM-26-4F3A9C as contacted".` };
+      if (!refMatch) return { type: "unknown", text: `I couldn't find a reference number in that, try something like "mark ACM-26-4F3A9C as contacted".` };
       const lead = await getLeadByReference(refMatch[1]);
       if (!lead) return { type: "answer", text: `I couldn't find a lead with reference ${refMatch[1].toUpperCase()}.`, href: "/admin/leads" };
       const statusEntry = STATUS_KEYWORDS.find(([phrase]) => q.includes(phrase));
       if (!statusEntry) {
         return {
           type: "answer",
-          text: `I found ${lead.reference} (${lead.input.firstName} ${lead.input.lastName}), but I'm not sure what status you want — try contacted, confirmed, scheduled, completed, cancelled, or lost.`,
+          text: `I found ${lead.reference} (${lead.input.firstName} ${lead.input.lastName}), but I'm not sure what status you want, try contacted, confirmed, scheduled, completed, cancelled, or lost.`,
           href: "/admin/leads",
         };
       }
@@ -134,7 +134,7 @@ const tools: Tool[] = [
       const awaiting = await listBookingsAwaitingPayment();
       return {
         type: "answer",
-        text: awaiting.length === 0 ? "Nothing's outstanding — every confirmed booking is paid in full." : `${awaiting.length} booking${awaiting.length === 1 ? "" : "s"} still owe${awaiting.length === 1 ? "s" : ""} a balance.`,
+        text: awaiting.length === 0 ? "Nothing's outstanding, every confirmed booking is paid in full." : `${awaiting.length} booking${awaiting.length === 1 ? "" : "s"} still owe${awaiting.length === 1 ? "s" : ""} a balance.`,
         href: "/admin/payments",
       };
     },
@@ -163,7 +163,7 @@ const EXAMPLE_QUERIES = ["new leads", "pipeline value", "conversion rate", "over
 
 export async function resolveAssistantQuery(rawQuery: string): Promise<AssistantResult> {
   const q = rawQuery.trim().toLowerCase();
-  if (!q) return { type: "unknown", text: `Try asking: ${EXAMPLE_QUERIES.join(", ")} — or type a page name to jump there.` };
+  if (!q) return { type: "unknown", text: `Try asking: ${EXAMPLE_QUERIES.join(", ")}, or type a page name to jump there.` };
 
   for (const tool of tools) {
     if (tool.match(q)) return tool.run(q);
@@ -173,7 +173,7 @@ export async function resolveAssistantQuery(rawQuery: string): Promise<Assistant
   if (navMatch) {
     return navMatch.built
       ? { type: "navigate", text: `Opening ${navMatch.label}…`, href: navMatch.href }
-      : { type: "answer", text: `${navMatch.label} isn't built yet — here's what's planned for it.`, href: navMatch.href };
+      : { type: "answer", text: `${navMatch.label} isn't built yet, here's what's planned for it.`, href: navMatch.href };
   }
 
   return { type: "unknown", text: `I don't have an answer for that yet. Try: ${EXAMPLE_QUERIES.join(", ")}.` };
@@ -191,7 +191,7 @@ export async function executeAssistantAction(action: AssistantAction, adminUserI
     if (!current) return { ok: false, error: "That lead no longer exists." };
     if (current.status === action.toStatus) return { ok: true, text: `${current.reference} is already ${action.statusLabel}.`, href: "/admin/leads" };
     const updated = await updateLeadStatus(action.leadId, { status: action.toStatus }, adminUserId);
-    if (!updated) return { ok: false, error: "Couldn't update that lead — it may have been deleted." };
+    if (!updated) return { ok: false, error: "Couldn't update that lead, it may have been deleted." };
     return { ok: true, text: `${updated.reference} marked ${action.statusLabel}.`, href: "/admin/leads" };
   }
   return { ok: false, error: "Unknown action." };

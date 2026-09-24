@@ -30,7 +30,7 @@ export default function ContactInfoManager({ initialContact }: { initialContact:
   return (
     <section className="rounded-2xl border border-slate-200 bg-admin-card p-5">
       <h2 className="font-semibold text-slate-900">Contact info</h2>
-      <p className="mt-1 text-sm text-admin-text-muted">The phone number, WhatsApp number, and email shown across the whole site — header, footer, contact page, emails, and the chat assistant.</p>
+      <p className="mt-1 text-sm text-admin-text-muted">The phone number, WhatsApp number, and email shown across the whole site: header, footer, contact page, emails, and the chat assistant.</p>
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="text-xs font-medium text-slate-500">Phone (how it displays)</span>

@@ -60,7 +60,7 @@ const tools: Tool[] = [
       const config = await getPricingConfig();
       const highlights: ServiceId[] = ["standard-cleaning", "deep-cleaning", "move-in-cleaning", "move-out-cleaning"];
       const lines = highlights.map((id) => `${services.find((s) => s.id === id)?.name}: ${getServicePriceLabel(id, config)}`);
-      return { type: "answer", text: `Starting prices — ${lines.join(" · ")}. Exact pricing depends on your home's size and condition; get a free estimate for a real number.` };
+      return { type: "answer", text: `Starting prices, ${lines.join(" · ")}. Exact pricing depends on your home's size and condition; get a free estimate for a real number.` };
     },
   },
   {
@@ -73,7 +73,7 @@ const tools: Tool[] = [
   },
   {
     match: (q) => /(pet|dog|cat)/.test(q),
-    run: async () => ({ type: "answer", text: "Yes — we're comfortable working around pets, and can note any special instructions when you book." }),
+    run: async () => ({ type: "answer", text: "Yes, we're comfortable working around pets, and can note any special instructions when you book." }),
   },
 ];
 
@@ -86,5 +86,5 @@ export async function resolveGuestAssistantQuery(rawQuery: string): Promise<Gues
     if (tool.match(q)) return tool.run();
   }
   const contact = await getContactInfo();
-  return { type: "unknown", text: `I'm not sure about that one — try asking: ${EXAMPLES.join(", ")}. For anything else, call/text ${contact.phoneDisplay}.` };
+  return { type: "unknown", text: `I'm not sure about that one, try asking: ${EXAMPLES.join(", ")}. For anything else, call/text ${contact.phoneDisplay}.` };
 }

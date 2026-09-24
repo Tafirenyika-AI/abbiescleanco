@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <PolicyLayout title="Terms of Service" updated="Draft — pending client confirmation">
+    <PolicyLayout title="Terms of Service" updated="Draft, pending client confirmation">
       <p>
         These terms cover your use of this website and any estimate or booking request you submit
         to {business.name}.
@@ -19,7 +19,7 @@ export default function TermsPage() {
 
       <h2>Estimates are preliminary</h2>
       <p>
-        Any price shown on this site — including through the instant estimate tool — is a
+        Any price shown on this site, including through the instant estimate tool, is a
         preliminary estimate only. Final pricing is confirmed after we review your property&apos;s
         specific details and is not guaranteed until confirmed in writing.
       </p>

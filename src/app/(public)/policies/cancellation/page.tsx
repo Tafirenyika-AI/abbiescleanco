@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function CancellationPolicyPage() {
   return (
-    <PolicyLayout title="Cancellation & Rescheduling Policy" updated="Draft — pending client confirmation">
+    <PolicyLayout title="Cancellation & Rescheduling Policy" updated="Draft, pending client confirmation">
       <p>We understand plans change. Here&apos;s how to cancel or reschedule a confirmed appointment.</p>
 
       <h2>How to cancel or reschedule</h2>

@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   const session = await createCheckoutSession({
     bookingId: parsed.data.bookingId,
     amount: parsed.data.amount,
-    description: `${booking.serviceName} — ${parsed.data.kind === "deposit" ? "Deposit" : "Payment"} (${booking.reference})`,
+    description: `${booking.serviceName}, ${parsed.data.kind === "deposit" ? "Deposit" : "Payment"} (${booking.reference})`,
     customerEmail: booking.customerEmail || undefined,
     successUrl: `${siteUrl}/pay/success`,
     cancelUrl: `${siteUrl}/pay/cancelled`,

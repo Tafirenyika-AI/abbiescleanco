@@ -103,7 +103,7 @@ export default function BookNowPicker({ leadId, serviceId }: { leadId: string; s
         className="mt-6 flex w-full items-center justify-center gap-2 rounded-full border-2 border-teal-500 px-5 py-3 text-sm font-semibold text-teal-700 hover:bg-teal-50"
       >
         <CalendarClock className="size-4" aria-hidden />
-        Skip the wait — pick a time now
+        Skip the wait, pick a time now
       </button>
     );
   }
@@ -111,7 +111,7 @@ export default function BookNowPicker({ leadId, serviceId }: { leadId: string; s
   return (
     <div className="mt-6 rounded-2xl border border-surface-200 bg-white p-5 text-left">
       <p className="font-semibold text-navy-950">Pick a time</p>
-      <p className="mt-1 text-sm text-surface-700">This holds the slot as a request — our team still confirms it before it&apos;s final.</p>
+      <p className="mt-1 text-sm text-surface-700">This holds the slot as a request, our team still confirms it before it&apos;s final.</p>
 
       <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
         {dates.map((d) => (
@@ -138,7 +138,7 @@ export default function BookNowPicker({ leadId, serviceId }: { leadId: string; s
               <Loader2 className="size-4 animate-spin" aria-hidden /> Checking availability…
             </p>
           ) : slots.length === 0 ? (
-            <p className="text-sm text-surface-700">No open times that day — try another date.</p>
+            <p className="text-sm text-surface-700">No open times that day, try another date.</p>
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {slots.map((s) => (

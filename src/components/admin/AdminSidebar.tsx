@@ -98,7 +98,7 @@ export default function AdminSidebar({ permissions, open, onClose }: {
                 <div className="space-y-1">
                   {group.items.map((item) => (
                     <Link key={item.href} href={item.href} onClick={onClose} aria-label={`${item.label}${item.built ? "" : " (coming soon)"}`} aria-current={activeItem?.href === item.href ? "page" : undefined}
-                      title={`${item.label}${item.built ? "" : " — coming soon"}`}
+                      title={`${item.label}${item.built ? "" : ", coming soon"}`}
                       className={`admin-sidebar-link ios-press group flex min-h-11 items-center gap-2 rounded-xl px-2 py-1.5 text-sm ${collapsed ? "lg:justify-center" : ""}`}>
                       <span className="admin-sidebar-link-icon flex size-8 shrink-0 items-center justify-center rounded-lg"><item.icon className="size-[17px]" aria-hidden /></span>
                       <span className={`min-w-0 flex-1 ${labelClass}`}>

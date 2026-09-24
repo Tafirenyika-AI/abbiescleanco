@@ -84,7 +84,7 @@ function buildPrompt(input: PhotoEstimateInput, addOns: { key: string; label: st
     "You are assessing photos for a professional residential cleaning company in Spokane Valley, WA.",
     `The customer says this is: ${input.areaType} (${input.propertyType}, about ${input.squareFeet} sq ft, ${input.bedrooms} bed / ${input.bathrooms} bath, pets: ${input.hasPets ? "yes" : "no"}).`,
     input.requestedService ? `They are interested in: ${input.requestedService}.` : "",
-    "For each photo, identify the area and how much cleaning it needs (light = well-maintained, normal = everyday, heavy = not cleaned in a while, very-heavy = significant build-up). List specific visible issues only — never guess at things you cannot see.",
+    "For each photo, identify the area and how much cleaning it needs (light = well-maintained, normal = everyday, heavy = not cleaned in a while, very-heavy = significant build-up). List specific visible issues only, never guess at things you cannot see.",
     "Choose the single best-fit service and any add-ons the photos justify, using ONLY these add-on keys: " + addOns.map((a) => `${a.key} (${a.label})`).join(", ") + ".",
     "List supplies/equipment the crew should bring for what is visible (e.g. oven cleaner, descaler for hard-water glass, extra microfiber, HEPA vacuum for pet hair).",
     "Do NOT state any prices or hours. If photos are blurry, unrelated to cleaning, or show possible biohazard/mold/damage, set needsManualReview true and confidence low.",
@@ -177,7 +177,7 @@ export async function runPhotoEstimate(input: PhotoEstimateInput): Promise<Photo
     try {
       analysis = await callVision(apiKey, input, addOnDefs);
     } catch {
-      notice = "Our photo analysis is unavailable right now, so this estimate uses standard assumptions — we'll review your photos and confirm.";
+      notice = "Our photo analysis is unavailable right now, so this estimate uses standard assumptions. We'll review your photos and confirm.";
     }
   } else {
     notice = "Photo analysis isn't switched on yet, so this estimate uses standard assumptions. Your photos still go to our team to review before we confirm a price.";

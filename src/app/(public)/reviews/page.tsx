@@ -45,7 +45,7 @@ export default async function ReviewsPage() {
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-5">
           <div className="lg:col-span-3">
             {reviews.length === 0 ? (
-              <p className="text-surface-700">No published reviews yet — be the first to leave one.</p>
+              <p className="text-surface-700">No published reviews yet, be the first to leave one.</p>
             ) : (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 {reviews.map((r, i) => (

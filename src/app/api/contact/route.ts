@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     subject: `${input.isUrgent ? "[URGENT] " : ""}New contact form message from ${input.name}`,
     html: `
       <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
-        <h2>New contact message${input.isUrgent ? " — marked urgent" : ""}</h2>
+        <h2>New contact message${input.isUrgent ? ", marked urgent" : ""}</h2>
         <p><strong>Name:</strong> ${escapeHtml(input.name)}</p>
         <p><strong>Email:</strong> ${escapeHtml(input.email)}</p>
         ${input.phone ? `<p><strong>Phone:</strong> ${escapeHtml(input.phone)}</p>` : ""}
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       html: `
         <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
           <h2>Thanks for reaching out!</h2>
-          <p>We received your message and will get back to you soon${input.isUrgent ? " — we saw this is urgent and will prioritize it" : ""}.</p>
+          <p>We received your message and will get back to you soon${input.isUrgent ? ", we saw this is urgent and will prioritize it" : ""}.</p>
           <p>Need us right away? Call or text ${business.phoneDisplay}.</p>
         </div>
       `,

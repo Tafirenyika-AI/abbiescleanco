@@ -154,7 +154,7 @@ export async function claimAccountFromLead(email: string, password: string): Pro
 
   if (customer.userId) {
     const existingUser = await db().user.findUnique({ where: { id: customer.userId } });
-    if (existingUser?.passwordHash) return { ok: false, error: "An account already exists for this email — sign in instead." };
+    if (existingUser?.passwordHash) return { ok: false, error: "An account already exists for this email, sign in instead." };
   }
 
   const passwordHash = await bcrypt.hash(password, 10);

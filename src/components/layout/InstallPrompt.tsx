@@ -112,9 +112,9 @@ export default function InstallPrompt() {
         <div>
           <p className="text-sm font-semibold text-navy-950">{title}</p>
           {mode === "desktop" ? (
-            <p className="mt-1 text-xs text-surface-700">Opens in its own window, pinned to your taskbar/dock — no browser tabs, no app store.</p>
+            <p className="mt-1 text-xs text-surface-700">Opens in its own window, pinned to your taskbar/dock, no browser tabs, no app store.</p>
           ) : mode === "mobile" ? (
-            <p className="mt-1 text-xs text-surface-700">Get one-tap access next time — no app store needed.</p>
+            <p className="mt-1 text-xs text-surface-700">Get one-tap access next time, no app store needed.</p>
           ) : (
             <p className="mt-1 flex flex-wrap items-center gap-1 text-xs text-surface-700">
               Tap <Share className="inline size-3.5" aria-hidden /> Share, then{" "}

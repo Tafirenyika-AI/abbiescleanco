@@ -7,12 +7,12 @@ export const faqs: Faq[] = [
   {
     question: "How does the online estimate work?",
     answer:
-      "Tell us about your property and the service you're interested in, and you'll get a preliminary estimate range right away. It's a starting point — we confirm final pricing after reviewing your property's specific details.",
+      "Tell us about your property and the service you're interested in, and you'll get a preliminary estimate range right away. It's a starting point, we confirm final pricing after reviewing your property's specific details.",
   },
   {
     question: "Is the price I see guaranteed?",
     answer:
-      "No — every estimate is preliminary. Final pricing is confirmed once we've reviewed your home's condition, size, and any special requests.",
+      "No, every estimate is preliminary. Final pricing is confirmed once we've reviewed your home's condition, size, and any special requests.",
   },
   {
     question: "What areas do you serve?",
@@ -32,7 +32,7 @@ export const faqs: Faq[] = [
   {
     question: "How do I book a specific date?",
     answer:
-      "Choose a preferred date and time window when you request your estimate. That request is submitted for review — we'll confirm the exact date and arrival window with you before it's a locked-in appointment.",
+      "Choose a preferred date and time window when you request your estimate. That request is submitted for review, we'll confirm the exact date and arrival window with you before it's a locked-in appointment.",
   },
   {
     question: "Can I set up recurring cleanings?",
@@ -42,6 +42,6 @@ export const faqs: Faq[] = [
   {
     question: "What if I'm not satisfied with a cleaning?",
     answer:
-      "Let us know as soon as possible. We want the chance to make it right — see our Satisfaction & Re-clean Policy for details.",
+      "Let us know as soon as possible. We want the chance to make it right, see our Satisfaction & Re-clean Policy for details.",
   },
 ];

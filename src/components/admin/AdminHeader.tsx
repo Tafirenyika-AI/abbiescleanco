@@ -281,7 +281,7 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
             ) : (
               <span
                 key={item.label}
-                title="Coming soon — this module isn't built yet"
+                title="Coming soon, this module isn't built yet"
                 className="flex cursor-not-allowed items-center justify-between rounded-lg px-2.5 py-2 text-sm text-admin-text-muted"
               >
                 {item.label}

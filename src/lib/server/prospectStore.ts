@@ -109,7 +109,7 @@ export interface SearchProspectsResult {
  *  prospects (deduped by Google's own place id). Never contacts anyone -- this only discovers. */
 export async function searchAndSaveProspects(query: string, category: ProspectCategory): Promise<SearchProspectsResult> {
   const apiKey = await getIntegrationValue("googleMapsApiKey", "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY");
-  if (!apiKey) return { ok: false, error: "Google Places isn't configured yet — add a Google Maps API key in Settings → Integrations." };
+  if (!apiKey) return { ok: false, error: "Google Places isn't configured yet, add a Google Maps API key in Settings → Integrations." };
 
   let results: PlaceResult[];
   try {
@@ -182,18 +182,18 @@ export async function draftOutreachForProspect(id: string): Promise<ProspectRow 
   const openers: Record<ProspectCategory, string> = {
     PROPERTY_MANAGER: `I help property managers in ${areas} keep turnover cleaning fast and reliable between tenants, so units are guest-ready without you having to chase it.`,
     REALTOR: `I work with local realtors on move-in and move-out cleaning so listings show well and closings aren't held up waiting on a clean.`,
-    LOCAL_BUSINESS: `I provide recurring commercial cleaning for local businesses in ${areas} — a consistent, insured crew on a schedule that fits your hours.`,
+    LOCAL_BUSINESS: `I provide recurring commercial cleaning for local businesses in ${areas}, a consistent, insured crew on a schedule that fits your hours.`,
     HOMEOWNER: `Welcome to the neighborhood! I run a local residential cleaning service in ${areas} and wanted to say hello in case a move-in or ongoing clean would help.`,
     OTHER: `I run a local cleaning service in ${areas} and wanted to introduce ourselves.`,
   };
 
-  const subject = `Cleaning services for ${p.businessName || "you"} — Abbie's Clean Method`;
+  const subject = `Cleaning services for ${p.businessName || "you"}, Abbie's Clean Method`;
   const body = [
     `Hi ${who},`,
     "",
     openers[(p.category as ProspectCategory) ?? "OTHER"],
     "",
-    `We're ${business.name}, based in ${business.city}, ${business.region}. Happy to send over pricing or answer any questions — no pressure at all.`,
+    `We're ${business.name}, based in ${business.city}, ${business.region}. Happy to send over pricing or answer any questions, no pressure at all.`,
     "",
     `You can reach me directly at ${contact.phoneDisplay} or ${contact.email}, or reply to this email.`,
     "",
@@ -259,7 +259,7 @@ export async function researchProspect(id: string): Promise<ResearchResult> {
   if (!p) return { ok: false, error: "Not found" };
 
   const apiKey = await getIntegrationValue("anthropicApiKey", "ANTHROPIC_API_KEY");
-  if (!apiKey) return { ok: false, error: "Anthropic isn't configured yet — add an API key in Settings → Integrations." };
+  if (!apiKey) return { ok: false, error: "Anthropic isn't configured yet, add an API key in Settings → Integrations." };
 
   const who = p.businessName || p.contactName || "this business";
   const location = p.address || business.city;
@@ -330,6 +330,16 @@ export async function sendProspectOutreach(id: string): Promise<SendOutreachResu
   return { ok: true };
 }
 
+/** Permanently removes a prospect the admin has decided isn't worth tracking. Prospects carry no
+ *  audit trail today (unlike leads/customers), so this is a hard delete, not a soft one -- if it's
+ *  already converted, only the discovery record goes; the real Lead it became is untouched. */
+export async function deleteProspect(id: string): Promise<{ ok: boolean; error?: string }> {
+  const existing = await db().prospect.findUnique({ where: { id } });
+  if (!existing) return { ok: false, error: "Not found" };
+  await db().prospect.delete({ where: { id } });
+  return { ok: true };
+}
+
 export interface ConvertToLeadResult {
   ok: boolean;
   error?: string;
@@ -363,7 +373,7 @@ export async function convertProspectToLead(id: string): Promise<ConvertToLeadRe
   if (!p.email) return { ok: false, error: "Add an email address for this prospect before converting." };
   if (!p.phone) return { ok: false, error: "Add a phone number for this prospect before converting." };
   const zipMatch = p.address?.match(/\b(\d{5})\b/);
-  if (!zipMatch) return { ok: false, error: "This prospect's address needs a 5-digit ZIP code before converting — edit the address first." };
+  if (!zipMatch) return { ok: false, error: "This prospect's address needs a 5-digit ZIP code before converting, edit the address first." };
 
   const { createLead } = await import("@/lib/server/leadStore");
   const { calculateEstimate } = await import("@/lib/pricing");
@@ -378,8 +388,8 @@ export async function convertProspectToLead(id: string): Promise<ConvertToLeadRe
 
   const categoryLabel = prospectCategoryLabels[(p.category as ProspectCategory) ?? "OTHER"];
   const noteParts = [
-    `Converted from Prospecting (${categoryLabel}, discovered via ${p.source}${p.sourceQuery ? ` — "${p.sourceQuery}"` : ""}).`,
-    "Property/scope details are unknown — confirm directly with the contact before quoting.",
+    `Converted from Prospecting (${categoryLabel}, discovered via ${p.source}${p.sourceQuery ? `, "${p.sourceQuery}"` : ""}).`,
+    "Property/scope details are unknown, confirm directly with the contact before quoting.",
     p.notes ? `Prospecting notes: ${p.notes}` : "",
   ].filter(Boolean);
 

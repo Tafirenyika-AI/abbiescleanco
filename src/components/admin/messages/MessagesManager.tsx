@@ -67,7 +67,7 @@ export default function MessagesManager({ messages: initialMessages }: { message
     <div>
       <div>
         <h1 className="text-2xl font-semibold text-admin-text sm:text-[28px]">Messages</h1>
-        <p className="mt-1 text-sm text-admin-text-muted">Every submission through the site&apos;s Contact form — nothing here depends on you seeing the email.</p>
+        <p className="mt-1 text-sm text-admin-text-muted">Every submission through the site&apos;s Contact form, nothing here depends on you seeing the email.</p>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-1 rounded-full border border-admin-border bg-admin-card p-1 w-fit">

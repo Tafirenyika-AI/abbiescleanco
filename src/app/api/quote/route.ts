@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
       ok: true,
       reference: duplicateReference,
       duplicate: true,
-      message: "We already have a recent request from you — no need to resubmit.",
+      message: "We already have a recent request from you, no need to resubmit.",
     });
   }
 
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
   await scheduleQuoteFollowUps(leadId);
 
   const estimateLabel = estimate.requiresManualQuote
-    ? "Manual quote required — we'll follow up after reviewing your property details."
+    ? "Manual quote required, we'll follow up after reviewing your property details."
     : `$${estimate.totalLow}–$${estimate.totalHigh} (preliminary)`;
 
   await sendEmail({
@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
   await notifyAdmins(
     "NEW_LEAD",
     `New lead: ${input.firstName} ${input.lastName}`,
-    `${service.name} — ${estimateLabel}`,
+    `${service.name}, ${estimateLabel}`,
     "/admin/leads"
   );
 

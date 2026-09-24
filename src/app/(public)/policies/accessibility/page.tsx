@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function AccessibilityPage() {
   return (
-    <PolicyLayout title="Accessibility Statement" updated="Draft — pending client confirmation">
+    <PolicyLayout title="Accessibility Statement" updated="Draft, pending client confirmation">
       <p>
         {business.name} is committed to making this website usable by as many people as possible,
         including people who use assistive technology.

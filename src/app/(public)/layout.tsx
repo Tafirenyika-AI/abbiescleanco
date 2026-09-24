@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     template: `%s | ${business.name}`,
   },
   description:
-    "Thoughtful, dependable home cleaning throughout Spokane Valley — standard, deep, move-in/move-out, and recurring cleaning. Get a free preliminary estimate today.",
+    "Thoughtful, dependable home cleaning throughout Spokane Valley: standard, deep, move-in/move-out, and recurring cleaning. Get a free preliminary estimate today.",
   openGraph: {
     type: "website",
     siteName: business.name,

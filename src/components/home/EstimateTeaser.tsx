@@ -60,7 +60,7 @@ export default function EstimateTeaser({
             See a preliminary range in seconds
           </h2>
           <p className="mt-3 max-w-md text-surface-700">
-            Try it right here — pick a service and your home&apos;s size for a quick, preliminary
+            Try it right here, pick a service and your home&apos;s size for a quick, preliminary
             range. Continue to the full estimate to get your exact quote reference and add-ons.
           </p>
           <p className="mt-3 text-sm text-surface-700">

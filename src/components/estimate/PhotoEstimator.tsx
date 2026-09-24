@@ -76,7 +76,7 @@ export default function PhotoEstimator({ addOnLabels, serviceNames, isLoggedIn }
     const res = await fetch("/api/photo-estimate", { method: "POST", body: form });
     const data = await res.json().catch(() => ({}));
     setBusy(false);
-    if (!res.ok || !data.ok) return setError(data.error || "Something went wrong — please try again.");
+    if (!res.ok || !data.ok) return setError(data.error || "Something went wrong, please try again.");
     setResult(data);
   }
 
@@ -106,7 +106,7 @@ export default function PhotoEstimator({ addOnLabels, serviceNames, isLoggedIn }
     });
     const data = await res.json().catch(() => ({}));
     setBusy(false);
-    if (!res.ok || !data.ok) return setError(data.error || "Couldn't send your request — please try again.");
+    if (!res.ok || !data.ok) return setError(data.error || "Couldn't send your request, please try again.");
     setSent({ reference: data.reference });
   }
 
@@ -129,7 +129,7 @@ export default function PhotoEstimator({ addOnLabels, serviceNames, isLoggedIn }
           <p className="mt-1 text-sm text-surface-700">
             {serviceNames[result.service] ?? result.service}{!result.requiresManualQuote && ` · about ${result.hoursLow}–${result.hoursHigh} hours`} · {conditionLabel[result.condition]}
           </p>
-          {result.requiresManualQuote && <p className="mt-2 text-sm text-surface-700">We&apos;d like a person to look at these photos before pricing — send your request and we&apos;ll follow up.</p>}
+          {result.requiresManualQuote && <p className="mt-2 text-sm text-surface-700">We&apos;d like a person to look at these photos before pricing, send your request and we&apos;ll follow up.</p>}
           {result.notice && <p className="mt-3 rounded-2xl bg-warm-100 px-3.5 py-2.5 text-sm text-warm-600">{result.notice}</p>}
           {result.addOns.length > 0 && <p className="mt-3 text-sm text-navy-950">Included add-ons: {result.addOns.map((k) => addOnLabels[k] ?? k).join(", ")}</p>}
           {result.findings.length > 0 && (
@@ -157,7 +157,7 @@ export default function PhotoEstimator({ addOnLabels, serviceNames, isLoggedIn }
                 className={`${field} min-h-[80px]`}
                 value={customerNotes}
                 onChange={(e) => setCustomerNotes(e.target.value)}
-                placeholder="Optional — e.g. the stain in the kitchen is actually on the ceiling, not the counter."
+                placeholder="Optional, e.g. the stain in the kitchen is actually on the ceiling, not the counter."
               />
             </label>
             <label className="mt-3 flex items-start gap-2 text-sm text-navy-950">
@@ -196,7 +196,7 @@ export default function PhotoEstimator({ addOnLabels, serviceNames, isLoggedIn }
     <div className="space-y-5 glass-card rounded-[28px] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]">
       <div>
         <h2 className="text-lg font-semibold text-navy-950">1. Show us what needs cleaning</h2>
-        <p className="mt-1 text-sm text-surface-700">Add up to 6 photos — kitchen, bathrooms, floors, anything you&apos;re worried about. Wide shots and close-ups both help.</p>
+        <p className="mt-1 text-sm text-surface-700">Add up to 6 photos: kitchen, bathrooms, floors, anything you&apos;re worried about. Wide shots and close-ups both help.</p>
         <ul className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">
           {photos.map((p, i) => (
             <li key={p.preview} className="relative overflow-hidden rounded-xl ring-1 ring-black/5">

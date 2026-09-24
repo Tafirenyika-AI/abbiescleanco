@@ -66,7 +66,7 @@ export default function NewBookingForm() {
         <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text">
           <option value="">Select a customer…</option>
           {customers.map((c) => (
-            <option key={c.id} value={c.id}>{c.name} — {c.email}</option>
+            <option key={c.id} value={c.id}>{c.name}, {c.email}</option>
           ))}
         </select>
         <span className="mt-1 block text-xs text-admin-text-muted">

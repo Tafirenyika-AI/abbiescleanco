@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <PolicyLayout title="Privacy Policy" updated="Draft — pending client confirmation">
+    <PolicyLayout title="Privacy Policy" updated="Draft, pending client confirmation">
       <p>
         {business.name} (&ldquo;we,&rdquo; &ldquo;us&rdquo;) respects your privacy. This policy
         explains what information we collect through {business.name.replace(" LLC", "")}&apos;s
@@ -30,7 +30,7 @@ export default function PrivacyPolicyPage() {
       <ul>
         <li>To respond to estimate requests and provide preliminary pricing</li>
         <li>To schedule, confirm, and manage bookings</li>
-        <li>To send confirmations, reminders, and — only with your consent — SMS/WhatsApp updates</li>
+        <li>To send confirmations and reminders, plus SMS/WhatsApp updates if you&apos;ve consented to them</li>
         <li>To improve our services</li>
       </ul>
 

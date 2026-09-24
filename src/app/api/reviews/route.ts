@@ -42,12 +42,12 @@ export async function POST(req: NextRequest) {
   // Reviews are never auto-published — this just lets the business know one came in.
   await sendEmail({
     to: business.email,
-    subject: `New review submitted — ${parsed.data.rating}★ from ${parsed.data.authorName}`,
+    subject: `New review submitted, ${parsed.data.rating}★ from ${parsed.data.authorName}`,
     html: `
       <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
         <h2>New review awaiting approval</h2>
         <p><strong>${"★".repeat(parsed.data.rating)}${"☆".repeat(5 - parsed.data.rating)}</strong></p>
-        <p><strong>${parsed.data.authorName}</strong>${parsed.data.location ? ` — ${parsed.data.location}` : ""}</p>
+        <p><strong>${parsed.data.authorName}</strong>${parsed.data.location ? `, ${parsed.data.location}` : ""}</p>
         <p>${parsed.data.quote.replace(/</g, "&lt;")}</p>
         <p style="color:#4a5a6a;font-size:13px">Review it in the admin dashboard before it appears on the site.</p>
       </div>

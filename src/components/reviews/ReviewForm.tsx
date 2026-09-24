@@ -53,7 +53,7 @@ export default function ReviewForm() {
     <form onSubmit={onSubmit} noValidate className="rounded-2xl border border-surface-200 bg-white p-6">
       <h3 className="font-semibold text-navy-950">Leave a review</h3>
       <p className="mt-1 text-sm text-surface-700">
-        Honest feedback only — we never edit what you write, and reviews are moderated before
+        Honest feedback only, we never edit what you write, and reviews are moderated before
         they appear publicly.
       </p>
 

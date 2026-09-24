@@ -32,7 +32,7 @@ export default function GuestAssistantWidget() {
     const data = await res.json().catch(() => null);
     setBusy(false);
     if (!data?.ok) {
-      setMessages((m) => [...m, { role: "assistant", text: data?.error || "Something went wrong — please try again." }]);
+      setMessages((m) => [...m, { role: "assistant", text: data?.error || "Something went wrong, please try again." }]);
       return;
     }
     setMessages((m) => [...m, { role: "assistant", text: data.result.text }]);
@@ -68,7 +68,7 @@ export default function GuestAssistantWidget() {
           <div className="flex-1 space-y-2.5 overflow-y-auto px-4 py-3">
             {messages.length === 0 && (
               <div>
-                <p className="text-sm text-surface-700">Ask about pricing, service areas, or hours — or just say &quot;get an estimate.&quot;</p>
+                <p className="text-sm text-surface-700">Ask about pricing, service areas, or hours, or just say &quot;get an estimate.&quot;</p>
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
                   {EXAMPLES.map((ex) => (
                     <button key={ex} type="button" onClick={() => ask(ex)} className="ios-press rounded-full bg-surface-100 px-3 py-1.5 text-xs font-semibold text-navy-950">

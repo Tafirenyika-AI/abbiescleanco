@@ -37,7 +37,7 @@ function RequestDetail({ id, status, instructions, onChanged }: { id: string; st
     setBusy(true);
     const r = await post(`/api/account/requests/${id}`, { instructions: text }, "PATCH");
     setBusy(false);
-    setMsg(r.ok ? "Saved — our team has been notified." : r.data.error || "Couldn't save");
+    setMsg(r.ok ? "Saved, our team has been notified." : r.data.error || "Couldn't save");
     if (r.ok) onChanged();
   }
   async function withdraw() {
@@ -101,7 +101,7 @@ function QuoteDetail({ id, onChanged }: { id: string; onChanged: () => void }) {
   if (!quote) return <p className="text-sm text-surface-700">Loading…</p>;
   return (
     <>
-      <Section heading={`${quote.serviceName} — ${quote.quoteNumber}`}>
+      <Section heading={`${quote.serviceName}, ${quote.quoteNumber}`}>
         <table className="w-full text-sm">
           <tbody>
             {quote.items.map((i) => (
@@ -127,7 +127,7 @@ function QuoteDetail({ id, onChanged }: { id: string; onChanged: () => void }) {
             </div>
           ) : (
             <div className="space-y-2">
-              <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="What could we change? (optional — helps us send a better quote)" className="w-full rounded-2xl border border-surface-200 px-3.5 py-2.5 text-sm" />
+              <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="What could we change? (optional, helps us send a better quote)" className="w-full rounded-2xl border border-surface-200 px-3.5 py-2.5 text-sm" />
               <div className="flex gap-2">
                 <button type="button" onClick={() => respond("DECLINE")} disabled={busy} className="ios-press rounded-full bg-red-100 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">Confirm decline</button>
                 <button type="button" onClick={() => setDeclining(false)} className="ios-press rounded-full bg-surface-100 px-4 py-2 text-sm font-semibold">Back</button>
@@ -205,7 +205,7 @@ function BookingDetail({ id, onChanged }: { id: string; onChanged: () => void })
     const r = await post(`/api/account/bookings/${id}/pay`);
     setBusy(false);
     if (r.ok && r.data.url) window.location.href = r.data.url;
-    else setMsg(r.data.error || "Online payment isn't available right now — you can also pay by Zelle, Venmo, Apple Cash, check or cash.");
+    else setMsg(r.data.error || "Online payment isn't available right now, you can also pay by Zelle, Venmo, Apple Cash, check or cash.");
   }
 
   if (!b) return <p className="text-sm text-surface-700">Loading…</p>;
@@ -213,7 +213,7 @@ function BookingDetail({ id, onChanged }: { id: string; onChanged: () => void })
 
   return (
     <>
-      <Section heading={`${b.serviceName} — ${b.reference}`}>
+      <Section heading={`${b.serviceName}, ${b.reference}`}>
         <p className="text-sm text-navy-950">{b.scheduledStart ? dt(b.scheduledStart) : "Not yet scheduled"} · <span className="font-semibold">{title(b.status)}</span></p>
         <p className="mt-0.5 text-sm text-surface-700">{b.address}</p>
       </Section>
@@ -269,7 +269,7 @@ function BookingDetail({ id, onChanged }: { id: string; onChanged: () => void })
                 ))}
               </div>
               {date && slots[date] === undefined && <p className="text-sm text-surface-700">Loading times…</p>}
-              {date && slots[date] && (slots[date].length === 0 ? <p className="text-sm text-surface-700">No openings that day — try another.</p> : (
+              {date && slots[date] && (slots[date].length === 0 ? <p className="text-sm text-surface-700">No openings that day, try another.</p> : (
                 <div className="flex flex-wrap gap-2">
                   {slots[date].map((s) => (
                     <button key={s.startISO} type="button" onClick={() => setSlot(s)} aria-pressed={slot?.startISO === s.startISO} className={`ios-press rounded-full px-3.5 py-2 text-sm font-semibold ${slot?.startISO === s.startISO ? "bg-teal-600 text-white" : "bg-surface-100 text-navy-950"}`}>{s.label}</button>
@@ -278,7 +278,7 @@ function BookingDetail({ id, onChanged }: { id: string; onChanged: () => void })
               ))}
               <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Reason (optional)" className="w-full rounded-2xl border border-surface-200 px-3.5 py-2.5 text-sm" />
               <div className="flex gap-2">
-                <button type="button" disabled={!slot || busy} onClick={() => slot && act("reschedule", { scheduledStart: slot.startISO, scheduledEnd: slot.endISO, reason }, "Request sent — we'll confirm your new time shortly.")} className="ios-press rounded-full bg-navy-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Request this time</button>
+                <button type="button" disabled={!slot || busy} onClick={() => slot && act("reschedule", { scheduledStart: slot.startISO, scheduledEnd: slot.endISO, reason }, "Request sent, we'll confirm your new time shortly.")} className="ios-press rounded-full bg-navy-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Request this time</button>
                 <button type="button" onClick={() => setMode("none")} className="ios-press rounded-full bg-surface-100 px-4 py-2 text-sm font-semibold">Back</button>
               </div>
             </div>
@@ -295,7 +295,7 @@ function BookingDetail({ id, onChanged }: { id: string; onChanged: () => void })
         <Section heading="Timeline">
           <ol className="space-y-1 text-sm text-surface-700">
             {b.history.map((h, i) => (
-              <li key={i}><span className="font-semibold text-navy-950">{title(h.status)}</span> · {new Date(h.createdAt).toLocaleDateString("en-US")}{h.note ? ` — ${h.note}` : ""}</li>
+              <li key={i}><span className="font-semibold text-navy-950">{title(h.status)}</span> · {new Date(h.createdAt).toLocaleDateString("en-US")}{h.note ? `, ${h.note}` : ""}</li>
             ))}
           </ol>
         </Section>

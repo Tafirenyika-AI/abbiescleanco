@@ -211,7 +211,7 @@ export default function EstimateWizard({
           <p className="mt-1 text-surface-700">Preliminary estimate: {submitState.estimateLabel}</p>
         )}
         <p className="mt-4 text-sm text-surface-700">
-          This request is pending — our team will follow up to confirm final pricing and your
+          This request is pending, our team will follow up to confirm final pricing and your
           preferred date.
         </p>
         {!submitState.requiresManualQuote && submitState.leadId && submitState.serviceId && (
@@ -253,7 +253,7 @@ export default function EstimateWizard({
       </p>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-8">
-        {/* Honeypot field — hidden from real users, catches bots */}
+        {/* Honeypot field, hidden from real users, catches bots */}
         <input
           type="text"
           tabIndex={-1}
@@ -336,7 +336,7 @@ export default function EstimateWizard({
 
             {values.propertyType === "commercial" && (
               <p className="text-sm text-surface-700 sm:col-span-2">
-                Commercial spaces are quoted manually after we review your details — no bedroom
+                Commercial spaces are quoted manually after we review your details, no bedroom
                 count needed.
               </p>
             )}

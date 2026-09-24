@@ -35,7 +35,7 @@ export async function createCheckoutSession(
   input: CreateCheckoutSessionInput
 ): Promise<{ ok: true; url: string; paymentIntentId: string } | { ok: false; error: string }> {
   const stripe = await getStripeClient();
-  if (!stripe) return { ok: false, error: "Stripe isn't configured yet — add a Secret Key in Settings → Integrations." };
+  if (!stripe) return { ok: false, error: "Stripe isn't configured yet, add a Secret Key in Settings → Integrations." };
 
   try {
     const session = await stripe.checkout.sessions.create({

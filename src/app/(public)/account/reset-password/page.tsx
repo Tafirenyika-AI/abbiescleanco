@@ -47,7 +47,7 @@ function ResetPasswordForm() {
 
       {state === "done" ? (
         <p className="mt-4 rounded-xl bg-teal-50 p-4 text-sm text-navy-900">
-          Password updated — redirecting you to sign in…
+          Password updated, redirecting you to sign in…
         </p>
       ) : (
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
