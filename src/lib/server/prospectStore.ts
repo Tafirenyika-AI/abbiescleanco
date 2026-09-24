@@ -153,18 +153,19 @@ interface WebOpportunity {
 }
 
 /**
- * Searches the real web (via Claude's web_search tool, same proven mechanism as researchProspect
- * below) for RECENT public posts where someone -- a homeowner or a local business -- is actively
- * looking to hire a cleaning service right now (Craigslist gigs/services-wanted, Nextdoor, local
- * Facebook groups, Reddit, community forums). This is a fundamentally different, higher-intent
- * discovery channel than Google Places: those are businesses that MIGHT need cleaning someday, these
- * are people who've just said, publicly, that they need one now -- reaching out while that need is
- * still live is the real advantage. Every result is a genuine web_search hit (cross-checked against
- * the response's own citations, not just trusted text) with a real source link; nothing here ever
- * auto-contacts anyone -- these posts rarely expose a direct email/phone (Craigslist relays replies
- * through its own anonymized system), so the realistic, honest next step is always the admin opening
- * the real post and replying there themselves, same "AI finds, human reaches out" pattern as every
- * other prospect.
+ * Searches the real, OPEN web (via Claude's web_search tool, same proven mechanism as
+ * researchProspect below) for RECENT public posts where someone -- a homeowner or a local
+ * business -- is actively looking to hire a cleaning service right now. Deliberately NOT
+ * restricted to a fixed platform list: the prompt tells the model to search broadly (general
+ * Google-indexed web search across whatever real sites turn up results), not just the handful
+ * of named examples given as a starting point. This is a fundamentally different, higher-intent
+ * discovery channel than Google Places: those are businesses that MIGHT need cleaning someday,
+ * these are people who've just said, publicly, that they need one now -- reaching out while that
+ * need is still live is the real advantage. Every result is a genuine web_search hit
+ * (cross-checked against the response's own citations, not just trusted text) with a real source
+ * link; nothing here ever auto-contacts anyone -- these posts rarely expose a direct email/phone,
+ * so the realistic, honest next step is always the admin opening the real post and replying there
+ * themselves, same "AI finds, human reaches out" pattern as every other prospect.
  */
 export async function searchWebForCleaningLeads(): Promise<SearchProspectsResult> {
   const apiKey = await getIntegrationValue("anthropicApiKey", "ANTHROPIC_API_KEY");
@@ -172,9 +173,11 @@ export async function searchWebForCleaningLeads(): Promise<SearchProspectsResult
 
   const areas = business.areaServed.join(", ");
   const today = new Date().toISOString().slice(0, 10);
-  const query = `Search the web for REAL, RECENT (within about the last 14 days -- today is ${today}) public posts where an individual homeowner or a local business in or very near ${areas} is actively looking for, needs, or wants to hire a house or commercial cleaning service right now. Look at places like Craigslist "gigs"/"services wanted" listings, Nextdoor, local Facebook groups, Reddit, and community forums.
+  const query = `Search the OPEN WEB -- general search, not limited to any fixed list of sites -- for REAL, RECENT (within about the last 14 days -- today is ${today}) public posts where an individual homeowner or a local business in or very near ${areas} is actively looking for, needs, or wants to hire a house or commercial cleaning service right now.
 
-Do NOT include posts from cleaning companies advertising their OWN services -- only posts from someone seeking to HIRE a cleaner. Do NOT include anything you can't reasonably tell is recent (roughly the last 2-3 weeks) -- skip it rather than guess.
+Run several different searches with different phrasings and check as many distinct real sources as you can, rather than stopping after the first result. Cast a wide net across whatever platforms genuinely turn up matches -- these commonly include (but are NOT limited to): Craigslist "gigs"/"services wanted", Nextdoor, public Facebook posts/groups and Facebook Marketplace "services" requests, Reddit (including local city/neighborhood subreddits), X/Twitter, local community forums and classifieds, and job-request marketplaces where homeowners post a cleaning job for providers to bid on (Thumbtack, Angi, TaskRabbit, Bark, Care.com). Also just run plain general searches (e.g. "need a house cleaner [city]", "looking for cleaning service [city]") the way a real person would Google it, and see what genuinely comes back -- don't assume in advance which site will have the answer.
+
+Do NOT include posts from cleaning companies advertising their OWN services -- only posts from someone seeking to HIRE a cleaner. Do NOT include anything you can't reasonably tell is recent (roughly the last 2-3 weeks) -- skip it rather than guess. Do NOT limit yourself to the example sites above if a real search turns up a genuine match somewhere else.
 
 Respond with ONLY a JSON array, nothing else before or after it. One object per genuine match, with exactly these fields: "url" (the real source URL from your search), "title" (a short label for it), "snippet" (what they're actually asking for, in their own words where possible), "postedDate" (the real date or relative time if stated, e.g. "3 days ago" or "2026-09-20", else null), "category" (one of "HOMEOWNER", "LOCAL_BUSINESS", "PROPERTY_MANAGER", "OTHER" based on who's asking). If you find nothing genuine, respond with exactly [].`;
 
@@ -187,11 +190,11 @@ Respond with ONLY a JSON array, nothing else before or after it. One object per 
       headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
       body: JSON.stringify({
         model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5",
-        max_tokens: 2000,
-        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }],
+        max_tokens: 3000,
+        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 12 }],
         messages: [{ role: "user", content: query }],
       }),
-      signal: AbortSignal.timeout(90_000),
+      signal: AbortSignal.timeout(120_000),
     });
     if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
     const data = (await res.json()) as { content?: { type: string; text?: string; citations?: { url?: string }[] }[] };
