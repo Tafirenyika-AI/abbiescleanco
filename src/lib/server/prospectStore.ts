@@ -31,6 +31,40 @@ function looksLikeCleaningCompetitor(name: string): boolean {
   return COMPETITOR_NAME_PATTERN.test(name);
 }
 
+// Cross-source duplicate detection. Each discovery path already dedupes against ITSELF exactly
+// (Google Places by its own stable place id, the web-intent search by exact post URL), but that
+// misses real near-duplicates: the same business found again under a slightly different Places
+// listing, the same phone number reappearing from a different query, or the same site with/
+// without "www."/a trailing slash. This checks every NEW result against the prospects already in
+// the database by phone, website hostname, and normalized business name before it's ever saved.
+function normalizeForDedup(s: string | null | undefined): string {
+  return (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+function normalizeHostname(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return null;
+  }
+}
+async function findLikelyDuplicate(input: { businessName?: string | null; phone?: string | null; website?: string | null }): Promise<boolean> {
+  if (input.phone) {
+    const byPhone = await db().prospect.findFirst({ where: { phone: input.phone } });
+    if (byPhone) return true;
+  }
+  const hostname = normalizeHostname(input.website);
+  const normName = normalizeForDedup(input.businessName);
+  if (hostname || normName) {
+    const candidates = await db().prospect.findMany({ select: { businessName: true, website: true } });
+    for (const c of candidates) {
+      if (hostname && normalizeHostname(c.website) === hostname) return true;
+      if (normName && normalizeForDedup(c.businessName) === normName) return true;
+    }
+  }
+  return false;
+}
+
 function mapRow(p: {
   id: string; category: string; businessName: string | null; contactName: string | null;
   phone: string | null; email: string | null; address: string | null; website: string | null;
@@ -176,11 +210,15 @@ Respond with ONLY a JSON array, nothing else. One object per query: {"query": ".
 }
 
 /** Searches Google Places for businesses matching the admin's request, storing any not already
- *  known as new prospects (deduped by Google's own place id). Never contacts anyone -- this only
- *  discovers. When Anthropic is configured, the admin's plain-English description is first turned
- *  into real, targeted Places queries (see planPlacesQueries); otherwise falls back to sending
- *  the typed text straight to Places, same as before. Either way, every result is checked against
- *  looksLikeCleaningCompetitor() before being saved, so a competitor can never slip through. */
+ *  known as new prospects. Never contacts anyone -- this only discovers. When Anthropic is
+ *  configured, the admin's plain-English description is first turned into real, targeted Places
+ *  queries (see planPlacesQueries); otherwise falls back to sending the typed text straight to
+ *  Places, same as before. Every result is checked against looksLikeCleaningCompetitor() before
+ *  being saved, so a competitor can never slip through. Deduped two ways: exactly, by Google's own
+ *  stable place id (catches the same listing returned again by a later search), and by
+ *  findLikelyDuplicate() -- phone number, website hostname, or normalized business name against
+ *  every prospect already on file -- which catches the same real business surfacing under a
+ *  second, different Places listing (a known real Google Places data-quality issue). */
 export async function searchAndSaveProspects(query: string, category: ProspectCategory): Promise<SearchProspectsResult> {
   const apiKey = await getIntegrationValue("googleMapsApiKey", "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY");
   if (!apiKey) return { ok: false, error: "Google Places isn't configured yet, add a Google Maps API key in Settings → Integrations." };
@@ -218,6 +256,10 @@ export async function searchAndSaveProspects(query: string, category: ProspectCa
     }
     const existing = await db().prospect.findUnique({ where: { sourcePlaceId: r.placeId } });
     if (existing) {
+      duplicates++;
+      continue;
+    }
+    if (await findLikelyDuplicate({ businessName: r.name, phone: r.phone, website: r.website })) {
       duplicates++;
       continue;
     }
@@ -471,9 +513,11 @@ export interface ResearchResult {
 
 /**
  * Real web research via Claude's web_search tool -- run on-demand per prospect (an explicit admin
- * click, never automatic), looking for genuine public information (reviews, complaints, posts)
- * related to cleaning. Reports honestly when nothing relevant is found rather than inventing
- * something; every claim comes with a real source URL from the search results.
+ * click, never automatic), looking for a prospect's real social media presence (Facebook,
+ * Instagram, LinkedIn), where they're listed online (Google Business Profile, Yelp, BBB), and
+ * genuine public information (reviews, complaints, posts) related to cleaning. Reports honestly
+ * when nothing is found rather than inventing a profile/URL that doesn't exist; every claim comes
+ * with a real, clickable source URL from the search results (rendered in the admin UI).
  */
 export async function researchProspect(id: string): Promise<ResearchResult> {
   const p = await db().prospect.findUnique({ where: { id } });
@@ -484,7 +528,13 @@ export async function researchProspect(id: string): Promise<ResearchResult> {
 
   const who = p.businessName || p.contactName || "this business";
   const location = p.address || business.city;
-  const query = `Search the web for real, recent public information about "${who}" (${location}) that's relevant to a cleaning company considering reaching out to them -- specifically: any reviews, complaints, or posts mentioning cleanliness or a need for cleaning services; how large/established the business appears to be; and anything else a cleaning company would find useful before contacting them. If you find nothing relevant, say so plainly rather than guessing. Keep the answer under 200 words and cite your sources.`;
+  const query = `Search the web for real, public information about "${who}" (${location}) that's useful to a cleaning company considering reaching out to them. Specifically look for and cite:
+1. Their real social media presence -- Facebook Page, Instagram, LinkedIn -- if they have one.
+2. Where they're listed online -- Google Business Profile, Yelp, BBB, or a local business directory.
+3. Recent reviews, complaints, or posts mentioning cleanliness or a need for cleaning services.
+4. How large/established the business appears to be, and anything else useful before contacting them.
+
+Only report things you actually find -- if you can't find a real social media profile or listing for them, say so plainly rather than guessing or inventing a URL. Keep the summary under 200 words and cite every real source you used.`;
 
   const baseUrl = (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com").replace(/\/$/, "");
   let text = "";
@@ -495,11 +545,11 @@ export async function researchProspect(id: string): Promise<ResearchResult> {
       headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
       body: JSON.stringify({
         model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5",
-        max_tokens: 1000,
-        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }],
+        max_tokens: 1200,
+        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 6 }],
         messages: [{ role: "user", content: query }],
       }),
-      signal: AbortSignal.timeout(60_000),
+      signal: AbortSignal.timeout(75_000),
     });
     if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
     const data = (await res.json()) as {

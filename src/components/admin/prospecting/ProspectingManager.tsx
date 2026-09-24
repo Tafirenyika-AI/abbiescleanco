@@ -499,7 +499,7 @@ function ProspectDrawer({ prospect, onClose, onUpdated, onDeleted }: { prospect:
               {busy === "research" ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Search className="size-3.5" aria-hidden />} {prospect.researchNotes ? "Research again" : "Research"}
             </button>
           </div>
-          {busy === "research" && <p className="mt-1.5 text-xs text-admin-text-muted">Searching the real web for public info about this business, this can take up to a minute.</p>}
+          {busy === "research" && <p className="mt-1.5 text-xs text-admin-text-muted">Searching the real web for their social media, business listings, and public info, this can take up to a minute.</p>}
           {prospect.researchNotes && (
             <div className="mt-2 rounded-lg bg-admin-bg p-3">
               <p className="whitespace-pre-wrap text-xs text-admin-text">{prospect.researchNotes}</p>
@@ -515,7 +515,11 @@ function ProspectDrawer({ prospect, onClose, onUpdated, onDeleted }: { prospect:
               {prospect.researchedAt && <p className="mt-2 text-[11px] text-admin-text-muted">Researched {when(prospect.researchedAt)}</p>}
             </div>
           )}
-          {!prospect.researchNotes && <p className="mt-1.5 text-xs text-admin-text-muted">Not researched yet, this looks up real, public info (reviews, mentions) related to cleaning needs.</p>}
+          {!prospect.researchNotes && (
+            <p className="mt-1.5 text-xs text-admin-text-muted">
+              {"Not researched yet -- this looks up their real social media (Facebook/Instagram/LinkedIn), where they're listed online (Google Business Profile, Yelp, BBB), and public mentions related to cleaning needs."}
+            </p>
+          )}
         </div>
 
         <div className="mt-5">
