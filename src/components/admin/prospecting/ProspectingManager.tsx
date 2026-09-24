@@ -173,6 +173,10 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
   const [subject, setSubject] = useState(prospect.draftSubject || "");
   const [body, setBody] = useState(prospect.draftBody || "");
   const [notes, setNotes] = useState(prospect.notes || "");
+  const [contactName, setContactName] = useState(prospect.contactName || "");
+  const [phone, setPhone] = useState(prospect.phone || "");
+  const [email, setEmail] = useState(prospect.email || "");
+  const [address, setAddress] = useState(prospect.address || "");
   const [busy, setBusy] = useState<string | null>(null);
   const [admins, setAdmins] = useState<{ id: string; name: string }[]>([]);
   const fit = computeFitScore(prospect);
@@ -194,6 +198,30 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
     setBusy(null);
     if (!data?.ok) return showToast(data?.error || "Couldn't assign", "error");
     onUpdated(data.prospect);
+  }
+
+  async function saveContact() {
+    setBusy("contact");
+    const res = await fetch(`/api/admin/prospecting/${prospect.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contactName, phone, email, address }),
+    });
+    const data = await res.json().catch(() => null);
+    setBusy(null);
+    if (!data?.ok) return showToast(data?.error || "Couldn't save contact info", "error");
+    onUpdated(data.prospect);
+    showToast("Contact info saved.", "success");
+  }
+
+  async function convertToLead() {
+    setBusy("convert");
+    const res = await fetch(`/api/admin/prospecting/${prospect.id}/convert`, { method: "POST" });
+    const data = await res.json().catch(() => null);
+    setBusy(null);
+    if (!data?.ok) return showToast(data?.error || "Couldn't convert to a lead", "error");
+    onUpdated({ ...prospect, status: "CONVERTED", convertedLeadId: data.leadId, convertedLeadReference: data.leadReference });
+    showToast(`Converted — lead ${data.leadReference} created.`, "success");
   }
 
   async function research() {
@@ -270,13 +298,31 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
           <button type="button" onClick={onClose} aria-label="Close" className="ios-press rounded-lg p-1.5 text-admin-text-muted hover:bg-admin-bg"><X className="size-5" aria-hidden /></button>
         </div>
 
-        <dl className="mt-4 space-y-1.5 text-sm">
-          {prospect.address && <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Address</dt><dd className="text-right text-admin-text">{prospect.address}</dd></div>}
-          {prospect.phone && <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Phone</dt><dd className="text-admin-text">{prospect.phone}</dd></div>}
-          {prospect.email && <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Email</dt><dd className="text-admin-text">{prospect.email}</dd></div>}
-          {prospect.website && <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Website</dt><dd className="truncate text-admin-text">{prospect.website}</dd></div>}
+        <div className="mt-4 space-y-2 text-sm">
+          <label className="block">
+            <span className="text-xs text-admin-text-muted">Contact name</span>
+            <input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Optional — a specific person at the business" className="mt-0.5 w-full rounded-lg border border-admin-border bg-admin-bg px-2.5 py-1.5 text-sm text-admin-text" />
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <span className="text-xs text-admin-text-muted">Phone</span>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-0.5 w-full rounded-lg border border-admin-border bg-admin-bg px-2.5 py-1.5 text-sm text-admin-text" />
+            </label>
+            <label className="block">
+              <span className="text-xs text-admin-text-muted">Email</span>
+              <input value={email} onChange={(e) => setEmail(e.target.value)} className="mt-0.5 w-full rounded-lg border border-admin-border bg-admin-bg px-2.5 py-1.5 text-sm text-admin-text" />
+            </label>
+          </div>
+          <label className="block">
+            <span className="text-xs text-admin-text-muted">Address</span>
+            <input value={address} onChange={(e) => setAddress(e.target.value)} className="mt-0.5 w-full rounded-lg border border-admin-border bg-admin-bg px-2.5 py-1.5 text-sm text-admin-text" />
+          </label>
+          {prospect.website && <p className="text-xs text-admin-text-muted">Website: <a href={prospect.website} target="_blank" rel="noopener noreferrer" className="text-admin-teal-hover hover:underline">{prospect.website}</a></p>}
+          <button type="button" onClick={saveContact} disabled={busy === "contact"} className="ios-press rounded-full bg-admin-bg px-3 py-1.5 text-xs font-semibold text-admin-text disabled:opacity-50">
+            {busy === "contact" ? "Saving…" : "Save contact info"}
+          </button>
           {!prospect.email && <p className="text-xs text-amber-700">No email on file — outreach can&apos;t be sent until one is added.</p>}
-        </dl>
+        </div>
 
         <div className="mt-5 rounded-lg bg-admin-bg p-3">
           <div className="flex items-center justify-between">
@@ -300,6 +346,25 @@ function ProspectDrawer({ prospect, onClose, onUpdated }: { prospect: ProspectRo
             <option value="">Unassigned</option>
             {admins.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
+        </div>
+
+        <div className="mt-4 rounded-lg border border-admin-border p-3">
+          {prospect.convertedLeadId ? (
+            <>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Converted</h3>
+              <p className="mt-1 text-sm text-admin-text">
+                This prospect became lead <span className="font-semibold text-admin-text">{prospect.convertedLeadReference}</span> — <a href="/admin/leads" className="font-semibold text-admin-teal-hover hover:underline">search for it in Leads</a> to build their quote and booking.
+              </p>
+            </>
+          ) : (
+            <>
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Convert to lead</h3>
+              <p className="mt-1 text-xs text-admin-text-muted">Once they&apos;re ready to book, turn this into a real lead in the same pipeline as every other customer — you&apos;ll quote and schedule them from there. Needs a real email, phone, and a ZIP code in the address.</p>
+              <button type="button" onClick={convertToLead} disabled={busy === "convert"} className="ios-press mt-2 inline-flex items-center gap-1.5 rounded-full bg-admin-navy px-3.5 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
+                {busy === "convert" && <Loader2 className="size-3.5 animate-spin" aria-hidden />} Convert to lead
+              </button>
+            </>
+          )}
         </div>
 
         <div className="mt-4">

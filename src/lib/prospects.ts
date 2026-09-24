@@ -47,6 +47,8 @@ export interface ProspectRow {
   researchNotes: string | null;
   researchSources: { url: string; title: string }[] | null;
   researchedAt: string | null;
+  convertedLeadId: string | null;
+  convertedLeadReference: string | null;
   discoveredAt: string;
   contactedAt: string | null;
 }

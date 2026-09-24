@@ -253,6 +253,7 @@ model Lead {
   clientNotes  ClientNote[]
   photoEstimates PhotoEstimate[]
   automationEvents AutomationEvent[]
+  convertedFromProspect Prospect?
 
   @@index([status])
   @@index([createdAt])
@@ -979,6 +980,11 @@ model Prospect {
   // researchSources is an array of {url, title} the findings were actually drawn from.
   researchNotes   String?
   researchSources Json?
+
+  // Set once this prospect becomes a real Lead in the normal pipeline -- closes the loop between
+  // outbound discovery and the same quote/booking/payment machinery every inbound lead already uses.
+  convertedLeadId String? @unique
+  convertedLead   Lead?   @relation(fields: [convertedLeadId], references: [id])
   researchedAt    DateTime?
 
   discoveredAt DateTime  @default(now())

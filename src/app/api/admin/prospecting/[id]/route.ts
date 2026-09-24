@@ -18,6 +18,10 @@ const schema = z.object({
   draftSubject: z.string().trim().max(200).optional(),
   draftBody: z.string().trim().max(5000).optional(),
   assignedToId: z.string().trim().max(50).nullable().optional(),
+  contactName: z.string().trim().max(120).optional(),
+  email: z.string().trim().max(200).optional().refine((v) => !v || z.string().email().safeParse(v).success, "Invalid email"),
+  phone: z.string().trim().max(30).optional(),
+  address: z.string().trim().max(300).optional(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

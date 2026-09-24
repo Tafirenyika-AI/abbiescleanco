@@ -2,7 +2,7 @@ import { prisma, isDatabaseConfigured } from "@/lib/db";
 import { getIntegrationValue } from "@/lib/server/integrationSettings";
 import { getContactInfo } from "@/lib/server/siteSettings";
 import { business } from "@/lib/data/business";
-import { PROSPECT_CATEGORIES, PROSPECT_STATUSES, type ProspectCategory, type ProspectStatus, type ProspectRow } from "@/lib/prospects";
+import { PROSPECT_CATEGORIES, PROSPECT_STATUSES, prospectCategoryLabels, type ProspectCategory, type ProspectStatus, type ProspectRow } from "@/lib/prospects";
 
 export { PROSPECT_CATEGORIES, prospectCategoryLabels, PROSPECT_STATUSES, prospectStatusLabels, type ProspectCategory, type ProspectStatus, type ProspectRow } from "@/lib/prospects";
 
@@ -27,6 +27,7 @@ function mapRow(p: {
   draftBody: string | null; notes: string | null; discoveredAt: Date; contactedAt: Date | null;
   assignedToId: string | null; assignedTo?: { name: string } | null;
   researchNotes: string | null; researchSources: unknown; researchedAt: Date | null;
+  convertedLeadId: string | null; convertedLead?: { reference: string } | null;
 }): ProspectRow {
   return {
     id: p.id,
@@ -48,10 +49,14 @@ function mapRow(p: {
     researchNotes: p.researchNotes,
     researchSources: Array.isArray(p.researchSources) ? (p.researchSources as { url: string; title: string }[]) : null,
     researchedAt: p.researchedAt?.toISOString() ?? null,
+    convertedLeadId: p.convertedLeadId,
+    convertedLeadReference: p.convertedLead?.reference ?? null,
     discoveredAt: p.discoveredAt.toISOString(),
     contactedAt: p.contactedAt?.toISOString() ?? null,
   };
 }
+
+const PROSPECT_INCLUDE = { assignedTo: { select: { name: true } }, convertedLead: { select: { reference: true } } } as const;
 
 export async function isPlacesSearchConfigured(): Promise<boolean> {
   return !!(await getIntegrationValue("googleMapsApiKey", "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY"));
@@ -138,7 +143,7 @@ export async function searchAndSaveProspects(query: string, category: ProspectCa
 export async function listProspects(filters: { status?: ProspectStatus; category?: ProspectCategory } = {}): Promise<ProspectRow[]> {
   const rows = await db().prospect.findMany({
     where: { ...(filters.status ? { status: filters.status } : {}), ...(filters.category ? { category: filters.category } : {}) },
-    include: { assignedTo: { select: { name: true } } },
+    include: PROSPECT_INCLUDE,
     orderBy: { discoveredAt: "desc" },
     take: 300,
   });
@@ -146,7 +151,7 @@ export async function listProspects(filters: { status?: ProspectStatus; category
 }
 
 export async function getProspectById(id: string): Promise<ProspectRow | null> {
-  const row = await db().prospect.findUnique({ where: { id }, include: { assignedTo: { select: { name: true } } } });
+  const row = await db().prospect.findUnique({ where: { id }, include: PROSPECT_INCLUDE });
   return row ? mapRow(row) : null;
 }
 
@@ -201,14 +206,17 @@ export async function draftOutreachForProspect(id: string): Promise<ProspectRow 
   const updated = await db().prospect.update({
     where: { id },
     data: { draftSubject: subject, draftBody: body, status: p.status === "NEW" ? "DRAFTED" : p.status },
-    include: { assignedTo: { select: { name: true } } },
+    include: PROSPECT_INCLUDE,
   });
   return mapRow(updated);
 }
 
 export async function updateProspect(
   id: string,
-  data: { status?: ProspectStatus; notes?: string; draftSubject?: string; draftBody?: string; assignedToId?: string | null }
+  data: {
+    status?: ProspectStatus; notes?: string; draftSubject?: string; draftBody?: string; assignedToId?: string | null;
+    contactName?: string; email?: string; phone?: string; address?: string;
+  }
 ): Promise<ProspectRow | null> {
   const existing = await db().prospect.findUnique({ where: { id } });
   if (!existing) return null;
@@ -224,8 +232,12 @@ export async function updateProspect(
       ...(data.draftSubject !== undefined ? { draftSubject: data.draftSubject || null } : {}),
       ...(data.draftBody !== undefined ? { draftBody: data.draftBody || null } : {}),
       ...(data.assignedToId !== undefined ? { assignedToId: data.assignedToId || null } : {}),
+      ...(data.contactName !== undefined ? { contactName: data.contactName || null } : {}),
+      ...(data.email !== undefined ? { email: data.email || null } : {}),
+      ...(data.phone !== undefined ? { phone: data.phone || null } : {}),
+      ...(data.address !== undefined ? { address: data.address || null } : {}),
     },
-    include: { assignedTo: { select: { name: true } } },
+    include: PROSPECT_INCLUDE,
   });
   return mapRow(updated);
 }
@@ -291,7 +303,7 @@ export async function researchProspect(id: string): Promise<ResearchResult> {
   const updated = await db().prospect.update({
     where: { id },
     data: { researchNotes: text, researchSources: sources as object, researchedAt: new Date() },
-    include: { assignedTo: { select: { name: true } } },
+    include: PROSPECT_INCLUDE,
   });
   return { ok: true, prospect: mapRow(updated) };
 }
@@ -316,4 +328,91 @@ export async function sendProspectOutreach(id: string): Promise<SendOutreachResu
 
   await db().prospect.update({ where: { id }, data: { status: "SENT", contactedAt: new Date() } });
   return { ok: true };
+}
+
+export interface ConvertToLeadResult {
+  ok: boolean;
+  error?: string;
+  leadId?: string;
+  leadReference?: string;
+}
+
+function splitContactName(contactName: string | null, businessName: string | null): { firstName: string; lastName: string } {
+  const trimmed = contactName?.trim();
+  if (trimmed) {
+    const parts = trimmed.split(/\s+/);
+    if (parts.length > 1) return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
+    return { firstName: parts[0], lastName: businessName?.trim() || "(Business)" };
+  }
+  return { firstName: businessName?.trim() || "New", lastName: "(Business)" };
+}
+
+/**
+ * Turns a real prospect into a real Lead in the same pipeline every inbound customer already goes
+ * through -- closing the loop between outbound discovery and the existing quote/booking/payment
+ * machinery, rather than building a second, parallel system. Deliberately does NOT invent
+ * square-footage/bedroom/bathroom answers: these prospects are businesses (property managers,
+ * realtors, commercial accounts), not a single home, so there's no honest number to put there.
+ * Uses propertyType "commercial", which the pricing engine already routes straight to a manual
+ * quote regardless of the placeholder size fields -- the admin gathers real scope on a real call.
+ */
+export async function convertProspectToLead(id: string): Promise<ConvertToLeadResult> {
+  const p = await db().prospect.findUnique({ where: { id } });
+  if (!p) return { ok: false, error: "Not found" };
+  if (p.convertedLeadId) return { ok: false, error: "This prospect has already been converted to a lead." };
+  if (!p.email) return { ok: false, error: "Add an email address for this prospect before converting." };
+  if (!p.phone) return { ok: false, error: "Add a phone number for this prospect before converting." };
+  const zipMatch = p.address?.match(/\b(\d{5})\b/);
+  if (!zipMatch) return { ok: false, error: "This prospect's address needs a 5-digit ZIP code before converting — edit the address first." };
+
+  const { createLead } = await import("@/lib/server/leadStore");
+  const { calculateEstimate } = await import("@/lib/pricing");
+  const { getPricingConfig } = await import("@/lib/server/pricingStore");
+
+  const { firstName, lastName } = splitContactName(p.contactName, p.businessName);
+  const pricingConfig = await getPricingConfig();
+  const estimate = calculateEstimate(
+    { service: "commercial-cleaning", propertyType: "commercial", squareFeet: 100, bedrooms: 0, bathrooms: 0, condition: "normal", frequency: "one-time", hasPets: false, addOns: [] },
+    pricingConfig
+  );
+
+  const categoryLabel = prospectCategoryLabels[(p.category as ProspectCategory) ?? "OTHER"];
+  const noteParts = [
+    `Converted from Prospecting (${categoryLabel}, discovered via ${p.source}${p.sourceQuery ? ` — "${p.sourceQuery}"` : ""}).`,
+    "Property/scope details are unknown — confirm directly with the contact before quoting.",
+    p.notes ? `Prospecting notes: ${p.notes}` : "",
+  ].filter(Boolean);
+
+  const { id: leadId, reference } = await createLead(
+    {
+      firstName,
+      lastName,
+      email: p.email,
+      phone: p.phone,
+      service: "commercial-cleaning",
+      zip: zipMatch[1],
+      propertyType: "commercial",
+      squareFeet: 100,
+      bedrooms: 0,
+      bathrooms: 0,
+      condition: "normal",
+      frequency: "one-time",
+      hasPets: false,
+      addOns: [],
+      preferredContactMethod: "EMAIL",
+      additionalInstructions: noteParts.join(" ").slice(0, 2000),
+      smsConsent: false,
+      emailConsent: true,
+      policiesAccepted: true,
+      source: "prospecting",
+    },
+    estimate
+  );
+
+  await db().prospect.update({
+    where: { id },
+    data: { convertedLeadId: leadId, status: "CONVERTED" },
+  });
+
+  return { ok: true, leadId, leadReference: reference };
 }
