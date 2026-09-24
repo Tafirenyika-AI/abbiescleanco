@@ -116,3 +116,27 @@ Google Ads: better to build it against a real, working connection than write it 
 A post with no connected account attached still works exactly as before: draft → approve → you
 publish it yourself on the real platform → **Mark posted**. Nothing about automated publishing
 removes that manual fallback.
+
+---
+
+## 4. AI-generated posters/flyers + promo videos
+
+Separate from the OAuth setup above — this generates the actual **content** (the image/video
+attached to a post), not the publishing connection.
+
+- **Posters/flyers**: paste an **OpenAI API key** (from [platform.openai.com](https://platform.openai.com/)) into Settings → Integrations. In the post draft form, switch the image picker to
+  "Generate with AI", describe what the poster should show (e.g. "Fall deep-clean special, 20%
+  off, sparkling kitchen, bold offer text"), pick a size, and click **Generate poster**. This
+  calls OpenAI's `gpt-image-1` model with your description plus the business's real name/city
+  automatically added for context — it never invents a promotion or price you didn't type. Billed
+  per image by OpenAI (no separate app/developer-account step needed, just the key).
+- **Promo videos**: no new account needed at all. In the same form, add 1-4 images to the "AI
+  promo video" panel (your post's poster and/or extra uploads), add optional overlay text, and
+  click **Generate video**. This renders a real pan/zoom slideshow with your text overlaid
+  entirely in your own browser (no server-side video encoding, no extra cost) and produces a real
+  short `.webm` video file. **This is not "true" AI-generated video** (no model is inventing
+  footage) — it's real automated video assembly from real images, the same technique most social
+  schedulers use for "turn these photos into a video ad." **Automated publishing doesn't post
+  video yet** (Meta's publish code only handles images today) — download the generated video or
+  attach it manually wherever you publish it; a future step could wire it into Reels/TikTok
+  publishing once that's worth building.

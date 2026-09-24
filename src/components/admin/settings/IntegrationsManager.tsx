@@ -34,6 +34,7 @@ const fields: FieldMeta[] = [
   { key: "googleAdsLoginCustomerId", label: "Google Ads Manager (MCC) Customer ID", isSecret: false, wired: true, help: "10-digit id, no dashes. Only needed if you connect through a manager account rather than a standalone Ads account." },
   { key: "tiktokClientKey", label: "TikTok Client Key", isSecret: false, wired: true, help: "From your TikTok for Business developer app -- powers \"Connect TikTok\" on Marketing Studio. See docs/SOCIAL_ADS_SETUP.md." },
   { key: "tiktokClientSecret", label: "TikTok Client Secret", isSecret: true, wired: true, help: "" },
+  { key: "openaiApiKey", label: "OpenAI API Key", isSecret: true, wired: true, help: "Powers AI-generated posters/flyers on Marketing Studio (gpt-image-1). From platform.openai.com -- billed per image generated." },
 ];
 
 interface Status {

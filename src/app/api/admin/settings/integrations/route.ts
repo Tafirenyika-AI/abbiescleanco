@@ -27,6 +27,7 @@ const schema = z.object({
   googleAdsLoginCustomerId: z.string().trim().max(300).optional(),
   tiktokClientKey: z.string().trim().max(300).optional(),
   tiktokClientSecret: z.string().trim().max(300).optional(),
+  openaiApiKey: z.string().trim().max(300).optional(),
 });
 
 export async function GET(req: NextRequest) {

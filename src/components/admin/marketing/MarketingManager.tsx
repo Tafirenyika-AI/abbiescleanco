@@ -15,6 +15,8 @@ import {
   type MarketingChannel,
 } from "@/lib/server/marketingStore";
 import type { ConnectionListItem } from "@/lib/server/marketingConnections";
+import type { PosterSize } from "@/lib/server/aiContent";
+import { assembleSlideshowVideo } from "@/lib/client/videoSlideshow";
 
 function money(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
@@ -31,6 +33,12 @@ const campaignStatusTone: Record<string, "neutral" | "success" | "warning" | "in
 const postStatusTone: Record<string, "neutral" | "success" | "warning" | "info"> = {
   DRAFT: "neutral", APPROVED: "info", POSTED: "success", CANCELLED: "warning",
 };
+
+const POSTER_SIZES: { value: PosterSize; label: string }[] = [
+  { value: "1024x1536", label: "Portrait (Instagram/Facebook post)" },
+  { value: "1024x1024", label: "Square" },
+  { value: "1536x1024", label: "Landscape" },
+];
 
 const CONNECT_LINKS: { platform: string; label: string; href: string }[] = [
   { platform: "META_FACEBOOK", label: "Connect Facebook + Instagram", href: "/api/admin/marketing/connections/meta/start" },
@@ -73,6 +81,17 @@ export default function MarketingManager({
   const [pMediaUrl, setPMediaUrl] = useState<string | null>(null);
   const [pUploading, setPUploading] = useState(false);
   const [pSaving, setPSaving] = useState(false);
+
+  const [pImageMode, setPImageMode] = useState<"upload" | "ai">("upload");
+  const [pPosterPrompt, setPPosterPrompt] = useState("");
+  const [pPosterSize, setPPosterSize] = useState<PosterSize>("1024x1536");
+  const [pGeneratingPoster, setPGeneratingPoster] = useState(false);
+
+  const [pVideoSlides, setPVideoSlides] = useState<string[]>([]);
+  const [pVideoOverlay, setPVideoOverlay] = useState("");
+  const [pVideoUrl, setPVideoUrl] = useState<string | null>(null);
+  const [pAddingSlide, setPAddingSlide] = useState(false);
+  const [pGeneratingVideo, setPGeneratingVideo] = useState(false);
 
   // Reads ?connected=/?connectError= left by the OAuth callback redirects, shows a toast once, then
   // strips them from the URL so a refresh doesn't re-show the same message.
@@ -171,6 +190,51 @@ export default function MarketingManager({
     setPMediaUrl(data.url);
   }
 
+  async function generatePoster() {
+    if (!pPosterPrompt.trim()) return showToast("Describe what the poster should show", "error");
+    setPGeneratingPoster(true);
+    const res = await fetch("/api/admin/marketing/ai/poster", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: pPosterPrompt.trim(), size: pPosterSize }),
+    });
+    const data = await res.json().catch(() => null);
+    setPGeneratingPoster(false);
+    if (!data?.ok) return showToast(data?.error || "Couldn't generate the poster", "error");
+    setPMediaUrl(data.url);
+    showToast("Poster generated.", "success");
+  }
+
+  async function addUploadedVideoSlide(file: File) {
+    setPAddingSlide(true);
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch("/api/admin/upload", { method: "POST", body: form });
+    const data = await res.json().catch(() => null);
+    setPAddingSlide(false);
+    if (!data?.ok) return showToast(data?.error || "Couldn't upload image", "error");
+    setPVideoSlides((prev) => [...prev, data.url]);
+  }
+
+  async function generateVideo() {
+    if (pVideoSlides.length === 0) return showToast("Add at least one image first", "error");
+    setPGeneratingVideo(true);
+    try {
+      const blob = await assembleSlideshowVideo(pVideoSlides, pVideoOverlay.trim() || pCaption.trim());
+      const form = new FormData();
+      form.append("file", blob, "promo.webm");
+      const res = await fetch("/api/admin/marketing/ai/video", { method: "POST", body: form });
+      const data = await res.json().catch(() => null);
+      if (!data?.ok) { showToast(data?.error || "Couldn't save the generated video", "error"); return; }
+      setPVideoUrl(data.url);
+      showToast("Video generated.", "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Couldn't generate the video", "error");
+    } finally {
+      setPGeneratingVideo(false);
+    }
+  }
+
   async function createPost() {
     if (!pCaption.trim()) return showToast("Caption is required", "error");
     setPSaving(true);
@@ -182,6 +246,7 @@ export default function MarketingManager({
         channel: pChannel,
         caption: pCaption.trim(),
         mediaUrl: pMediaUrl,
+        videoUrl: pVideoUrl,
         socialConnectionId: pConnectionId || null,
         scheduledFor: null,
       }),
@@ -192,6 +257,7 @@ export default function MarketingManager({
     showToast("Post drafted.", "success");
     setShowPostForm(false);
     setPCaption(""); setPCampaignId(""); setPMediaUrl(null); setPConnectionId("");
+    setPPosterPrompt(""); setPImageMode("upload"); setPVideoSlides([]); setPVideoOverlay(""); setPVideoUrl(null);
     await refreshPosts();
   }
 
@@ -304,6 +370,7 @@ export default function MarketingManager({
                       <td className="px-4 py-2.5 text-admin-text-muted">{marketingChannelLabels[p.channel]}</td>
                       <td className="max-w-xs px-4 py-2.5 text-admin-text">
                         <p className="truncate">{p.caption}</p>
+                        {p.videoUrl && <a href={p.videoUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-xs font-semibold text-admin-teal-hover">Promo video ↗</a>}
                         {p.publishError && (
                           <p className="mt-1 flex items-start gap-1 text-xs text-red-600"><AlertTriangle className="mt-0.5 size-3 shrink-0" aria-hidden /> {p.publishError}</p>
                         )}
@@ -427,7 +494,7 @@ export default function MarketingManager({
 
       {showPostForm && (
         <div className="ios-backdrop-in fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm" onClick={() => setShowPostForm(false)}>
-          <div className="ios-modal-in w-full max-w-md rounded-2xl bg-admin-card p-6 shadow-[0_8px_24px_rgba(15,23,42,0.1),0_24px_64px_rgba(15,23,42,0.16)]" onClick={(e) => e.stopPropagation()}>
+          <div className="ios-modal-in max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-admin-card p-6 shadow-[0_8px_24px_rgba(15,23,42,0.1),0_24px_64px_rgba(15,23,42,0.16)]" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-semibold text-admin-text">Draft a post</h2>
             <div className="mt-4 space-y-3">
               <div>
@@ -457,6 +524,7 @@ export default function MarketingManager({
               </div>
               <div>
                 <label className="text-xs font-semibold text-admin-text-muted">Image {pChannel === "META_INSTAGRAM" && <span className="text-red-600">(required for Instagram)</span>}</label>
+
                 {pMediaUrl ? (
                   <div className="mt-1 flex items-center gap-2">
                     {/* eslint-disable-next-line @next/next/no-img-element -- uploaded/admin-pasted URLs can be any host */}
@@ -464,10 +532,73 @@ export default function MarketingManager({
                     <button type="button" onClick={() => setPMediaUrl(null)} className="text-xs font-semibold text-admin-text-muted hover:text-admin-text">Remove</button>
                   </div>
                 ) : (
-                  <label className="ios-press mt-1 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-admin-border px-3 py-1.5 text-xs font-semibold text-admin-text hover:bg-admin-bg">
-                    {pUploading ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <ImageIcon className="size-3.5" aria-hidden />} {pUploading ? "Uploading…" : "Upload image"}
-                    <input type="file" accept="image/*" className="hidden" disabled={pUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadMedia(f); e.target.value = ""; }} />
+                  <>
+                    <div className="mt-1 flex gap-1 rounded-full border border-admin-border bg-admin-bg p-1 w-fit">
+                      <button type="button" onClick={() => setPImageMode("upload")} className={`rounded-full px-3 py-1 text-xs font-semibold ${pImageMode === "upload" ? "bg-admin-navy text-white" : "text-admin-text-muted"}`}>Upload your own</button>
+                      <button type="button" onClick={() => setPImageMode("ai")} className={`rounded-full px-3 py-1 text-xs font-semibold ${pImageMode === "ai" ? "bg-admin-navy text-white" : "text-admin-text-muted"}`}>Generate with AI</button>
+                    </div>
+
+                    {pImageMode === "upload" ? (
+                      <label className="ios-press mt-2 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-admin-border px-3 py-1.5 text-xs font-semibold text-admin-text hover:bg-admin-bg">
+                        {pUploading ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <ImageIcon className="size-3.5" aria-hidden />} {pUploading ? "Uploading…" : "Upload image"}
+                        <input type="file" accept="image/*" className="hidden" disabled={pUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadMedia(f); e.target.value = ""; }} />
+                      </label>
+                    ) : (
+                      <div className="mt-2 space-y-2">
+                        <textarea value={pPosterPrompt} onChange={(e) => setPPosterPrompt(e.target.value)} rows={2} className="w-full rounded-lg border border-admin-border px-2.5 py-2 text-sm text-admin-text" placeholder={'Describe the poster: e.g. "Fall deep-clean special, 20% off, sparkling kitchen in the background, bold offer text"'} />
+                        <div className="flex items-center gap-2">
+                          <select value={pPosterSize} onChange={(e) => setPPosterSize(e.target.value as PosterSize)} className="rounded-lg border border-admin-border px-2 py-1.5 text-xs text-admin-text">
+                            {POSTER_SIZES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                          </select>
+                          <button type="button" disabled={pGeneratingPoster} onClick={generatePoster} className="ios-press inline-flex items-center gap-1.5 rounded-lg bg-admin-teal px-3 py-1.5 text-xs font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
+                            {pGeneratingPoster ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <ImageIcon className="size-3.5" aria-hidden />} {pGeneratingPoster ? "Generating…" : "Generate poster"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-admin-border p-3">
+                <label className="text-xs font-semibold text-admin-text-muted">AI promo video (optional)</label>
+                <p className="mt-0.5 text-xs text-admin-text-muted">Turns a few images into a short pan/zoom slideshow with a text overlay, right in your browser. Automated publishing doesn&apos;t post video yet -- download it or attach it yourself once generated.</p>
+
+                {pVideoSlides.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {pVideoSlides.map((url, i) => (
+                      <div key={url + i} className="relative">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- uploaded/admin-pasted URLs can be any host */}
+                        <img src={url} alt="" className="size-14 rounded-lg object-cover" />
+                        <button type="button" onClick={() => setPVideoSlides((prev) => prev.filter((_, j) => j !== i))} className="absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full bg-admin-navy text-white">
+                          <X className="size-3" aria-hidden />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {pMediaUrl && !pVideoSlides.includes(pMediaUrl) && (
+                    <button type="button" onClick={() => setPVideoSlides((prev) => [...prev, pMediaUrl])} className="ios-press rounded-full border border-admin-border px-2.5 py-1 text-xs font-semibold text-admin-text hover:bg-admin-bg">Add this post&apos;s image</button>
+                  )}
+                  <label className="ios-press inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-admin-border px-2.5 py-1 text-xs font-semibold text-admin-text hover:bg-admin-bg">
+                    {pAddingSlide ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Plus className="size-3.5" aria-hidden />} Add image
+                    <input type="file" accept="image/*" className="hidden" disabled={pAddingSlide} onChange={(e) => { const f = e.target.files?.[0]; if (f) addUploadedVideoSlide(f); e.target.value = ""; }} />
                   </label>
+                </div>
+
+                <input value={pVideoOverlay} onChange={(e) => setPVideoOverlay(e.target.value)} className="mt-2 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" placeholder="Overlay text (defaults to the caption above)" />
+
+                {pVideoUrl ? (
+                  <div className="mt-2 space-y-1.5">
+                    <video src={pVideoUrl} controls className="w-full max-w-[180px] rounded-lg" />
+                    <button type="button" onClick={() => setPVideoUrl(null)} className="block text-xs font-semibold text-admin-text-muted hover:text-admin-text">Remove video</button>
+                  </div>
+                ) : (
+                  <button type="button" disabled={pGeneratingVideo || pVideoSlides.length === 0} onClick={generateVideo} className="ios-press mt-2 inline-flex items-center gap-1.5 rounded-lg bg-admin-teal px-3 py-1.5 text-xs font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
+                    {pGeneratingVideo ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Send className="size-3.5" aria-hidden />} {pGeneratingVideo ? "Generating video…" : "Generate video"}
+                  </button>
                 )}
               </div>
             </div>

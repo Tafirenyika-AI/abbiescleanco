@@ -39,6 +39,8 @@ export interface IntegrationSettings {
   googleAdsLoginCustomerId?: string;
   tiktokClientKey?: string;
   tiktokClientSecret?: string;
+  // AI content generation
+  openaiApiKey?: string;
 }
 
 const SECRET_FIELDS: (keyof IntegrationSettings)[] = [
@@ -55,6 +57,7 @@ const SECRET_FIELDS: (keyof IntegrationSettings)[] = [
   "googleAdsClientSecret",
   "googleAdsDeveloperToken",
   "tiktokClientSecret",
+  "openaiApiKey",
 ];
 
 async function getRaw(): Promise<IntegrationSettings> {
@@ -95,6 +98,7 @@ export async function getIntegrationStatus(): Promise<Record<keyof IntegrationSe
     googleAdsLoginCustomerId: "GOOGLE_ADS_LOGIN_CUSTOMER_ID",
     tiktokClientKey: "TIKTOK_CLIENT_KEY",
     tiktokClientSecret: "TIKTOK_CLIENT_SECRET",
+    openaiApiKey: "OPENAI_API_KEY",
   };
 
   const result = {} as Record<keyof IntegrationSettings, { configured: boolean; source: "database" | "environment" | "none"; value?: string }>;

@@ -53,3 +53,26 @@ export async function saveUploadedImage(file: File): Promise<{ url: string }> {
   await fs.writeFile(path.join(uploadsDir, filename), buffer);
   return { url: `/uploads/${filename}` };
 }
+
+/**
+ * Same storage strategy as saveUploadedImage (Vercel Blob when configured, else public/uploads/),
+ * but for a raw server-generated buffer (an AI-generated poster from OpenAI, or a browser-
+ * assembled video) rather than a File the browser uploaded directly.
+ */
+export async function saveGeneratedFile(buffer: Buffer, extension: string, contentType: string, baseName: string, maxBytes: number): Promise<{ url: string }> {
+  if (buffer.byteLength > maxBytes) {
+    throw new UploadError(`Generated file is too large (${Math.round(buffer.byteLength / 1024 / 1024)}MB, max ${Math.round(maxBytes / 1024 / 1024)}MB).`);
+  }
+  const filename = `${Date.now()}-${sanitizeBaseName(baseName)}.${extension}`;
+
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const { put } = await import("@vercel/blob");
+    const blob = await put(`uploads/${filename}`, buffer, { access: "public", contentType, addRandomSuffix: true });
+    return { url: blob.url };
+  }
+
+  const uploadsDir = path.join(process.cwd(), "public", "uploads");
+  await fs.mkdir(uploadsDir, { recursive: true });
+  await fs.writeFile(path.join(uploadsDir, filename), buffer);
+  return { url: `/uploads/${filename}` };
+}

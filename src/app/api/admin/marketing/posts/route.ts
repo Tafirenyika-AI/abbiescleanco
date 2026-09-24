@@ -10,11 +10,17 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ ok: true, posts });
 }
 
+// Accepts either a real absolute URL (Vercel Blob in production) or a root-relative local
+// path (the /uploads/ fallback used when BLOB_READ_WRITE_TOKEN isn't set, e.g. local dev) --
+// z.string().url() alone would reject the local-fallback shape these upload endpoints return.
+const mediaUrlSchema = z.string().trim().min(1).refine((v) => v.startsWith("/") || /^https?:\/\//.test(v), "Must be a real uploaded file URL").nullable();
+
 const schema = z.object({
   campaignId: z.string().trim().min(1).nullable(),
   channel: z.enum(MARKETING_CHANNELS),
   caption: z.string().trim().min(1).max(5000),
-  mediaUrl: z.string().trim().url().nullable(),
+  mediaUrl: mediaUrlSchema,
+  videoUrl: mediaUrlSchema,
   socialConnectionId: z.string().trim().min(1).nullable(),
   scheduledFor: z.string().nullable(),
 });
@@ -32,6 +38,7 @@ export async function POST(req: NextRequest) {
     channel: data.channel,
     caption: data.caption,
     mediaUrl: data.mediaUrl,
+    videoUrl: data.videoUrl,
     socialConnectionId: data.socialConnectionId,
     scheduledFor: data.scheduledFor ? new Date(data.scheduledFor) : null,
     createdById: admin.id,

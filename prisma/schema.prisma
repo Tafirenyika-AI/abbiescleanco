@@ -998,6 +998,7 @@ model MarketingPost {
   channel      MarketingChannel
   caption      String
   mediaUrl     String? // real public HTTPS image URL (via the existing upload pipeline) -- required by Instagram's publish API, optional for Facebook
+  videoUrl     String? // real public HTTPS video URL (AI-assembled slideshow or manually attached) -- reference/download only, no publish API uses this yet
   status       PostStatus @default(DRAFT)
   scheduledFor DateTime?
   postedAt     DateTime? // set the moment a real publish call to the platform succeeds (auto), or when an admin manually marks it posted for a channel with no live connection

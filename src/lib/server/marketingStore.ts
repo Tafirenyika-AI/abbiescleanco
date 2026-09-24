@@ -164,6 +164,7 @@ export interface PostListItem {
   channel: MarketingChannel;
   caption: string;
   mediaUrl: string | null;
+  videoUrl: string | null;
   status: PostStatusValue;
   scheduledFor: string | null;
   postedAt: string | null;
@@ -189,6 +190,7 @@ export async function listPosts(): Promise<PostListItem[]> {
     channel: p.channel as MarketingChannel,
     caption: p.caption,
     mediaUrl: p.mediaUrl,
+    videoUrl: p.videoUrl,
     status: p.status as PostStatusValue,
     scheduledFor: p.scheduledFor ? p.scheduledFor.toISOString() : null,
     postedAt: p.postedAt ? p.postedAt.toISOString() : null,
@@ -207,6 +209,7 @@ export async function createPost(input: {
   channel: MarketingChannel;
   caption: string;
   mediaUrl: string | null;
+  videoUrl: string | null;
   socialConnectionId: string | null;
   scheduledFor: Date | null;
   createdById: string;
@@ -217,6 +220,7 @@ export async function createPost(input: {
       channel: input.channel,
       caption: input.caption,
       mediaUrl: input.mediaUrl,
+      videoUrl: input.videoUrl,
       socialConnectionId: input.socialConnectionId,
       scheduledFor: input.scheduledFor,
       createdById: input.createdById,
