@@ -166,6 +166,14 @@ interface WebOpportunity {
  * link; nothing here ever auto-contacts anyone -- these posts rarely expose a direct email/phone,
  * so the realistic, honest next step is always the admin opening the real post and replying there
  * themselves, same "AI finds, human reaches out" pattern as every other prospect.
+ *
+ * Also checks Craigslist-style "jobs" sections for a real but easy-to-miss case: a private
+ * individual paying someone directly to clean their own home, mistakenly posted under "jobs"
+ * instead of "services wanted." This is deliberately filtered hard against the much more common
+ * false-positive in that section -- a cleaning/janitorial COMPANY recruiting an EMPLOYEE to clean
+ * on its behalf (a competitor's staffing ad, not a prospect) -- via explicit criteria in the
+ * prompt (fixed shift/wage/resume language = employer hiring staff, excluded; informal "pay
+ * someone to clean my own house" language = a real prospect, included).
  */
 export async function searchWebForCleaningLeads(): Promise<SearchProspectsResult> {
   const apiKey = await getIntegrationValue("anthropicApiKey", "ANTHROPIC_API_KEY");
@@ -177,7 +185,9 @@ export async function searchWebForCleaningLeads(): Promise<SearchProspectsResult
 
 Run several different searches with different phrasings and check as many distinct real sources as you can, rather than stopping after the first result. Cast a wide net across whatever platforms genuinely turn up matches -- these commonly include (but are NOT limited to): Craigslist "gigs"/"services wanted", Nextdoor, public Facebook posts/groups and Facebook Marketplace "services" requests, Reddit (including local city/neighborhood subreddits), X/Twitter, local community forums and classifieds, and job-request marketplaces where homeowners post a cleaning job for providers to bid on (Thumbtack, Angi, TaskRabbit, Bark, Care.com). Also just run plain general searches (e.g. "need a house cleaner [city]", "looking for cleaning service [city]") the way a real person would Google it, and see what genuinely comes back -- don't assume in advance which site will have the answer.
 
-Do NOT include posts from cleaning companies advertising their OWN services -- only posts from someone seeking to HIRE a cleaner. Do NOT include anything you can't reasonably tell is recent (roughly the last 2-3 weeks) -- skip it rather than guess. Do NOT limit yourself to the example sites above if a real search turns up a genuine match somewhere else.
+Also check Craigslist's (and similar sites') "jobs"/"general labor" section, since a private individual sometimes mistakenly posts there instead of "gigs"/"services wanted" when they just want to pay someone to clean their own home. Include a "jobs"-section post ONLY if it clearly reads as a private person paying someone directly to clean THEIR OWN home/property (informal, e.g. "need someone to clean my house every other week, cash/Venmo, flexible hours"). Do NOT include a "jobs"-section post if it's a company/business recruiting an EMPLOYEE to clean OTHER people's homes/offices on the company's behalf (fixed shift schedule, hourly wage stated as pay for labor, "must have reliable vehicle", asks for a resume/references, mentions being part of an existing cleaning/janitorial company) -- that's a competitor's staffing ad, not a prospect, and must be excluded even though it also mentions "cleaning."
+
+Do NOT include posts from cleaning companies advertising their OWN services to customers, or recruiting staff to work FOR them -- only posts from someone seeking to HIRE a cleaner for their own home/property. Do NOT include anything you can't reasonably tell is recent (roughly the last 2-3 weeks) -- skip it rather than guess. Do NOT limit yourself to the example sites above if a real search turns up a genuine match somewhere else.
 
 Respond with ONLY a JSON array, nothing else before or after it. One object per genuine match, with exactly these fields: "url" (the real source URL from your search), "title" (a short label for it), "snippet" (what they're actually asking for, in their own words where possible), "postedDate" (the real date or relative time if stated, e.g. "3 days ago" or "2026-09-20", else null), "category" (one of "HOMEOWNER", "LOCAL_BUSINESS", "PROPERTY_MANAGER", "OTHER" based on who's asking). If you find nothing genuine, respond with exactly [].`;
 
