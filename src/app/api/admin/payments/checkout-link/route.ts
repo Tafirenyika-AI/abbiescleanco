@@ -14,7 +14,7 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const admin = await requireAdmin(req, "VIEW_REPORTS");
+  const admin = await requireAdmin(req, "FINANCE_PAYMENTS");
   if (!admin) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
 
   let body: unknown;

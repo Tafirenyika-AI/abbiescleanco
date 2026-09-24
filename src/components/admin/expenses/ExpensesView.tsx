@@ -59,7 +59,7 @@ export default function ExpensesView({ initialExpenses }: { initialExpenses: Exp
       return;
     }
     setExpenses((prev) => [
-      { id: json.id, category, vendor: vendor || null, amount: Math.round(Number(amount) * 100), date: new Date(date).toISOString(), description: description || null, paymentMethod: paymentMethod || null, isTaxDeductible, receiptUrl: null },
+      { id: json.id, category, vendor: vendor || null, amount: Math.round(Number(amount) * 100), date: new Date(date).toISOString(), description: description || null, paymentMethod: paymentMethod || null, isTaxDeductible, receiptUrl: null, bookingId: null },
       ...prev,
     ]);
     setFormOpen(false);

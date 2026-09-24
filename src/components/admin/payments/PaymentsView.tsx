@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, CreditCard, Loader2, Receipt, ExternalLink } from "lucide-react";
+import { Plus, CreditCard, Loader2, Receipt, ExternalLink, Undo2 } from "lucide-react";
 import type { PaymentListItem, PaymentStatusValue } from "@/lib/server/paymentStore";
 import { PAYMENT_STATUSES } from "@/lib/server/paymentStore";
 import Card from "@/components/admin/ui/Card";
@@ -30,6 +30,10 @@ export default function PaymentsView({
   const [reference, setReference] = useState("");
   const [saving, setSaving] = useState(false);
   const [attachingProofFor, setAttachingProofFor] = useState<string | null>(null);
+  const [refundTarget, setRefundTarget] = useState<PaymentListItem | null>(null);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundReason, setRefundReason] = useState("");
+  const [refunding, setRefunding] = useState(false);
 
   const totalPaid = payments.filter((p) => p.status === "PAID").reduce((sum, p) => sum + p.amount, 0);
   const totalPending = payments.filter((p) => p.status === "PENDING").reduce((sum, p) => sum + p.amount, 0);
@@ -83,6 +87,28 @@ export default function PaymentsView({
     }
     setPayments((prev) => prev.map((p) => (p.id === id ? { ...p, status: next } : p)));
     showToast("Updated", "success");
+  }
+
+  function openRefund(p: PaymentListItem) {
+    setRefundTarget(p);
+    setRefundAmount(((p.amount - p.refundAmount) / 100).toFixed(2));
+    setRefundReason("");
+  }
+
+  async function submitRefund() {
+    if (!refundTarget || !refundAmount || !refundReason.trim()) return;
+    setRefunding(true);
+    const res = await fetch(`/api/admin/payments/${refundTarget.id}/refund`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: Math.round(Number(refundAmount) * 100), reason: refundReason.trim() }),
+    });
+    const data = await res.json().catch(() => null);
+    setRefunding(false);
+    if (!data?.ok) return showToast(data?.error || "Couldn't record refund", "error");
+    setPayments((prev) => prev.map((p) => (p.id === refundTarget.id ? { ...p, refundAmount: p.refundAmount + Math.round(Number(refundAmount) * 100), status: p.refundAmount + Math.round(Number(refundAmount) * 100) >= p.amount ? "REFUNDED" : p.status } : p)));
+    setRefundTarget(null);
+    showToast("Refund recorded.", "success");
   }
 
   return (
@@ -185,6 +211,7 @@ export default function PaymentsView({
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Date</th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Status</th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Receipt</th>
+                <th scope="col" className="p-3.5 font-semibold text-admin-text">Refund</th>
               </tr>
             </thead>
             <tbody>
@@ -235,12 +262,46 @@ export default function PaymentsView({
                       </button>
                     )}
                   </td>
+                  <td className="p-3.5">
+                    {p.status === "PAID" && p.refundAmount < p.amount ? (
+                      <button type="button" onClick={() => openRefund(p)} className="inline-flex items-center gap-1 text-xs font-semibold text-admin-text-muted hover:text-admin-error">
+                        <Undo2 className="size-3.5" aria-hidden /> Refund
+                      </button>
+                    ) : p.refundAmount > 0 ? (
+                      <span className="text-xs text-admin-text-muted">${(p.refundAmount / 100).toFixed(2)} refunded</span>
+                    ) : (
+                      <span className="text-xs text-admin-text-muted">—</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </div>
+
+      {refundTarget && (
+        <div className="ios-backdrop-in fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm" onClick={() => setRefundTarget(null)}>
+          <div className="ios-modal-in w-full max-w-sm rounded-2xl bg-admin-card p-6 shadow-[0_8px_24px_rgba(15,23,42,0.1),0_24px_64px_rgba(15,23,42,0.16)]" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-admin-text">Refund {refundTarget.customerName}</h2>
+            <p className="mt-1 text-xs text-admin-text-muted">Paid ${(refundTarget.amount / 100).toFixed(2)}{refundTarget.refundAmount > 0 ? `, already refunded $${(refundTarget.refundAmount / 100).toFixed(2)}` : ""}. This records the refund here; issuing it on the real payment processor is a separate step.</p>
+            <label className="mt-3 block">
+              <span className="text-xs font-medium text-admin-text-muted">Refund amount ($)</span>
+              <input type="number" min="0.01" step="0.01" value={refundAmount} onChange={(e) => setRefundAmount(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+            </label>
+            <label className="mt-3 block">
+              <span className="text-xs font-medium text-admin-text-muted">Reason</span>
+              <input value={refundReason} onChange={(e) => setRefundReason(e.target.value)} placeholder="e.g. customer cancelled" className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+            </label>
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={() => setRefundTarget(null)} className="ios-press rounded-lg border border-admin-border px-3.5 py-2 text-sm font-semibold text-admin-text hover:bg-admin-bg">Cancel</button>
+              <button type="button" onClick={submitRefund} disabled={!refundAmount || !refundReason.trim() || refunding} className="ios-press rounded-lg bg-admin-error px-3.5 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60">
+                {refunding ? "Recording…" : "Record refund"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

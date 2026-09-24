@@ -7,19 +7,22 @@ import { Plus, X, Loader2, FileStack } from "lucide-react";
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import { useToast } from "@/components/admin/ui/Toast";
-import { type InvoiceListItem, type InvoiceableQuote, type InvoiceStatusValue } from "@/lib/invoices";
+import { type InvoiceListItem, type InvoiceableQuote, type InvoiceStatusValue, invoiceStatusLabels } from "@/lib/invoices";
 import { formatDate } from "@/lib/adminDate";
 
 function money(cents: number) {
   return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function statusTone(status: InvoiceStatusValue): "neutral" | "error" {
-  return status === "VOID" ? "error" : "neutral";
-}
-
-function balanceTone(balance: number): "success" | "warning" {
-  return balance <= 0 ? "success" : "warning";
+function statusTone(status: InvoiceStatusValue): "neutral" | "success" | "warning" | "error" | "info" {
+  switch (status) {
+    case "PAID": return "success";
+    case "PARTIALLY_PAID": return "info";
+    case "OVERDUE": return "error";
+    case "REFUNDED": return "warning";
+    case "CANCELLED": return "neutral";
+    default: return "neutral";
+  }
 }
 
 export default function InvoicesView({ invoices }: { invoices: InvoiceListItem[] }) {
@@ -61,10 +64,10 @@ export default function InvoicesView({ invoices }: { invoices: InvoiceListItem[]
                   <td className="px-4 py-2.5 text-admin-text">{inv.customerName}</td>
                   <td className="px-4 py-2.5 text-admin-text-muted">{formatDate(inv.issueDate)}</td>
                   <td className="px-4 py-2.5 text-admin-text">{money(inv.total)}</td>
-                  <td className="px-4 py-2.5">
-                    <Badge tone={inv.status === "VOID" ? "neutral" : balanceTone(inv.balance)}>{inv.balance <= 0 ? "Paid" : money(inv.balance) + " due"}</Badge>
+                  <td className="px-4 py-2.5 text-admin-text-muted">
+                    {inv.status === "CANCELLED" || inv.balance <= 0 ? "—" : `${money(inv.balance)} due`}
                   </td>
-                  <td className="px-4 py-2.5"><Badge tone={statusTone(inv.status)}>{inv.status === "VOID" ? "Void" : "Issued"}</Badge></td>
+                  <td className="px-4 py-2.5"><Badge tone={statusTone(inv.status)}>{invoiceStatusLabels[inv.status]}</Badge></td>
                 </tr>
               ))}
             </tbody>

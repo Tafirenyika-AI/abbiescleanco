@@ -6,7 +6,7 @@ import { setPaymentProof } from "@/lib/server/paymentStore";
 const schema = z.object({ proofUrl: z.string().trim().min(1).max(2000) });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const admin = await requireAdmin(req, "VIEW_REPORTS");
+  const admin = await requireAdmin(req, "FINANCE_PAYMENTS");
   if (!admin) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
 

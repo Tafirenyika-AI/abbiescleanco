@@ -6,7 +6,7 @@ import { deleteExpense } from "@/lib/server/expenseStore";
 const schema = z.object({ ids: z.array(z.string().trim().min(1)).min(1).max(200) });
 
 export async function DELETE(req: NextRequest) {
-  const admin = await requireAdmin(req, "VIEW_REPORTS");
+  const admin = await requireAdmin(req, "FINANCE_EXPENSES");
   if (!admin) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
 
   const parsed = schema.safeParse(await req.json().catch(() => null));

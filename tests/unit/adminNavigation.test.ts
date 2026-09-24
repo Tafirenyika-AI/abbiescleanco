@@ -36,11 +36,11 @@ describe("Admin navigation across the compact and expanded layouts", () => {
 
   it("shows the complete permitted group and selects its nested detail page", () => {
     current.pathname = "/admin/invoices/invoice-123";
-    const html = renderToStaticMarkup(createElement(AdminNavigation, { permissions: ["VIEW_REPORTS"] }));
+    const html = renderToStaticMarkup(createElement(AdminNavigation, { permissions: ["FINANCE_VIEW", "VIEW_REPORTS"] }));
     expect(html).toContain('aria-label="Finance pages"');
     const invoiceLink = html.match(/<a[^>]*href="\/admin\/invoices"[^>]*>/)?.[0];
     expect(invoiceLink).toContain('aria-current="page"');
-    for (const path of ["payments", "invoices", "expenses", "accounting", "reports"]) {
+    for (const path of ["finance", "payments", "invoices", "expenses", "reports"]) {
       expect(html).toContain(`href="/admin/${path}"`);
     }
     expect(html).not.toContain('href="/admin/quotes"');

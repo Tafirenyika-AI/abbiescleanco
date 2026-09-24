@@ -1,7 +1,7 @@
 import { prisma, isDatabaseConfigured } from "@/lib/db";
 import { type InvoiceStatusValue, type InvoiceListItem, type InvoiceDetail, type InvoiceableQuote } from "@/lib/invoices";
 
-export { INVOICE_STATUSES, type InvoiceStatusValue, type InvoiceListItem, type InvoiceDetail, type InvoiceableQuote } from "@/lib/invoices";
+export { INVOICE_STATUSES, invoiceStatusLabels, type InvoiceStatusValue, type InvoiceListItem, type InvoiceDetail, type InvoiceableQuote } from "@/lib/invoices";
 
 function db() {
   if (!isDatabaseConfigured || !prisma) throw new Error("Invoices require DATABASE_URL to be configured.");
@@ -20,10 +20,44 @@ function generateInvoiceNumber(): string {
   return `INV-${year}-${random}`;
 }
 
-async function paidAmountForBooking(bookingId: string | null): Promise<number> {
-  if (!bookingId) return 0;
+interface PaymentTotals {
+  grossPaid: number;
+  refunded: number;
+  netPaid: number;
+  tip: number;
+}
+
+/**
+ * Payments are always recorded against a bookingId (both recordPayment and
+ * createPendingStripePayment require one -- there's no path to record a payment without a real
+ * booking), so bookingId is the correct, and only, join key here. An invoice with no bookingId
+ * (e.g. a commercial job invoiced before a booking is scheduled) structurally can't have any
+ * payments yet either, for the same reason -- $0 paid is the honest answer for it, not a bug.
+ */
+async function paymentTotalsForBooking(bookingId: string | null): Promise<PaymentTotals> {
+  if (!bookingId) return { grossPaid: 0, refunded: 0, netPaid: 0, tip: 0 };
   const payments = await db().payment.findMany({ where: { bookingId, status: "PAID" } });
-  return payments.reduce((sum, p) => sum + p.amount, 0);
+  const grossPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+  const refunded = payments.reduce((sum, p) => sum + p.refundAmount, 0);
+  const tip = payments.reduce((sum, p) => sum + p.tipAmount, 0);
+  return { grossPaid, refunded, netPaid: grossPaid - refunded, tip };
+}
+
+/** Derives the real invoice status from live payment data -- never hand-set, always recomputed. */
+function deriveStatus(opts: { cancelled: boolean; total: number; dueDate: Date | null; totals: PaymentTotals }): InvoiceStatusValue {
+  if (opts.cancelled) return "CANCELLED";
+  const { netPaid, refunded, grossPaid } = opts.totals;
+  const isOverdue = !!opts.dueDate && opts.dueDate < new Date();
+  if (refunded > 0 && netPaid <= 0 && grossPaid > 0) return "REFUNDED";
+  if (opts.total > 0 && netPaid >= opts.total) return "PAID";
+  if (netPaid > 0) return isOverdue ? "OVERDUE" : "PARTIALLY_PAID";
+  return isOverdue ? "OVERDUE" : "UNPAID";
+}
+
+/** Persists the freshly-derived status so it stays queryable/filterable without a live join everywhere. */
+async function syncStatus(invoiceId: string, status: InvoiceStatusValue, current: InvoiceStatusValue) {
+  if (status === current) return;
+  await db().invoice.update({ where: { id: invoiceId }, data: { status } });
 }
 
 export async function listInvoices(): Promise<InvoiceListItem[]> {
@@ -35,19 +69,21 @@ export async function listInvoices(): Promise<InvoiceListItem[]> {
   });
   return Promise.all(
     invoices.map(async (inv) => {
-      const paidAmount = await paidAmountForBooking(inv.bookingId);
+      const totals = await paymentTotalsForBooking(inv.bookingId);
+      const status = deriveStatus({ cancelled: inv.status === "CANCELLED", total: inv.quote.total, dueDate: inv.dueDate, totals });
+      await syncStatus(inv.id, status, inv.status);
       return {
         id: inv.id,
         invoiceNumber: inv.invoiceNumber,
-        status: inv.status as InvoiceStatusValue,
+        status,
         issueDate: inv.issueDate.toISOString(),
         dueDate: inv.dueDate?.toISOString() ?? null,
         customerName: `${inv.customer.firstName} ${inv.customer.lastName}`.trim(),
         quoteNumber: inv.quote.quoteNumber,
         bookingReference: inv.booking?.reference ?? null,
         total: inv.quote.total,
-        paidAmount,
-        balance: Math.max(0, inv.quote.total - paidAmount),
+        paidAmount: totals.netPaid,
+        balance: Math.max(0, inv.quote.total - totals.netPaid),
       };
     })
   );
@@ -66,13 +102,15 @@ export async function getInvoiceById(id: string): Promise<InvoiceDetail | null> 
   if (!inv) return null;
 
   const payments = inv.bookingId ? await prisma.payment.findMany({ where: { bookingId: inv.bookingId }, orderBy: { createdAt: "desc" } }) : [];
-  const paidAmount = payments.filter((p) => p.status === "PAID").reduce((sum, p) => sum + p.amount, 0);
+  const totals = await paymentTotalsForBooking(inv.bookingId);
+  const status = deriveStatus({ cancelled: inv.status === "CANCELLED", total: inv.quote.total, dueDate: inv.dueDate, totals });
+  await syncStatus(inv.id, status, inv.status);
   const addr = inv.booking?.address;
 
   return {
     id: inv.id,
     invoiceNumber: inv.invoiceNumber,
-    status: inv.status as InvoiceStatusValue,
+    status,
     issueDate: inv.issueDate.toISOString(),
     dueDate: inv.dueDate?.toISOString() ?? null,
     notes: inv.notes,
@@ -88,8 +126,9 @@ export async function getInvoiceById(id: string): Promise<InvoiceDetail | null> 
     discount: inv.quote.discount,
     tax: inv.quote.tax,
     total: inv.quote.total,
-    paidAmount,
-    balance: Math.max(0, inv.quote.total - paidAmount),
+    tipAmount: totals.tip,
+    paidAmount: totals.netPaid,
+    balance: Math.max(0, inv.quote.total - totals.netPaid),
     items: inv.quote.items.map((i) => ({ id: i.id, label: i.label, quantity: i.quantity, unitPrice: i.unitPrice, total: i.total })),
     payments: payments.map((p) => ({ id: p.id, amount: p.amount, status: p.status, method: p.method, createdAt: p.createdAt.toISOString() })),
   };
@@ -128,6 +167,7 @@ export async function createInvoiceFromQuote(
       customerId: quote.lead.customerId,
       dueDate: data.dueDate ? new Date(data.dueDate) : null,
       notes: data.notes?.trim() || null,
+      status: "UNPAID",
     },
   });
   return { ok: true, id: invoice.id };
@@ -136,8 +176,8 @@ export async function createInvoiceFromQuote(
 export async function voidInvoice(id: string): Promise<{ ok: boolean; error?: string }> {
   const existing = await db().invoice.findUnique({ where: { id } });
   if (!existing) return { ok: false, error: "Not found" };
-  if (existing.status === "VOID") return { ok: true };
-  await db().invoice.update({ where: { id }, data: { status: "VOID" } });
+  if (existing.status === "CANCELLED") return { ok: true };
+  await db().invoice.update({ where: { id }, data: { status: "CANCELLED" } });
   return { ok: true };
 }
 

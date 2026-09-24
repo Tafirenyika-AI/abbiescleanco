@@ -111,6 +111,17 @@ enum AdminPermission {
   MANAGE_BOOKINGS
   MANAGE_USERS // create/edit other admin accounts
   VIEW_REPORTS
+  // Finance module -- granular by design (a bookkeeper/office admin may need
+  // expenses+payments without refund/tax-record/admin-settings access).
+  FINANCE_VIEW
+  FINANCE_MANAGE
+  FINANCE_EXPENSES
+  FINANCE_PAYMENTS
+  FINANCE_SUBCONTRACTORS
+  FINANCE_DOCUMENTS
+  FINANCE_TAX_RECORDS
+  FINANCE_REFUNDS
+  FINANCE_ADMIN
 }
 
 model AdminUser {
@@ -343,7 +354,7 @@ model Invoice {
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
 
-  status   String    @default("ISSUED") // ISSUED | VOID
+  status   InvoiceStatus @default(UNPAID)
   issueDate DateTime @default(now())
   dueDate   DateTime?
   notes     String?
@@ -353,6 +364,18 @@ model Invoice {
 
   @@index([status])
   @@map("invoices")
+}
+
+// UNPAID/PARTIALLY_PAID/PAID are derived from real linked Payment rows (see invoiceStore.ts) --
+// this column is the last-computed value, kept in sync on every read/mutation rather than trusted
+// as a hand-set flag, so it can be indexed/filtered on without recomputing on every list query.
+enum InvoiceStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  REFUNDED
+  CANCELLED
 }
 
 model PromoCode {
@@ -496,6 +519,7 @@ model Booking {
   automationEvents  AutomationEvent[]
   attachments       Attachment[]
   clientNotes       ClientNote[]
+  expenses          Expense[]
 
   @@index([status])
   @@index([scheduledStart])
@@ -556,6 +580,16 @@ model Payment {
   proofUrl      String? // receipt/screenshot the admin attached, or the Stripe-hosted receipt URL
   method        String? // CARD | ZELLE | VENMO | APPLE_CASH | CHECK | CASH | OTHER (null on older rows)
   reference     String? // check number, Zelle/Venmo transaction id, etc.
+
+  // Finance module additions -- one refund per payment covers this business's real flow (a partial
+  // or full refund against a specific payment); a second refund on the same payment isn't a case
+  // that's come up, so no separate Refund table yet (see docs/IMPLEMENTATION_PLAN.md).
+  provider              String  @default("MANUAL") // STRIPE | MANUAL -- which PaymentProvider recorded this
+  tipAmount             Int     @default(0) // cents
+  processingFeeAmount   Int     @default(0) // cents -- e.g. Stripe's cut, entered/known at record time
+  refundAmount          Int     @default(0) // cents
+  refundedAt            DateTime?
+  refundReason          String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -793,6 +827,17 @@ enum ExpenseCategory {
   INSURANCE
   PAYROLL
   OTHER
+  // Added for the Finance module -- finer-grained than the original 8, additive only (nothing
+  // above renamed/removed, so every existing expense row stays valid as-is).
+  FUEL
+  VEHICLE
+  SUBCONTRACTORS
+  EMPLOYEE_COSTS
+  OFFICE
+  PHONE
+  PROFESSIONAL_SERVICES
+  BANK_FEES
+  PAYMENT_PROCESSING
 }
 
 model Expense {
@@ -806,12 +851,16 @@ model Expense {
   isTaxDeductible Boolean         @default(true)
   receiptUrl      String?
 
+  bookingId String? // ties a cost to the job that generated it, for job-profitability later
+  booking   Booking? @relation(fields: [bookingId], references: [id])
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   @@index([category])
   @@index([date])
+  @@index([bookingId])
   @@map("expenses")
 }
 

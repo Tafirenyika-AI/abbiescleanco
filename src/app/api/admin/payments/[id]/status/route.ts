@@ -6,7 +6,7 @@ import { updatePaymentStatus, PAYMENT_STATUSES } from "@/lib/server/paymentStore
 const schema = z.object({ status: z.enum(PAYMENT_STATUSES) });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const admin = await requireAdmin(req, "VIEW_REPORTS");
+  const admin = await requireAdmin(req, "FINANCE_PAYMENTS");
   if (!admin) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
 

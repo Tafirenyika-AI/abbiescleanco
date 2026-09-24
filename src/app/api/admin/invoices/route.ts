@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/server/requireAdmin";
 import { listInvoices, createInvoiceFromQuote } from "@/lib/server/invoiceStore";
 
 export async function GET(req: NextRequest) {
-  const admin = await requireAdmin(req, "VIEW_REPORTS");
+  const admin = await requireAdmin(req, "FINANCE_VIEW");
   if (!admin) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   const invoices = await listInvoices();
   return NextResponse.json({ ok: true, invoices });
@@ -18,7 +18,7 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const admin = await requireAdmin(req, "VIEW_REPORTS");
+  const admin = await requireAdmin(req, "FINANCE_MANAGE");
   if (!admin) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
 
   let body: unknown;

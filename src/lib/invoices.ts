@@ -1,7 +1,16 @@
 /** Client-safe invoice types/constants — no server-only imports (Prisma, fs). */
 
-export const INVOICE_STATUSES = ["ISSUED", "VOID"] as const;
+export const INVOICE_STATUSES = ["UNPAID", "PARTIALLY_PAID", "PAID", "OVERDUE", "REFUNDED", "CANCELLED"] as const;
 export type InvoiceStatusValue = (typeof INVOICE_STATUSES)[number];
+
+export const invoiceStatusLabels: Record<InvoiceStatusValue, string> = {
+  UNPAID: "Unpaid",
+  PARTIALLY_PAID: "Partially paid",
+  PAID: "Paid",
+  OVERDUE: "Overdue",
+  REFUNDED: "Refunded",
+  CANCELLED: "Cancelled",
+};
 
 export interface InvoiceListItem {
   id: string;
@@ -27,6 +36,7 @@ export interface InvoiceDetail extends InvoiceListItem {
   subtotal: number;
   discount: number;
   tax: number;
+  tipAmount: number;
   items: { id: string; label: string; quantity: number; unitPrice: number; total: number }[];
   payments: { id: string; amount: number; status: string; method: string | null; createdAt: string }[];
 }

@@ -18,14 +18,14 @@ const schema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  const admin = await requireAdmin(req, "VIEW_REPORTS");
+  const admin = await requireAdmin(req, "FINANCE_VIEW");
   if (!admin) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   const payments = await listPayments();
   return NextResponse.json({ ok: true, payments });
 }
 
 export async function POST(req: NextRequest) {
-  const admin = await requireAdmin(req, "VIEW_REPORTS");
+  const admin = await requireAdmin(req, "FINANCE_PAYMENTS");
   if (!admin) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
 
   let body: unknown;
