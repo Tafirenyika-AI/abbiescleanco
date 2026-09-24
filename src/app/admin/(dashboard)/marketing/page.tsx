@@ -1,22 +1,17 @@
-import { Megaphone } from "lucide-react";
-import ComingSoonModule from "@/components/admin/ComingSoonModule";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { verifyAdminSessionToken, ADMIN_SESSION_COOKIE } from "@/lib/server/adminAuth";
+import { getAdminProfile, hasPermission } from "@/lib/server/adminUsers";
+import { listCampaigns, listPosts } from "@/lib/server/marketingStore";
+import MarketingManager from "@/components/admin/marketing/MarketingManager";
 
-export default function AdminMarketingPage() {
-  return (
-    <ComingSoonModule
-      icon={Megaphone}
-      title="Marketing Studio"
-      tagline="Plan and publish campaigns, content, and social posts from one place."
-      blocked={{
-        reason: "Needs real accounts for the platforms you want to publish to.",
-        detail: "Google Business Profile, Google Ads, Meta/Instagram/Facebook, and TikTok all require their own developer app registration and connected business account before anything here could actually publish. See docs/INTEGRATIONS.md.",
-      }}
-      capabilities={[
-        "Draft and schedule social posts and ad campaigns for approval before anything goes out",
-        "Track cost per lead and cost per booked customer by channel",
-        "Only recommend promoting in areas you actually have capacity to serve",
-        "Every publish requires your explicit approval, nothing posts automatically",
-      ]}
-    />
-  );
+export default async function AdminMarketingPage() {
+  const cookieStore = await cookies();
+  const session = verifyAdminSessionToken(cookieStore.get(ADMIN_SESSION_COOKIE)?.value);
+  const admin = session ? await getAdminProfile(session.adminUserId) : null;
+  if (!admin || !hasPermission(admin, "MANAGE_CONTENT")) redirect("/admin");
+
+  const [campaigns, posts] = await Promise.all([listCampaigns(), listPosts()]);
+
+  return <MarketingManager initialCampaigns={campaigns} initialPosts={posts} />;
 }

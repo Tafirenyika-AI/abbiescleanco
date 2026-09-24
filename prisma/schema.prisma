@@ -146,6 +146,9 @@ model AdminUser {
   assignedProspects Prospect[]
   bankImports BankImport[]
   matchedBankTransactions BankTransaction[]
+  marketingCampaigns MarketingCampaign[]
+  createdMarketingPosts MarketingPost[] @relation("MarketingPostCreatedBy")
+  approvedMarketingPosts MarketingPost[] @relation("MarketingPostApprovedBy")
 
   @@index([email])
   @@map("admin_users")
@@ -926,6 +929,87 @@ model BankTransaction {
   @@index([dedupeHash])
   @@index([importId])
   @@map("bank_transactions")
+}
+
+// ---------- Marketing studio (campaign spend/ROI tracking + content planning) ----------
+// The full blueprint vision (drafting AND publishing directly to Google Ads/Business Profile,
+// Meta, TikTok) needs real developer-app registrations + connected business accounts per platform
+// -- genuinely blocked, not attempted here (see /admin/marketing's own Coming-Soon disclosure for
+// what's still missing). This is the real, buildable subset: track what was actually spent on a
+// campaign and what it actually produced (using the UTM attribution this app already captures on
+// every lead), and plan/approve post content -- publishing itself stays a manual, human step.
+
+enum MarketingChannel {
+  GOOGLE_ADS
+  GOOGLE_BUSINESS_PROFILE
+  META_FACEBOOK
+  META_INSTAGRAM
+  TIKTOK
+  EMAIL
+  OTHER
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+model MarketingCampaign {
+  id      String           @id @default(cuid())
+  name    String
+  channel MarketingChannel
+  status  CampaignStatus   @default(DRAFT)
+
+  // Matched against Lead.campaign (the UTM campaign string captured on the public estimate form)
+  // to attribute real leads/revenue to this campaign -- never a guess, only an exact match.
+  utmCampaign String? @unique
+
+  spend     Int       @default(0) // cents, entered/updated by the admin as real spend is known
+  startDate DateTime?
+  endDate   DateTime?
+  notes     String?
+
+  createdById String?
+  createdBy   AdminUser? @relation(fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  posts MarketingPost[]
+
+  @@map("marketing_campaigns")
+}
+
+enum PostStatus {
+  DRAFT
+  APPROVED
+  POSTED
+  CANCELLED
+}
+
+model MarketingPost {
+  id         String             @id @default(cuid())
+  campaignId String?
+  campaign   MarketingCampaign? @relation(fields: [campaignId], references: [id])
+
+  channel      MarketingChannel
+  caption      String
+  status       PostStatus @default(DRAFT)
+  scheduledFor DateTime?
+  postedAt     DateTime? // set when an admin marks it posted, after actually publishing it themselves
+
+  createdById  String?
+  createdBy    AdminUser? @relation("MarketingPostCreatedBy", fields: [createdById], references: [id])
+  approvedById String?
+  approvedBy   AdminUser? @relation("MarketingPostApprovedBy", fields: [approvedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("marketing_posts")
 }
 
 // ---------- Admin notification center ----------

@@ -97,7 +97,7 @@ export const navGroups: NavGroup[] = [
       { href: "/admin/reviews", label: "Reviews", description: "Moderate & publish reviews", icon: Star, permission: "MANAGE_REVIEWS", built: true },
       { href: "/admin/promotions", label: "Promotions", description: "Promo codes & discounts", icon: Megaphone, permission: "MANAGE_PRICING", built: true },
       { href: "/admin/automations", label: "Automations", description: "Reminders & follow-ups", icon: Zap, permission: "MANAGE_CONTENT", built: true },
-      { href: "/admin/marketing", label: "Marketing studio", description: "Campaigns & social content", icon: Megaphone, permission: "MANAGE_CONTENT", built: false },
+      { href: "/admin/marketing", label: "Marketing studio", description: "Campaigns & social content", icon: Megaphone, permission: "MANAGE_CONTENT", built: true },
     ],
   },
   {
