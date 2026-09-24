@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, Loader2, X, Mail, Send, Ban, Sparkles, UserCog, Globe, Trash2 } from "lucide-react";
+import { Search, Loader2, X, Mail, Send, Ban, Sparkles, UserCog, Globe, Trash2, Radar } from "lucide-react";
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
@@ -36,13 +36,14 @@ function when(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric" });
 }
 
-export default function ProspectingManager({ initialProspects, placesConfigured }: { initialProspects: ProspectRow[]; placesConfigured: boolean }) {
+export default function ProspectingManager({ initialProspects, placesConfigured, webSearchConfigured }: { initialProspects: ProspectRow[]; placesConfigured: boolean; webSearchConfigured: boolean }) {
   const { showToast } = useToast();
   const [prospects, setProspects] = useState(initialProspects);
   const [selected, setSelected] = useState<ProspectRow | null>(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<ProspectCategory>("LOCAL_BUSINESS");
   const [searching, setSearching] = useState(false);
+  const [webSearching, setWebSearching] = useState(false);
   const [statusFilter, setStatusFilter] = useState<ProspectStatus | "">("");
 
   async function refresh() {
@@ -64,6 +65,21 @@ export default function ProspectingManager({ initialProspects, placesConfigured 
     setSearching(false);
     if (!data?.ok) return showToast(data?.error || "Search failed", "error");
     showToast(`Found ${data.found}, ${data.new} new, ${data.duplicates} already known.`, "success");
+    await refresh();
+  }
+
+  async function searchWeb() {
+    setWebSearching(true);
+    const res = await fetch("/api/admin/prospecting/search-web", { method: "POST" });
+    const data = await res.json().catch(() => null);
+    setWebSearching(false);
+    if (!data?.ok) return showToast(data?.error || "Web search failed", "error");
+    showToast(
+      data.found === 0
+        ? "No genuine recent posts found this time, worth trying again in a day or two."
+        : `Found ${data.found}, ${data.new} new, ${data.duplicates} already known.`,
+      "success"
+    );
     await refresh();
   }
 
@@ -103,6 +119,24 @@ export default function ProspectingManager({ initialProspects, placesConfigured 
             {searching ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Search className="size-4" aria-hidden />} Search
           </button>
         </div>
+      </div>
+
+      <div className="rounded-xl border border-admin-border bg-admin-card p-4">
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-admin-text"><Radar className="size-4 text-admin-teal-hover" aria-hidden /> Find people looking for a cleaner right now</h2>
+        <p className="mt-1 text-xs text-admin-text-muted">
+          Searches the real web (Craigslist, Nextdoor, local Facebook groups, Reddit, forums) for recent public posts where someone nearby is actively looking to hire a cleaner, not just businesses that might need one someday. These rarely include a direct email/phone, so each one links to the real post for you to reply there yourself.
+        </p>
+        {!webSearchConfigured && (
+          <p className="mt-2 text-sm text-amber-700">Needs an Anthropic API key in <span className="font-semibold">Settings → Integrations</span> to search.</p>
+        )}
+        <button
+          type="button"
+          onClick={searchWeb}
+          disabled={webSearching || !webSearchConfigured}
+          className="ios-press mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          {webSearching ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Radar className="size-4" aria-hidden />} {webSearching ? "Searching the web…" : "Search the web now"}
+        </button>
       </div>
 
       <div className="flex items-center gap-2">

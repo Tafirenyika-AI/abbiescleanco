@@ -62,6 +62,10 @@ export async function isPlacesSearchConfigured(): Promise<boolean> {
   return !!(await getIntegrationValue("googleMapsApiKey", "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY"));
 }
 
+export async function isWebLeadSearchConfigured(): Promise<boolean> {
+  return !!(await getIntegrationValue("anthropicApiKey", "ANTHROPIC_API_KEY"));
+}
+
 interface PlaceResult {
   placeId: string;
   name: string;
@@ -138,6 +142,102 @@ export async function searchAndSaveProspects(query: string, category: ProspectCa
     created++;
   }
   return { ok: true, found: results.length, new: created, duplicates: results.length - created };
+}
+
+interface WebOpportunity {
+  url: string;
+  title: string;
+  snippet: string;
+  postedDate: string | null;
+  category: ProspectCategory;
+}
+
+/**
+ * Searches the real web (via Claude's web_search tool, same proven mechanism as researchProspect
+ * below) for RECENT public posts where someone -- a homeowner or a local business -- is actively
+ * looking to hire a cleaning service right now (Craigslist gigs/services-wanted, Nextdoor, local
+ * Facebook groups, Reddit, community forums). This is a fundamentally different, higher-intent
+ * discovery channel than Google Places: those are businesses that MIGHT need cleaning someday, these
+ * are people who've just said, publicly, that they need one now -- reaching out while that need is
+ * still live is the real advantage. Every result is a genuine web_search hit (cross-checked against
+ * the response's own citations, not just trusted text) with a real source link; nothing here ever
+ * auto-contacts anyone -- these posts rarely expose a direct email/phone (Craigslist relays replies
+ * through its own anonymized system), so the realistic, honest next step is always the admin opening
+ * the real post and replying there themselves, same "AI finds, human reaches out" pattern as every
+ * other prospect.
+ */
+export async function searchWebForCleaningLeads(): Promise<SearchProspectsResult> {
+  const apiKey = await getIntegrationValue("anthropicApiKey", "ANTHROPIC_API_KEY");
+  if (!apiKey) return { ok: false, error: "Anthropic isn't configured yet, add an API key in Settings → Integrations." };
+
+  const areas = business.areaServed.join(", ");
+  const today = new Date().toISOString().slice(0, 10);
+  const query = `Search the web for REAL, RECENT (within about the last 14 days -- today is ${today}) public posts where an individual homeowner or a local business in or very near ${areas} is actively looking for, needs, or wants to hire a house or commercial cleaning service right now. Look at places like Craigslist "gigs"/"services wanted" listings, Nextdoor, local Facebook groups, Reddit, and community forums.
+
+Do NOT include posts from cleaning companies advertising their OWN services -- only posts from someone seeking to HIRE a cleaner. Do NOT include anything you can't reasonably tell is recent (roughly the last 2-3 weeks) -- skip it rather than guess.
+
+Respond with ONLY a JSON array, nothing else before or after it. One object per genuine match, with exactly these fields: "url" (the real source URL from your search), "title" (a short label for it), "snippet" (what they're actually asking for, in their own words where possible), "postedDate" (the real date or relative time if stated, e.g. "3 days ago" or "2026-09-20", else null), "category" (one of "HOMEOWNER", "LOCAL_BUSINESS", "PROPERTY_MANAGER", "OTHER" based on who's asking). If you find nothing genuine, respond with exactly [].`;
+
+  const baseUrl = (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com").replace(/\/$/, "");
+  let text = "";
+  const citedUrls = new Set<string>();
+  try {
+    const res = await fetch(`${baseUrl}/v1/messages`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5",
+        max_tokens: 2000,
+        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }],
+        messages: [{ role: "user", content: query }],
+      }),
+      signal: AbortSignal.timeout(90_000),
+    });
+    if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
+    const data = (await res.json()) as { content?: { type: string; text?: string; citations?: { url?: string }[] }[] };
+    const textBlocks = (data.content ?? []).filter((c) => c.type === "text");
+    text = textBlocks.map((b) => b.text ?? "").join("\n").trim();
+    for (const b of textBlocks) for (const c of b.citations ?? []) if (c.url) citedUrls.add(c.url);
+  } catch {
+    return { ok: false, error: "Couldn't complete the web search right now. Please try again shortly." };
+  }
+
+  let findings: WebOpportunity[];
+  try {
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : text);
+    if (!Array.isArray(parsed)) throw new Error("not an array");
+    findings = parsed.filter(
+      (f): f is WebOpportunity =>
+        f && typeof f.url === "string" && typeof f.title === "string" && typeof f.snippet === "string" && (PROSPECT_CATEGORIES as readonly string[]).includes(f.category)
+    );
+  } catch {
+    return { ok: false, error: "The search didn't return a usable result. Please try again." };
+  }
+  if (findings.length === 0) return { ok: true, found: 0, new: 0, duplicates: 0 };
+
+  let created = 0;
+  for (const f of findings) {
+    // Cross-check against the response's own citations -- if the model named a URL that never
+    // actually came back from a real search this turn, treat it as unverified and skip it rather
+    // than create a prospect from a possibly-invented source.
+    if (!citedUrls.has(f.url)) continue;
+    const existing = await db().prospect.findFirst({ where: { website: f.url } });
+    if (existing) continue;
+    await db().prospect.create({
+      data: {
+        category: f.category,
+        businessName: f.title.slice(0, 200),
+        website: f.url,
+        source: "web_intent_search",
+        sourceQuery: `Looking-for-a-cleaner search, ${today}`,
+        notes: `Found via web search -- actively looking for cleaning help.${f.postedDate ? ` Posted ${f.postedDate}.` : ""}\n\n"${f.snippet}"\n\nNo direct contact info from this source -- open the real post to reply.`,
+      },
+    });
+    created++;
+  }
+  const verifiedFound = findings.filter((f) => citedUrls.has(f.url)).length;
+  return { ok: true, found: verifiedFound, new: created, duplicates: verifiedFound - created };
 }
 
 export async function listProspects(filters: { status?: ProspectStatus; category?: ProspectCategory } = {}): Promise<ProspectRow[]> {

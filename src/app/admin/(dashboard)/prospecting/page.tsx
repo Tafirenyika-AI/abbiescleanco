@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { verifyAdminSessionToken, ADMIN_SESSION_COOKIE } from "@/lib/server/adminAuth";
 import { getAdminProfile, hasPermission } from "@/lib/server/adminUsers";
-import { listProspects, isPlacesSearchConfigured } from "@/lib/server/prospectStore";
+import { listProspects, isPlacesSearchConfigured, isWebLeadSearchConfigured } from "@/lib/server/prospectStore";
 import ProspectingManager from "@/components/admin/prospecting/ProspectingManager";
 
 export default async function AdminProspectingPage() {
@@ -14,7 +14,7 @@ export default async function AdminProspectingPage() {
     redirect("/admin");
   }
 
-  const [prospects, placesConfigured] = await Promise.all([listProspects(), isPlacesSearchConfigured()]);
+  const [prospects, placesConfigured, webSearchConfigured] = await Promise.all([listProspects(), isPlacesSearchConfigured(), isWebLeadSearchConfigured()]);
 
-  return <ProspectingManager initialProspects={prospects} placesConfigured={placesConfigured} />;
+  return <ProspectingManager initialProspects={prospects} placesConfigured={placesConfigured} webSearchConfigured={webSearchConfigured} />;
 }
