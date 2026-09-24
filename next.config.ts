@@ -10,6 +10,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // sharp (used for image re-encoding in mediaUpload.ts) ships a native binary -- without this,
+  // Next's bundler can pull it into the serverless function bundle in a way that breaks the
+  // native binary at runtime on Vercel specifically (works fine in local dev, where the bundler
+  // behaves differently). This keeps sharp as a real external require() at runtime instead.
+  serverExternalPackages: ["sharp"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
