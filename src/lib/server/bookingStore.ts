@@ -439,11 +439,15 @@ export async function createAdminBooking(data: {
   serviceSlug: string;
   serviceName: string;
   amount: number; // cents
-  addressLine1: string;
+  // Either reuse an existing property (e.g. a property manager's known unit)...
+  addressId?: string;
+  // ...or create a new one, matching the previous behavior exactly when addressId is omitted.
+  addressLine1?: string;
   addressLine2?: string;
   city?: string;
   state?: string;
-  zip: string;
+  zip?: string;
+  addressLabel?: string; // optional nickname for a newly-created property, e.g. "Unit 4B"
   scheduledStart: string;
   scheduledEnd: string;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
@@ -464,17 +468,26 @@ export async function createAdminBooking(data: {
     create: { slug: data.serviceSlug, name: data.serviceName, description: "" },
   });
 
-  const address = await db().address.create({
-    data: {
-      customerId: customer.id,
-      line1: data.addressLine1,
-      line2: data.addressLine2 || null,
-      city: data.city || "Spokane Valley",
-      state: data.state || "WA",
-      zip: data.zip,
-      propertyType: "house",
-    },
-  });
+  let address: { id: string };
+  if (data.addressId) {
+    const existing = await db().address.findFirst({ where: { id: data.addressId, customerId: customer.id, deletedAt: null } });
+    if (!existing) return { ok: false, error: "Property not found for this customer" };
+    address = existing;
+  } else {
+    if (!data.addressLine1 || !data.zip) return { ok: false, error: "Address is required" };
+    address = await db().address.create({
+      data: {
+        customerId: customer.id,
+        line1: data.addressLine1,
+        line2: data.addressLine2 || null,
+        city: data.city || "Spokane Valley",
+        state: data.state || "WA",
+        zip: data.zip,
+        propertyType: "house",
+        label: data.addressLabel || null,
+      },
+    });
+  }
 
   const lead = await db().lead.create({
     data: {

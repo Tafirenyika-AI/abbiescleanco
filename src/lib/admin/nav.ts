@@ -73,7 +73,7 @@ export const navGroups: NavGroup[] = [
       { href: "/admin/pricing", label: "Services & pricing", description: "Rates, add-ons, service catalog", icon: Wrench, permission: "MANAGE_PRICING", built: true },
       { href: "/admin/team", label: "Team", description: "Roster & job assignments", icon: UsersRound, permission: "MANAGE_USERS", built: true },
       { href: "/admin/workforce", label: "Workforce & subcontractors", description: "Logins, documents, job offers", icon: HardHat, permission: "MANAGE_USERS", built: false },
-      { href: "/admin/property-managers", label: "Property managers", description: "Multi-property turnover portal", icon: Building2, permission: "MANAGE_BOOKINGS", built: false },
+      { href: "/admin/property-managers", label: "Property managers", description: "Multi-property turnover portal", icon: Building2, permission: "MANAGE_BOOKINGS", built: true },
     ],
   },
   {

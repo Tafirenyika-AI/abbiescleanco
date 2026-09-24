@@ -184,6 +184,7 @@ model Customer {
   notes     String?
   petsNote  String?
   accessInstructions String? // never sent in email subject lines or to analytics
+  isPropertyManager Boolean @default(false) // manages multiple properties -- surfaced in the admin Property Managers module
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -218,6 +219,7 @@ model Address {
   state      String
   zip        String
   propertyType String // apartment | house | townhome | commercial
+  label      String? // optional nickname, e.g. "Unit 4B" -- mainly useful for a property manager's portfolio
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
