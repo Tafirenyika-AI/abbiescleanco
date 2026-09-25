@@ -48,7 +48,8 @@ export async function generatePosterImage(input: { prompt: string; size?: Poster
     return { ok: true, url };
   } catch (err) {
     if (err instanceof UploadError) return { ok: false, error: err.message };
-    return { ok: false, error: "Couldn't save the generated image." };
+    console.error("saveGeneratedFile (poster) failed:", err);
+    return { ok: false, error: `Couldn't save the generated image${err instanceof Error ? `: ${err.message}` : ""}.` };
   }
 }
 
@@ -64,6 +65,7 @@ export async function saveGeneratedVideo(buffer: Buffer): Promise<{ ok: true; ur
     return { ok: true, url };
   } catch (err) {
     if (err instanceof UploadError) return { ok: false, error: err.message };
-    return { ok: false, error: "Couldn't save the generated video." };
+    console.error("saveGeneratedFile (video) failed:", err);
+    return { ok: false, error: `Couldn't save the generated video${err instanceof Error ? `: ${err.message}` : ""}.` };
   }
 }

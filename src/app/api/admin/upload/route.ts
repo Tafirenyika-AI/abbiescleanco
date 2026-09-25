@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
     if (err instanceof UploadError) {
       return NextResponse.json({ ok: false, error: err.message }, { status: 400 });
     }
-    return NextResponse.json({ ok: false, error: "Upload failed" }, { status: 500 });
+    console.error("saveUploadedImage failed:", err);
+    return NextResponse.json({ ok: false, error: `Upload failed${err instanceof Error ? `: ${err.message}` : ""}` }, { status: 500 });
   }
 }

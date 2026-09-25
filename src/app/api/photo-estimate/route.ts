@@ -92,6 +92,9 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     if (err instanceof MediaError) return NextResponse.json({ ok: false, error: err.message }, { status: 400 });
+    // Public-facing route -- log the real error server-side (Vercel function logs) rather than
+    // exposing internal details to an unauthenticated caller.
+    console.error("photo-estimate failed:", err);
     return NextResponse.json({ ok: false, error: "Something went wrong analysing your photos. Please try again." }, { status: 500 });
   }
 }
