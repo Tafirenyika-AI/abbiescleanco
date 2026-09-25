@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/server/requireAdmin";
-import { getCustomerById, updateCustomerNotes, deleteCustomer } from "@/lib/server/customerStore";
+import { getCustomerById, updateCustomer, deleteCustomer } from "@/lib/server/customerStore";
 
 const updateSchema = z.object({
   notes: z.string().trim().max(2000).optional(),
   petsNote: z.string().trim().max(500).optional(),
   accessInstructions: z.string().trim().max(1000).optional(),
+  // Optional -- lets an admin add an email later for a customer created without one.
+  email: z.string().trim().email().optional().or(z.literal("")),
+  phone: z.string().trim().min(7).max(20).optional(),
 });
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -33,8 +36,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ ok: false, error: "Validation failed", issues: parsed.error.issues }, { status: 400 });
 
-  await updateCustomerNotes(id, parsed.data);
-  return NextResponse.json({ ok: true });
+  const result = await updateCustomer(id, parsed.data);
+  return NextResponse.json(result, { status: result.ok ? 200 : 400 });
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

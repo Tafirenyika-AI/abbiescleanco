@@ -43,5 +43,5 @@ export async function requireCustomer(req: NextRequest, opts: { mutating?: boole
     const rl = await checkRateLimit(`customer-mutation:${customer.id}`, 60, 60_000);
     if (!rl.allowed) return { error: NextResponse.json({ ok: false, error: "Too many requests, slow down a moment" }, { status: 429 }) };
   }
-  return { ctx: { userId: session.userId, customerId: customer.id, firstName: customer.firstName, lastName: customer.lastName, email: customer.email } };
+  return { ctx: { userId: session.userId, customerId: customer.id, firstName: customer.firstName, lastName: customer.lastName, email: customer.email ?? "" } };
 }

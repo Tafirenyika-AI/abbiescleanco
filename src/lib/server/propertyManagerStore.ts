@@ -18,7 +18,7 @@ function db() {
 export interface PropertyManagerListItem {
   customerId: string;
   name: string;
-  email: string;
+  email: string | null;
   phone: string;
   propertyCount: number;
   upcomingCount: number;
@@ -71,7 +71,7 @@ export interface PropertyManagerBooking {
 export interface PropertyManagerDetail {
   customerId: string;
   name: string;
-  email: string;
+  email: string | null;
   phone: string;
   properties: PropertyItem[];
   bookings: PropertyManagerBooking[];

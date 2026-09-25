@@ -6,7 +6,8 @@ import { createCustomer, listCustomerOptions } from "@/lib/server/customerStore"
 const schema = z.object({
   firstName: z.string().trim().min(1).max(80),
   lastName: z.string().trim().min(1).max(80),
-  email: z.string().trim().email(),
+  // Optional -- a real client who isn't tech-savvy may genuinely have no email. Phone stays required.
+  email: z.string().trim().email().optional().or(z.literal("")),
   phone: z.string().trim().min(7).max(20),
 });
 

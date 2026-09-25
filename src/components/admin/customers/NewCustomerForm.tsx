@@ -31,7 +31,7 @@ export default function NewCustomerForm() {
     router.push(`/admin/customers/${json.id}`);
   }
 
-  const valid = firstName.trim() && lastName.trim() && email.trim() && phone.trim();
+  const valid = firstName.trim() && lastName.trim() && phone.trim();
 
   return (
     <Card className="max-w-lg">
@@ -45,8 +45,8 @@ export default function NewCustomerForm() {
           <input value={lastName} onChange={(e) => setLastName(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
         </label>
         <label className="block sm:col-span-2">
-          <span className="text-xs font-medium text-admin-text-muted">Email</span>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+          <span className="text-xs font-medium text-admin-text-muted">Email (optional)</span>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Leave blank if they don't have one -- you can add it later" className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
         </label>
         <label className="block sm:col-span-2">
           <span className="text-xs font-medium text-admin-text-muted">Phone</span>

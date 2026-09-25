@@ -8,7 +8,7 @@ function db() {
 export interface CustomerSummary {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
   phone: string;
   primaryAddress: string | null;
   totalBookings: number;
@@ -19,15 +19,21 @@ export interface CustomerSummary {
   status: "active" | "lead" | "new";
 }
 
-export async function createCustomer(data: { firstName: string; lastName: string; email: string; phone: string }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
-  const existing = await db().customer.findFirst({ where: { email: data.email.toLowerCase(), deletedAt: null } });
-  if (existing) return { ok: false, error: "A customer with that email already exists" };
+/** email is optional -- a real client (not tech-savvy) may genuinely have none; phone is the one
+ *  required contact method. The duplicate-email check only applies when an email was given, so
+ *  two different no-email customers never collide with each other. */
+export async function createCustomer(data: { firstName: string; lastName: string; email?: string | null; phone: string }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const email = data.email?.trim() ? data.email.trim().toLowerCase() : null;
+  if (email) {
+    const existing = await db().customer.findFirst({ where: { email, deletedAt: null } });
+    if (existing) return { ok: false, error: "A customer with that email already exists" };
+  }
 
   const customer = await db().customer.create({
     data: {
       firstName: data.firstName,
       lastName: data.lastName,
-      email: data.email.toLowerCase(),
+      email,
       phone: data.phone,
       communicationPreference: { create: { smsConsent: false, emailConsent: true } },
     },
@@ -38,7 +44,7 @@ export async function createCustomer(data: { firstName: string; lastName: string
 export interface CustomerOption {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
   phone: string;
 }
 
@@ -98,7 +104,7 @@ export interface CustomerDetail {
   id: string;
   firstName: string;
   lastName: string;
-  email: string;
+  email: string | null;
   phone: string;
   notes: string | null;
   petsNote: string | null;
@@ -150,11 +156,23 @@ export async function getCustomerById(id: string): Promise<CustomerDetail | null
   };
 }
 
-export async function updateCustomerNotes(
+/** Covers both the Notes & preferences tab AND the Overview tab's editable contact fields --
+ *  the only way to add an email after creating a customer without one (see createCustomer). */
+export async function updateCustomer(
   id: string,
-  data: Partial<{ notes: string; petsNote: string; accessInstructions: string }>
-) {
-  await db().customer.update({ where: { id }, data });
+  data: Partial<{ notes: string; petsNote: string; accessInstructions: string; email: string | null; phone: string }>
+): Promise<{ ok: boolean; error?: string }> {
+  const patch: typeof data = { ...data };
+  if ("email" in patch) {
+    const email = patch.email?.trim() ? patch.email.trim().toLowerCase() : null;
+    if (email) {
+      const existing = await db().customer.findFirst({ where: { email, deletedAt: null, NOT: { id } } });
+      if (existing) return { ok: false, error: "Another customer already has that email" };
+    }
+    patch.email = email;
+  }
+  await db().customer.update({ where: { id }, data: patch });
+  return { ok: true };
 }
 
 export async function deleteCustomer(id: string, adminUserId: string): Promise<boolean> {

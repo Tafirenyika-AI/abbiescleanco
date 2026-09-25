@@ -349,7 +349,7 @@ export async function createSelfServiceBooking(
     ok: true,
     id: booking.id,
     reference: booking.reference,
-    customerEmail: lead.customer.email,
+    customerEmail: lead.customer.email ?? "",
     customerName: `${lead.customer.firstName} ${lead.customer.lastName}`.trim(),
     serviceName: lead.service.name,
   };

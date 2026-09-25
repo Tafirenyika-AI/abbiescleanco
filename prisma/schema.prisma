@@ -179,7 +179,7 @@ model Customer {
 
   firstName String
   lastName  String
-  email     String
+  email     String? // nullable -- some real clients (not tech-savvy) genuinely have no email; phone is the one required contact method
   phone     String
   notes     String?
   petsNote  String?

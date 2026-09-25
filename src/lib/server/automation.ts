@@ -25,19 +25,26 @@
  * unit-testable without a real scheduler.
  */
 
-import { sendEmail } from "./email";
+import { sendEmail, type SendEmailResult } from "./email";
 import { sendSms } from "./sms";
 import { business } from "@/lib/data/business";
 
 interface RecipientInfo {
   name: string;
-  email: string;
+  email: string | null; // a real client with no email (not tech-savvy) has nothing to send here -- see the skipped() guard below
   phone: string;
   smsConsent: boolean;
 }
 
+/** Honest no-op for a recipient with no email -- same {ok:true} shape as a real send, so callers
+ *  checking .ok keep working correctly instead of treating "nothing to send to" as a failure. */
+function skipped(): SendEmailResult {
+  return { ok: true, mode: "skipped" };
+}
+
 /** Sent once, shortly after QUOTE_FOLLOW_UP delay, if a quote hasn't been confirmed. */
 export async function sendQuoteFollowUp(recipient: RecipientInfo, reference: string) {
+  if (!recipient.email) return skipped();
   return sendEmail({
     to: recipient.email,
     subject: `Still interested? Your estimate ${reference} is waiting`,
@@ -49,6 +56,7 @@ export async function sendQuoteFollowUp(recipient: RecipientInfo, reference: str
 
 /** Sent once more if the first follow-up went unanswered. Stops after this. */
 export async function sendFinalQuoteFollowUp(recipient: RecipientInfo, reference: string) {
+  if (!recipient.email) return skipped();
   return sendEmail({
     to: recipient.email,
     subject: `Last check-in on estimate ${reference}`,
@@ -63,6 +71,7 @@ export async function sendBookingConfirmation(
   recipient: RecipientInfo,
   details: { serviceName: string; scheduledStart: Date; arrivalWindow?: string; reference: string }
 ) {
+  if (!recipient.email) return skipped();
   const dateLabel = details.scheduledStart.toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -90,15 +99,19 @@ export async function sendAppointmentReminder(
     hour: "numeric",
     minute: "2-digit",
   });
-  const results = [
-    await sendEmail({
-      to: recipient.email,
-      subject: `Reminder: ${details.serviceName} on ${dateLabel}`,
-      html: `<p>Hi ${escapeHtml(recipient.name)}, this is a reminder about your upcoming ${escapeHtml(
-        details.serviceName
-      )} visit on ${dateLabel}.</p>`,
-    }),
-  ];
+  // Unlike the other, email-only functions here, a reminder can still go out over SMS alone for a
+  // customer with no email on file -- only skip the email channel itself, not the whole reminder.
+  const results = recipient.email
+    ? [
+        await sendEmail({
+          to: recipient.email,
+          subject: `Reminder: ${details.serviceName} on ${dateLabel}`,
+          html: `<p>Hi ${escapeHtml(recipient.name)}, this is a reminder about your upcoming ${escapeHtml(
+            details.serviceName
+          )} visit on ${dateLabel}.</p>`,
+        }),
+      ]
+    : [];
   if (recipient.smsConsent) {
     results.push(
       await sendSms(recipient.phone, `Reminder: your ${details.serviceName} visit is ${dateLabel}. Reply STOP to opt out.`)
@@ -109,6 +122,7 @@ export async function sendAppointmentReminder(
 
 /** Sent after a job is marked complete. */
 export async function sendPostServiceFollowUp(recipient: RecipientInfo) {
+  if (!recipient.email) return skipped();
   return sendEmail({
     to: recipient.email,
     subject: "How did we do?",
@@ -123,6 +137,7 @@ export async function sendPostServiceFollowUp(recipient: RecipientInfo) {
 
 /** Sent only to customers who confirm satisfaction — points to the client-approved public review link. */
 export async function sendReviewRequest(recipient: RecipientInfo, publicReviewUrl: string) {
+  if (!recipient.email) return skipped();
   return sendEmail({
     to: recipient.email,
     subject: "Would you share a quick review?",
@@ -134,6 +149,7 @@ export async function sendReviewRequest(recipient: RecipientInfo, publicReviewUr
 
 /** Respectful re-engagement for customers inactive past a configurable period. Must honor opt-outs. */
 export async function sendWinBackMessage(recipient: RecipientInfo) {
+  if (!recipient.email) return skipped();
   return sendEmail({
     to: recipient.email,
     subject: "We'd love to clean for you again",

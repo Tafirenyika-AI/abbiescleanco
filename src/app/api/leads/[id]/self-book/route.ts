@@ -40,13 +40,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     minute: "2-digit",
   });
 
-  const { subject, html } = bookingRequestReceivedEmail({
-    firstName: result.customerName.split(" ")[0] || "there",
-    reference: result.reference,
-    serviceName: result.serviceName,
-    scheduledStartLabel,
-  });
-  await sendEmail({ to: result.customerEmail, subject, html });
+  if (result.customerEmail) {
+    const { subject, html } = bookingRequestReceivedEmail({
+      firstName: result.customerName.split(" ")[0] || "there",
+      reference: result.reference,
+      serviceName: result.serviceName,
+      scheduledStartLabel,
+    });
+    await sendEmail({ to: result.customerEmail, subject, html });
+  }
 
   await notifyAdmins(
     "BOOKING_REQUESTED",

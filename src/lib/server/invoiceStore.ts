@@ -115,7 +115,7 @@ export async function getInvoiceById(id: string): Promise<InvoiceDetail | null> 
     dueDate: inv.dueDate?.toISOString() ?? null,
     notes: inv.notes,
     customerName: `${inv.customer.firstName} ${inv.customer.lastName}`.trim(),
-    customerEmail: inv.customer.email,
+    customerEmail: inv.customer.email ?? "",
     customerPhone: inv.customer.phone,
     billingAddress: addr ? `${addr.line1}${addr.line2 ? ", " + addr.line2 : ""}, ${addr.city}, ${addr.state} ${addr.zip}` : null,
     quoteId: inv.quoteId,

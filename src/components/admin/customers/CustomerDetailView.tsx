@@ -34,9 +34,11 @@ export default function CustomerDetailView({ customer }: { customer: CustomerDet
           <a href={`tel:${customer.phone}`} className="flex items-center gap-1.5 rounded-lg border border-admin-border px-3 py-2 text-sm font-medium text-admin-text hover:bg-admin-bg">
             <Phone className="size-4" aria-hidden /> Call
           </a>
-          <a href={`mailto:${customer.email}`} className="flex items-center gap-1.5 rounded-lg border border-admin-border px-3 py-2 text-sm font-medium text-admin-text hover:bg-admin-bg">
-            <Mail className="size-4" aria-hidden /> Email
-          </a>
+          {customer.email && (
+            <a href={`mailto:${customer.email}`} className="flex items-center gap-1.5 rounded-lg border border-admin-border px-3 py-2 text-sm font-medium text-admin-text hover:bg-admin-bg">
+              <Mail className="size-4" aria-hidden /> Email
+            </a>
+          )}
         </div>
       </div>
 
@@ -69,14 +71,62 @@ export default function CustomerDetailView({ customer }: { customer: CustomerDet
 }
 
 function OverviewTab({ customer }: { customer: CustomerDetail }) {
+  const { showToast } = useToast();
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [email, setEmail] = useState(customer.email ?? "");
+  const [phone, setPhone] = useState(customer.phone);
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    const res = await fetch(`/api/admin/customers/${customer.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, phone }),
+    });
+    const json = await res.json().catch(() => null);
+    setSaving(false);
+    if (!res.ok || !json?.ok) return showToast(json?.error || "Couldn't save", "error");
+    showToast("Contact info updated.", "success");
+    setEditing(false);
+    router.refresh();
+  }
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <Card>
-        <h2 className="font-semibold text-admin-text">Contact</h2>
-        <dl className="mt-3 space-y-1.5 text-sm">
-          <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Email</dt><dd className="text-admin-text">{customer.email}</dd></div>
-          <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Phone</dt><dd className="text-admin-text">{customer.phone}</dd></div>
-        </dl>
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-admin-text">Contact</h2>
+          {!editing && (
+            <button type="button" onClick={() => setEditing(true)} className="text-xs font-semibold text-admin-teal-hover hover:underline">Edit</button>
+          )}
+        </div>
+        {editing ? (
+          <div className="mt-3 space-y-2.5">
+            <label className="block">
+              <span className="text-xs font-medium text-admin-text-muted">Email (optional -- leave blank if they don&apos;t have one)</span>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+            </label>
+            <label className="block">
+              <span className="text-xs font-medium text-admin-text-muted">Phone</span>
+              <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+            </label>
+            <div className="flex gap-2">
+              <button type="button" onClick={save} disabled={saving || !phone.trim()} className="ios-press flex items-center gap-1.5 rounded-lg bg-admin-teal px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
+                {saving ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : null} Save
+              </button>
+              <button type="button" onClick={() => { setEditing(false); setEmail(customer.email ?? ""); setPhone(customer.phone); }} className="ios-press rounded-lg border border-admin-border px-3.5 py-1.5 text-sm font-semibold text-admin-text hover:bg-admin-bg">
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <dl className="mt-3 space-y-1.5 text-sm">
+            <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Email</dt><dd className="text-admin-text">{customer.email || <span className="text-admin-text-muted">Not on file</span>}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Phone</dt><dd className="text-admin-text">{customer.phone}</dd></div>
+          </dl>
+        )}
       </Card>
       <Card>
         <h2 className="font-semibold text-admin-text">Recent leads</h2>

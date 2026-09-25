@@ -169,6 +169,9 @@ async function dispatchEvent(event: EventRow): Promise<"SENT" | "SKIPPED" | "FAI
       const lead = await db().lead.findUnique({ where: { id: event.leadId }, include: { customer: true, quotes: true } });
       if (!lead || !lead.customer) return "FAILED";
       if (lead.quotes.some((q) => q.status === "ACCEPTED" || q.status === "DECLINED")) return "SKIPPED";
+      // A real client on file with no email (not tech-savvy) has nothing to skip here -- honest
+      // SKIPPED, not a FAILED delivery attempt.
+      if (!lead.customer.email) return "SKIPPED";
       const recipient = {
         name: `${lead.customer.firstName} ${lead.customer.lastName}`.trim(),
         email: lead.customer.email,
@@ -186,6 +189,7 @@ async function dispatchEvent(event: EventRow): Promise<"SENT" | "SKIPPED" | "FAI
       const booking = await getBookingWithRecipient(event.bookingId);
       if (!booking || !booking.scheduledStart) return "FAILED";
       if (booking.status === "CANCELLED") return "SKIPPED";
+      if (!booking.recipient.email) return "SKIPPED";
       const result = await sendBookingConfirmation(booking.recipient, {
         serviceName: booking.serviceName,
         scheduledStart: booking.scheduledStart,
@@ -203,12 +207,15 @@ async function dispatchEvent(event: EventRow): Promise<"SENT" | "SKIPPED" | "FAI
       if (booking.status === "CANCELLED" || booking.status === "COMPLETED") return "SKIPPED";
       const stage = event.type === "REMINDER_48H" ? "48h" : event.type === "REMINDER_24H" ? "24h" : "day-of";
       const results = await sendAppointmentReminder(booking.recipient, { serviceName: booking.serviceName, scheduledStart: booking.scheduledStart, stage });
+      // Neither email nor SMS-consented -- genuinely nothing to send, not a failed delivery.
+      if (results.length === 0) return "SKIPPED";
       return results.every((r) => r.ok) ? "SENT" : "FAILED";
     }
     case "POST_SERVICE_THANK_YOU": {
       if (!event.bookingId) return "FAILED";
       const booking = await getBookingWithRecipient(event.bookingId);
       if (!booking) return "FAILED";
+      if (!booking.recipient.email) return "SKIPPED";
       const result = await sendPostServiceFollowUp(booking.recipient);
       return result.ok ? "SENT" : "FAILED";
     }
@@ -216,6 +223,7 @@ async function dispatchEvent(event: EventRow): Promise<"SENT" | "SKIPPED" | "FAI
       if (!event.bookingId) return "FAILED";
       const booking = await getBookingWithRecipient(event.bookingId);
       if (!booking) return "FAILED";
+      if (!booking.recipient.email) return "SKIPPED";
       const result = await sendWinBackMessage(booking.recipient);
       return result.ok ? "SENT" : "FAILED";
     }
@@ -321,6 +329,7 @@ export async function listRecentAutomationEvents(limit = 100): Promise<Automatio
 export async function sendManualReviewRequest(bookingId: string, publicReviewUrl: string): Promise<{ ok: boolean; error?: string }> {
   const booking = await getBookingWithRecipient(bookingId);
   if (!booking) return { ok: false, error: "Booking or customer not found" };
+  if (!booking.recipient.email) return { ok: false, error: "This customer has no email on file -- add one on their profile first." };
   const result = await sendReviewRequest(booking.recipient, publicReviewUrl);
   if (!result.ok) return { ok: false, error: result.error };
   await db().automationEvent.create({

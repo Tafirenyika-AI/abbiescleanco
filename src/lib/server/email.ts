@@ -11,7 +11,7 @@ export interface SendEmailInput {
 
 export interface SendEmailResult {
   ok: boolean;
-  mode: "live" | "mock";
+  mode: "live" | "mock" | "skipped";
   id?: string;
   error?: string;
 }
