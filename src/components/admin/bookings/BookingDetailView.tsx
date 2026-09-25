@@ -134,6 +134,26 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
     router.refresh();
   }
 
+  const [trackingPhone, setTrackingPhone] = useState("");
+  const [sendingTrackingLink, setSendingTrackingLink] = useState(false);
+  const [trackingLinkUrl, setTrackingLinkUrl] = useState("");
+
+  async function sendTrackingLink() {
+    if (!trackingPhone.trim()) return;
+    setSendingTrackingLink(true);
+    setTrackingLinkUrl("");
+    const res = await fetch(`/api/admin/bookings/${booking.id}/tracking-link`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: trackingPhone.trim() }),
+    });
+    const data = await res.json().catch(() => null);
+    setSendingTrackingLink(false);
+    if (!data?.ok) return showToast(data?.error || "Couldn't send tracking link", "error");
+    setTrackingLinkUrl(data.url);
+    showToast(data.smsSent ? "Tracking link texted." : "Link created, but the text couldn't be sent -- copy it below instead.", data.smsSent ? "success" : "error");
+  }
+
   async function saveReschedule(confirmDespiteConflict = false) {
     if (!date || !start || !end) return;
     setSavingSchedule(true);
@@ -398,6 +418,24 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
               <button type="button" onClick={saveStaff} disabled={savingStaff} className="ios-press rounded-lg bg-admin-navy px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">Save</button>
             </div>
           </Card>
+
+          {!["IN_PROGRESS", "COMPLETED", "CANCELLED"].includes(booking.status) && (
+            <Card>
+              <h2 className="font-semibold text-admin-text">Live tracking</h2>
+              <p className="mt-1 text-xs text-admin-text-muted">Text the cleaner a one-time link -- they tap it and share their live location, no login needed. The client sees it on their booking page.</p>
+              <div className="mt-2 flex gap-2">
+                <input value={trackingPhone} onChange={(e) => setTrackingPhone(e.target.value)} placeholder="Cleaner's phone number" className="flex-1 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+                <button type="button" onClick={sendTrackingLink} disabled={sendingTrackingLink || !trackingPhone.trim()} className="ios-press rounded-lg bg-admin-teal px-3 py-1.5 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
+                  {sendingTrackingLink ? <Loader2 className="size-4 animate-spin" aria-hidden /> : "Send link"}
+                </button>
+              </div>
+              {trackingLinkUrl && (
+                <p className="mt-2 truncate text-xs text-admin-text-muted">
+                  <a href={trackingLinkUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-admin-teal-hover hover:underline">{trackingLinkUrl}</a>
+                </p>
+              )}
+            </Card>
+          )}
 
           <Card>
             <h2 className="font-semibold text-admin-text">Update status</h2>

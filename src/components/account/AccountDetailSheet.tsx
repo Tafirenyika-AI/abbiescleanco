@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { X, Loader2, CreditCard, CalendarClock, XCircle, CheckCircle2, Truck } from "lucide-react";
 import MediaThread from "@/components/account/MediaThread";
+import LiveTrackingMap from "@/components/account/LiveTrackingMap";
 import { labelForMethod } from "@/lib/paymentMethods";
 
 type Kind = "request" | "quote" | "booking";
@@ -215,9 +216,12 @@ function BookingDetail({ id, onChanged }: { id: string; onChanged: () => void })
     <>
       <Section heading={`${b.serviceName}, ${b.reference}`}>
         {b.status === "ON_THE_WAY" && (
-          <p className="mb-2 flex items-center gap-1.5 rounded-xl bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-800">
-            <Truck className="size-4 shrink-0" aria-hidden /> Your cleaner is on the way!
-          </p>
+          <>
+            <p className="mb-2 flex items-center gap-1.5 rounded-xl bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-800">
+              <Truck className="size-4 shrink-0" aria-hidden /> Your cleaner is on the way!
+            </p>
+            <LiveTrackingMap bookingId={id} />
+          </>
         )}
         <p className="text-sm text-navy-950">{b.scheduledStart ? dt(b.scheduledStart) : "Not yet scheduled"} · <span className="font-semibold">{title(b.status)}</span></p>
         <p className="mt-0.5 text-sm text-surface-700">{b.address}</p>

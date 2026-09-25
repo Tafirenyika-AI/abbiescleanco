@@ -152,6 +152,7 @@ model AdminUser {
   createdMarketingPosts MarketingPost[] @relation("MarketingPostCreatedBy")
   approvedMarketingPosts MarketingPost[] @relation("MarketingPostApprovedBy")
   socialConnections SocialConnection[]
+  sentLocationShares CleanerLocationShare[]
 
   @@index([email])
   @@map("admin_users")
@@ -530,10 +531,41 @@ model Booking {
   attachments       Attachment[]
   clientNotes       ClientNote[]
   expenses          Expense[]
+  locationShares    CleanerLocationShare[]
 
   @@index([status])
   @@index([scheduledStart])
   @@map("bookings")
+}
+
+/**
+ * A single, time-boxed "share my live location for this job" session -- the real Uber/DoorDash
+ * tracking piece, deliberately NOT a persistent cleaner login/account. An admin sends a one-time
+ * SMS link (id is the unguessable token, same "public but unguessable URL" model already used
+ * for StoredFile) to whoever's actually driving; that person opens it on their phone, taps
+ * "Share my location", and the browser posts updates here directly -- no password, no account.
+ * Ends on an explicit "Stop sharing" tap, going stale past expiresAt (a safety-net cutoff so a
+ * forgotten-open tab doesn't report forever), or once the booking itself moves past ON_THE_WAY.
+ */
+model CleanerLocationShare {
+  id        String   @id
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  endedAt   DateTime?
+
+  lastLat            Float?
+  lastLng            Float?
+  lastAccuracyMeters Float?
+  lastUpdatedAt      DateTime?
+
+  createdById String?
+  createdBy   AdminUser? @relation(fields: [createdById], references: [id])
+
+  @@index([bookingId])
+  @@map("cleaner_location_shares")
 }
 
 model BookingStatusHistory {

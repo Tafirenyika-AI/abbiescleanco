@@ -71,7 +71,7 @@ export default async function AdminDashboardPage() {
   const unconfirmedBookings = upcomingBookings.filter((b) => b.status === "REQUESTED");
   const unassignedBookings = upcomingBookings.filter((b) => !b.staffAssignee && !["CANCELLED", "COMPLETED"].includes(b.status));
   const topOpportunities = [...sentQuotes].sort((a, b) => b.total - a.total).slice(0, 5);
-  const nextBookings = upcomingBookings.filter((b) => ["CONFIRMED", "SCHEDULED"].includes(b.status)).slice(0, 5);
+  const nextBookings = upcomingBookings.filter((b) => ["CONFIRMED", "SCHEDULED", "ON_THE_WAY"].includes(b.status)).slice(0, 5);
 
   // Real 7-day lead volume, oldest first, for the "New leads" sparkline -- no separate query, just bucketing what we already fetched.
   const leadsPerDay: number[] = [];

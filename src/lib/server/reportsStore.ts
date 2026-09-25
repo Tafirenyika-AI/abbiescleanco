@@ -66,7 +66,7 @@ export async function getReportsSummary(rangeStart: Date, rangeEnd: Date): Promi
   const quotesDeclined = quotes.filter((q) => q.status === "DECLINED").length;
   const acceptedValue = quotes.filter((q) => q.status === "ACCEPTED").reduce((sum, q) => sum + q.total, 0);
 
-  const bookingsScheduledOrConfirmed = bookings.filter((b) => ["CONFIRMED", "SCHEDULED"].includes(b.status)).length;
+  const bookingsScheduledOrConfirmed = bookings.filter((b) => ["CONFIRMED", "SCHEDULED", "ON_THE_WAY"].includes(b.status)).length;
   const bookingsCompleted = bookings.filter((b) => b.status === "COMPLETED").length;
   const bookingsCancelled = bookings.filter((b) => b.status === "CANCELLED").length;
 

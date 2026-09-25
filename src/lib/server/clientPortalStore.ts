@@ -185,7 +185,7 @@ const CANCEL_CUTOFF_HOURS = 24;
 export async function cancelMyBooking(customerId: string, bookingId: string, reason?: string): Promise<Result<{ lateCancellation: boolean }>> {
   const b = await db().booking.findFirst({ where: { id: bookingId, customerId, deletedAt: null }, include: { customer: true } });
   if (!b) return { ok: false, error: "Not found" };
-  if (["CANCELLED", "COMPLETED", "IN_PROGRESS"].includes(b.status)) return { ok: false, error: `A ${b.status.toLowerCase().replace("_", " ")} booking can't be cancelled online, please call us` };
+  if (["CANCELLED", "COMPLETED", "IN_PROGRESS", "ON_THE_WAY"].includes(b.status)) return { ok: false, error: `A ${b.status.toLowerCase().replace("_", " ")} booking can't be cancelled online, please call us` };
   const late = !!b.scheduledStart && b.scheduledStart.getTime() - Date.now() < CANCEL_CUTOFF_HOURS * 3600_000;
   await db().booking.update({ where: { id: bookingId }, data: { status: "CANCELLED" } });
   await db().bookingStatusHistory.create({ data: { bookingId, fromStatus: b.status, toStatus: "CANCELLED", note: `Cancelled by customer${late ? ` (inside ${CANCEL_CUTOFF_HOURS}h of start)` : ""}${reason ? `: ${reason.slice(0, 300)}` : ""}` } });
@@ -198,7 +198,7 @@ export async function cancelMyBooking(customerId: string, bookingId: string, rea
 export async function requestReschedule(customerId: string, bookingId: string, slotStartISO: string, slotEndISO: string, reason?: string): Promise<Result> {
   const b = await db().booking.findFirst({ where: { id: bookingId, customerId, deletedAt: null }, include: { lead: { include: { service: true } }, customer: true } });
   if (!b) return { ok: false, error: "Not found" };
-  if (["CANCELLED", "COMPLETED", "IN_PROGRESS"].includes(b.status)) return { ok: false, error: "This booking can't be rescheduled online" };
+  if (["CANCELLED", "COMPLETED", "IN_PROGRESS", "ON_THE_WAY"].includes(b.status)) return { ok: false, error: "This booking can't be rescheduled online" };
   const slug = b.lead?.service.slug;
   if (!slug || !(serviceIds as readonly string[]).includes(slug)) return { ok: false, error: "Please contact us to reschedule this service" };
   const start = new Date(slotStartISO);
