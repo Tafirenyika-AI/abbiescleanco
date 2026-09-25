@@ -11,6 +11,20 @@ const MAX_BYTES = 8 * 1024 * 1024; // 8MB
 
 export class UploadError extends Error {}
 
+/**
+ * Real bug found 2026-09-24: BLOB_READ_WRITE_TOKEN was never actually configured on the live
+ * Vercel deployment, so every upload silently fell through to the "local disk" fallback below --
+ * which then failed with a confusing raw ENOENT (Vercel's filesystem is read-only at runtime
+ * except /tmp). This made every upload-dependent feature (photo estimates, AI-generated content,
+ * admin image uploads) fail in production despite working perfectly in local dev, where the disk
+ * fallback is genuinely writable. Fail loudly and clearly instead of attempting a doomed write.
+ */
+function assertStorageAvailable() {
+  if (process.env.VERCEL && !process.env.BLOB_READ_WRITE_TOKEN) {
+    throw new UploadError("File storage isn't connected yet -- connect Vercel Blob storage to this project (Vercel dashboard -> Storage -> Create Database -> Blob), then try again.");
+  }
+}
+
 function sanitizeBaseName(name: string) {
   return name
     .replace(/\.[^.]+$/, "")
@@ -46,6 +60,7 @@ export async function saveUploadedImage(file: File): Promise<{ url: string }> {
     });
     return { url: blob.url };
   }
+  assertStorageAvailable();
 
   const uploadsDir = path.join(process.cwd(), "public", "uploads");
   await fs.mkdir(uploadsDir, { recursive: true });
@@ -70,6 +85,7 @@ export async function saveGeneratedFile(buffer: Buffer, extension: string, conte
     const blob = await put(`uploads/${filename}`, buffer, { access: "public", contentType, addRandomSuffix: true });
     return { url: blob.url };
   }
+  assertStorageAvailable();
 
   const uploadsDir = path.join(process.cwd(), "public", "uploads");
   await fs.mkdir(uploadsDir, { recursive: true });

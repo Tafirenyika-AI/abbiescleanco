@@ -236,7 +236,20 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
           <Card>
             <h2 className="font-semibold text-admin-text">Details</h2>
             <dl className="mt-3 space-y-1.5 text-sm">
-              <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Address</dt><dd className="text-right text-admin-text">{booking.address}</dd></div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-admin-text-muted">Address</dt>
+                <dd className="text-right text-admin-text">
+                  {booking.address}
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(booking.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-2 inline-flex items-center gap-1 text-xs font-semibold text-admin-teal-hover hover:underline"
+                  >
+                    Directions <ExternalLink className="size-3" aria-hidden />
+                  </a>
+                </dd>
+              </div>
               <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Scheduled</dt><dd className="text-admin-text">{booking.scheduledStart ? formatDateTime(booking.scheduledStart) : "Not scheduled"}</dd></div>
               {booking.arrivalWindow && <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Arrival window</dt><dd className="text-admin-text">{booking.arrivalWindow}</dd></div>}
             </dl>

@@ -5,6 +5,13 @@ import sharp from "sharp";
 
 export class MediaError extends Error {}
 
+/** Same real bug/fix as upload.ts's assertStorageAvailable() -- see its comment for the full story. */
+function assertStorageAvailable() {
+  if (process.env.VERCEL && !process.env.BLOB_READ_WRITE_TOKEN) {
+    throw new MediaError("File storage isn't connected yet. Please try again shortly.");
+  }
+}
+
 export const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 export const MAX_VIDEO_BYTES = 60 * 1024 * 1024;
 export const MAX_AUDIO_BYTES = 15 * 1024 * 1024; // voice notes are short -- well under video's cap
@@ -39,6 +46,7 @@ async function storeBuffer(buf: Buffer, ext: string, contentType: string): Promi
     const blob = await put(`client-media/${filename}`, buf, { access: "public", contentType, addRandomSuffix: true });
     return blob.url;
   }
+  assertStorageAvailable();
   const dir = path.join(process.cwd(), "public", "uploads", "client");
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, filename), buf);
