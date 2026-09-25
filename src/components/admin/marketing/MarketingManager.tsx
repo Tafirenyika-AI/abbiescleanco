@@ -261,6 +261,16 @@ export default function MarketingManager({
     await refreshPosts();
   }
 
+  async function deletePost(id: string) {
+    setBusyId(id);
+    const res = await fetch(`/api/admin/marketing/posts/${id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => null);
+    setBusyId(null);
+    if (!data?.ok) return showToast(data?.error || "Couldn't delete draft", "error");
+    showToast("Draft deleted.", "success");
+    await refreshPosts();
+  }
+
   async function postAction(id: string, action: "approve" | "post" | "cancel" | "publish") {
     setBusyId(id);
     const res = await fetch(`/api/admin/marketing/posts/${id}/${action}`, { method: "POST" });
@@ -355,6 +365,7 @@ export default function MarketingManager({
               <table className="w-full text-sm">
                 <thead className="bg-admin-bg text-left text-xs font-semibold uppercase text-admin-text-muted">
                   <tr>
+                    <th className="px-4 py-2.5">Preview</th>
                     <th className="px-4 py-2.5">Channel</th>
                     <th className="px-4 py-2.5">Caption</th>
                     <th className="px-4 py-2.5">Account</th>
@@ -367,10 +378,21 @@ export default function MarketingManager({
                 <tbody>
                   {posts.map((p) => (
                     <tr key={p.id} className="border-t border-admin-border">
+                      <td className="px-4 py-2.5">
+                        {p.videoUrl ? (
+                          <video src={p.videoUrl} controls preload="metadata" className="h-14 w-14 rounded-lg object-cover ring-1 ring-black/10" />
+                        ) : p.mediaUrl ? (
+                          <a href={p.mediaUrl} target="_blank" rel="noopener noreferrer">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={p.mediaUrl} alt="Post preview" className="h-14 w-14 rounded-lg object-cover ring-1 ring-black/10" />
+                          </a>
+                        ) : (
+                          <span className="text-xs text-admin-text-muted/60">No media</span>
+                        )}
+                      </td>
                       <td className="px-4 py-2.5 text-admin-text-muted">{marketingChannelLabels[p.channel]}</td>
                       <td className="max-w-xs px-4 py-2.5 text-admin-text">
                         <p className="truncate">{p.caption}</p>
-                        {p.videoUrl && <a href={p.videoUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-xs font-semibold text-admin-teal-hover">Promo video ↗</a>}
                         {p.publishError && (
                           <p className="mt-1 flex items-start gap-1 text-xs text-red-600"><AlertTriangle className="mt-0.5 size-3 shrink-0" aria-hidden /> {p.publishError}</p>
                         )}
@@ -386,8 +408,8 @@ export default function MarketingManager({
                               <button type="button" disabled={busyId === p.id} onClick={() => postAction(p.id, "approve")} className="ios-press inline-flex items-center gap-1 rounded-full bg-admin-success/10 px-2.5 py-1 text-xs font-semibold text-admin-success hover:bg-admin-success/20 disabled:opacity-50">
                                 <Check className="size-3.5" aria-hidden /> Approve
                               </button>
-                              <button type="button" disabled={busyId === p.id} onClick={() => postAction(p.id, "cancel")} className="ios-press inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-admin-text-muted hover:bg-admin-bg disabled:opacity-50">
-                                <X className="size-3.5" aria-hidden /> Cancel
+                              <button type="button" disabled={busyId === p.id} onClick={() => deletePost(p.id)} className="ios-press inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-admin-text-muted hover:bg-admin-bg disabled:opacity-50">
+                                <Trash2 className="size-3.5" aria-hidden /> Delete
                               </button>
                             </>
                           )}

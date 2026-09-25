@@ -294,6 +294,27 @@ export async function cancelPost(id: string, adminUserId: string): Promise<{ ok:
   return { ok: true };
 }
 
+/**
+ * Real hard delete, only for a post that never got past DRAFT -- once a post is APPROVED it's
+ * had a real human sign-off (and may already be scheduled), so cancelPost()'s soft CANCELLED
+ * status is the right tool there instead; a draft the admin doesn't like just goes away. Also
+ * removes the underlying database-stored image/video row(s), not just the post that pointed to
+ * them, so a rejected AI-generated draft doesn't leave orphaned bytes behind.
+ */
+export async function deletePost(id: string, adminUserId: string): Promise<{ ok: boolean; error?: string }> {
+  const post = await db().marketingPost.findUnique({ where: { id } });
+  if (!post) return { ok: false, error: "Post not found" };
+  if (post.status !== "DRAFT") return { ok: false, error: "Only draft posts can be deleted -- cancel an approved post instead." };
+
+  await db().marketingPost.delete({ where: { id } });
+  for (const url of [post.mediaUrl, post.videoUrl]) {
+    const fileId = url?.match(/^\/api\/files\/([a-f0-9]{32})$/)?.[1];
+    if (fileId) await db().storedFile.delete({ where: { id: fileId } }).catch(() => {});
+  }
+  await db().auditLog.create({ data: { adminUserId, action: "marketing_post.deleted", entityType: "MarketingPost", entityId: id } });
+  return { ok: true };
+}
+
 export async function deleteCampaign(id: string, adminUserId: string): Promise<{ ok: boolean; error?: string }> {
   const existing = await db().marketingCampaign.findUnique({ where: { id } });
   if (!existing) return { ok: false, error: "Campaign not found" };
