@@ -21,7 +21,15 @@ export class UploadError extends Error {}
  */
 function assertStorageAvailable() {
   if (process.env.VERCEL && !process.env.BLOB_READ_WRITE_TOKEN) {
-    throw new UploadError("File storage isn't connected yet -- connect Vercel Blob storage to this project (Vercel dashboard -> Storage -> Create Database -> Blob), then try again.");
+    // Temporary diagnostic (2026-09-25): the owner confirmed a real-looking BLOB_READ_WRITE_TOKEN
+    // value is set in Vercel's dashboard for Production, yet this function still can't see it
+    // after two fresh redeploys. List which env var NAMES actually contain "BLOB" (never values)
+    // -- if Vercel auto-provisioned it under a prefixed name (happens with multiple Blob stores
+    // connected), this reveals the real name to read instead. Remove once resolved.
+    const blobVarNames = Object.keys(process.env).filter((k) => /BLOB/i.test(k));
+    throw new UploadError(
+      `File storage isn't connected yet -- connect Vercel Blob storage to this project (Vercel dashboard -> Storage -> Create Database -> Blob), then try again. [diagnostic: env vars containing "BLOB" = ${blobVarNames.length > 0 ? blobVarNames.join(", ") : "none found"}]`
+    );
   }
 }
 
