@@ -12,6 +12,22 @@ export const invoiceStatusLabels: Record<InvoiceStatusValue, string> = {
   CANCELLED: "Cancelled",
 };
 
+/**
+ * Single source of truth for invoice status color-coding -- previously InvoicesView.tsx and
+ * InvoiceDetailView.tsx each had their own inline mapping and disagreed with each other (one had
+ * PARTIALLY_PAID as blue and REFUNDED as yellow, backwards from the intended meaning; neither
+ * gave UNPAID its own color at all). Real business meaning: green = paid in full, yellow = partly
+ * paid, red = nothing paid (or overdue), blue = refunded, gray = void.
+ */
+export const invoiceStatusTone: Record<InvoiceStatusValue, "neutral" | "success" | "warning" | "error" | "info"> = {
+  PAID: "success",
+  PARTIALLY_PAID: "warning",
+  UNPAID: "error",
+  OVERDUE: "error",
+  REFUNDED: "info",
+  CANCELLED: "neutral",
+};
+
 export interface InvoiceListItem {
   id: string;
   invoiceNumber: string;

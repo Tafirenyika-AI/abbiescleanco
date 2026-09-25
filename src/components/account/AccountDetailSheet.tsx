@@ -151,7 +151,7 @@ function QuoteDetail({ id, onChanged }: { id: string; onChanged: () => void }) {
 interface BookingData {
   id: string; reference: string; status: string; scheduledStart: string | null; serviceName: string; serviceSlug: string | null; address: string;
   total: number | null; paid: number; balance: number | null;
-  payments: { id: string; amount: number; status: string; kind: string; method: string | null; proofUrl: string | null; createdAt: string }[];
+  payments: { id: string; amount: number; status: string; kind: string; method: string | null; proofUrl: string | null; refundAmount: number; createdAt: string }[];
   history: { status: string; note: string | null; createdAt: string }[];
 }
 interface Slot { startISO: string; endISO: string; label: string }
@@ -202,13 +202,15 @@ function BookingDetail({ id, onChanged }: { id: string; onChanged: () => void })
     await reload();
     onChanged();
   }
-  async function payBalance() {
+  async function payBalance(amount?: number) {
     setBusy(true);
-    const r = await post(`/api/account/bookings/${id}/pay`);
+    const r = await post(`/api/account/bookings/${id}/pay`, amount ? { amount } : undefined);
     setBusy(false);
     if (r.ok && r.data.url) window.location.href = r.data.url;
     else setMsg(r.data.error || "Online payment isn't available right now, you can also pay by Zelle, Venmo, Apple Cash, check or cash.");
   }
+  const [payPartial, setPayPartial] = useState(false);
+  const [partialAmount, setPartialAmount] = useState("");
 
   if (!b) return <p className="text-sm text-surface-700">Loading…</p>;
   const editable = !["CANCELLED", "COMPLETED", "IN_PROGRESS", "ON_THE_WAY"].includes(b.status);
@@ -236,9 +238,39 @@ function BookingDetail({ id, onChanged }: { id: string; onChanged: () => void })
           <>
             <p className="text-sm text-navy-950">Total {money(b.total)} · Paid {money(b.paid)} · <span className="font-semibold">Balance {money(b.balance ?? 0)}</span></p>
             {(b.balance ?? 0) >= 50 && b.status !== "CANCELLED" && (
-              <button type="button" onClick={payBalance} disabled={busy} className="ios-press mt-2 inline-flex items-center gap-1.5 rounded-full bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
-                <CreditCard className="size-4" aria-hidden /> Pay {money(b.balance ?? 0)} online
-              </button>
+              <div className="mt-2 space-y-1.5">
+                <button type="button" onClick={() => payBalance()} disabled={busy} className="ios-press inline-flex items-center gap-1.5 rounded-full bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+                  <CreditCard className="size-4" aria-hidden /> Pay {money(b.balance ?? 0)} online
+                </button>
+                {!payPartial ? (
+                  <button type="button" onClick={() => setPayPartial(true)} className="block text-xs font-semibold text-teal-700 hover:underline">
+                    Pay a different amount instead
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-surface-700">$</span>
+                    <input
+                      type="number"
+                      min="0.5"
+                      max={(b.balance ?? 0) / 100}
+                      step="0.01"
+                      value={partialAmount}
+                      onChange={(e) => setPartialAmount(e.target.value)}
+                      placeholder="0.00"
+                      className="w-24 rounded-lg border border-surface-200 px-2.5 py-1.5 text-sm"
+                    />
+                    <button
+                      type="button"
+                      disabled={busy || !partialAmount || Number(partialAmount) <= 0}
+                      onClick={() => payBalance(Math.round(Number(partialAmount) * 100))}
+                      className="ios-press rounded-full bg-navy-950 px-3.5 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                    >
+                      Pay this amount
+                    </button>
+                  </div>
+                )}
+                <p className="text-xs text-surface-700">You can split this across more than one payment or method -- pay part now, the rest later.</p>
+              </div>
             )}
           </>
         )}
@@ -246,7 +278,10 @@ function BookingDetail({ id, onChanged }: { id: string; onChanged: () => void })
           <ul className="mt-3 space-y-1 text-sm">
             {b.payments.map((p) => (
               <li key={p.id} className="flex flex-wrap justify-between gap-2">
-                <span>{money(p.amount)} · {labelForMethod(p.method)} · {title(p.status)} · {new Date(p.createdAt).toLocaleDateString("en-US")}</span>
+                <span>
+                  {money(p.amount)} · {labelForMethod(p.method)} · {title(p.status)} · {new Date(p.createdAt).toLocaleDateString("en-US")}
+                  {p.refundAmount > 0 && <span className="ml-1 font-semibold text-blue-700">· {money(p.refundAmount)} refunded</span>}
+                </span>
                 {p.proofUrl && <a href={p.proofUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-teal-700 hover:underline">Receipt</a>}
               </li>
             ))}

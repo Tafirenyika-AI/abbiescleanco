@@ -18,7 +18,8 @@ export interface ReportsSummary {
   conversionRate: number | null; // quotesAccepted / leadsCount
   cancellationRate: number | null; // bookingsCancelled / totalBookings
   totalExpenses: number; // cents
-  netRevenue: number; // acceptedValue - totalExpenses, cents
+  netCollected: number; // cents -- real PAID payments in this window, minus refunds (cash basis)
+  netRevenue: number; // netCollected - totalExpenses, cents -- real money, not quoted/accrued value
 }
 
 export async function getReportsSummary(rangeStart: Date, rangeEnd: Date): Promise<ReportsSummary> {
@@ -40,6 +41,7 @@ export async function getReportsSummary(rangeStart: Date, rangeEnd: Date): Promi
     conversionRate: null,
     cancellationRate: null,
     totalExpenses: 0,
+    netCollected: 0,
     netRevenue: 0,
   };
   if (!isDatabaseConfigured || !prisma) return empty;
@@ -51,6 +53,12 @@ export async function getReportsSummary(rangeStart: Date, rangeEnd: Date): Promi
   const bookings = await prisma.booking.findMany({ where });
   const expenses = await prisma.expense.findMany({ where: { date: { gte: rangeStart, lte: rangeEnd }, deletedAt: null } });
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  // Real bug found + fixed here: netRevenue used to be acceptedValue (quote totals agreed to, not
+  // actually collected) minus expenses, so a refund never moved this number at all -- it wasn't
+  // reading Payment rows in the first place. Now it's real cash: PAID payments in this window,
+  // net of whatever's actually been refunded against them.
+  const paidPayments = await prisma.payment.findMany({ where: { status: "PAID", createdAt: { gte: rangeStart, lte: rangeEnd } }, select: { amount: true, refundAmount: true } });
+  const netCollected = paidPayments.reduce((sum, p) => sum + (p.amount - p.refundAmount), 0);
 
   const bySource = new Map<string, number>();
   const byStatus = new Map<string, number>();
@@ -93,11 +101,12 @@ export async function getReportsSummary(rangeStart: Date, rangeEnd: Date): Promi
     conversionRate: leads.length > 0 ? leads.filter((l) => l.quotes.some((q) => q.status === "ACCEPTED")).length / leads.length : null,
     cancellationRate: bookings.length > 0 ? bookingsCancelled / bookings.length : null,
     totalExpenses,
-    netRevenue: acceptedValue - totalExpenses,
+    netCollected,
+    netRevenue: netCollected - totalExpenses,
   };
 }
 
-/** Real payments received (status PAID), bucketed per day -- for a dashboard revenue trend chart. Oldest first. */
+/** Real payments received (status PAID), net of refunds, bucketed per day -- for a dashboard revenue trend chart. Oldest first. */
 export async function getDailyRevenue(days: number): Promise<{ date: string; cents: number }[]> {
   const out: { date: string; cents: number }[] = [];
   if (!isDatabaseConfigured || !prisma) return out;
@@ -107,14 +116,14 @@ export async function getDailyRevenue(days: number): Promise<{ date: string; cen
   start.setDate(start.getDate() - (days - 1));
   start.setHours(0, 0, 0, 0);
 
-  const payments = await prisma.payment.findMany({ where: { status: "PAID", createdAt: { gte: start } }, select: { amount: true, createdAt: true } });
+  const payments = await prisma.payment.findMany({ where: { status: "PAID", createdAt: { gte: start } }, select: { amount: true, refundAmount: true, createdAt: true } });
 
   for (let i = 0; i < days; i++) {
     const dayStart = new Date(start);
     dayStart.setDate(dayStart.getDate() + i);
     const dayEnd = new Date(dayStart);
     dayEnd.setHours(23, 59, 59, 999);
-    const cents = payments.filter((p) => p.createdAt >= dayStart && p.createdAt <= dayEnd).reduce((sum, p) => sum + p.amount, 0);
+    const cents = payments.filter((p) => p.createdAt >= dayStart && p.createdAt <= dayEnd).reduce((sum, p) => sum + (p.amount - p.refundAmount), 0);
     out.push({ date: dayStart.toISOString().slice(0, 10), cents });
   }
   return out;

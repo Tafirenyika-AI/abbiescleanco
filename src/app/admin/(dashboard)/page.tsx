@@ -123,7 +123,7 @@ export default async function AdminDashboardPage() {
             <StatCard label="New leads" value={String(newLeads.length)} icon={Inbox} href="/admin/leads" hint={`${leadsThisWeek} this week`} spark={leadsPerDay} />
             <StatCard label="Bookings, next 7 days" value={String(upcomingBookings.length)} icon={CalendarClock} href="/admin/bookings" hint={unconfirmedBookings.length > 0 ? `${unconfirmedBookings.length} need confirming` : "all confirmed"} />
             <StatCard label="Quote conversion (30d)" value={report.conversionRate != null ? `${Math.round(report.conversionRate * 100)}%` : "—"} icon={Target} href="/admin/reports" />
-            <StatCard label="Net revenue (30d)" value={money(report.netRevenue)} icon={DollarSign} href="/admin/reports" />
+            <StatCard label="Net revenue (30d)" value={money(report.netRevenue)} icon={DollarSign} href="/admin/reports" hint="real collected, net of refunds & expenses" />
           </div>
 
           {unassignedBookings.length > 0 && (

@@ -13,12 +13,12 @@ import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
 import { useToast } from "@/components/admin/ui/Toast";
 import { formatDateTime } from "@/lib/adminDate";
 
-const statusTone: Record<BookingStatusValue, "neutral" | "info" | "success" | "error" | "warning"> = {
+const statusTone: Record<BookingStatusValue, "neutral" | "info" | "success" | "error" | "warning" | "teal"> = {
   REQUESTED: "warning",
   CONFIRMED: "info",
   SCHEDULED: "info",
-  ON_THE_WAY: "warning",
-  IN_PROGRESS: "warning",
+  ON_THE_WAY: "teal",
+  IN_PROGRESS: "teal",
   COMPLETED: "success",
   CANCELLED: "error",
   RESCHEDULED: "warning",

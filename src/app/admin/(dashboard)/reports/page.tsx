@@ -137,7 +137,7 @@ export default async function AdminReportsPage({ searchParams }: { searchParams:
           <p className="mt-2 text-2xl font-semibold text-admin-text">${(report.totalExpenses / 100).toLocaleString("en-US")}</p>
         </Card>
         <Card className="sm:col-span-2">
-          <p className="text-sm font-medium text-admin-text-muted">Net (accepted quotes − expenses)</p>
+          <p className="text-sm font-medium text-admin-text-muted">Net revenue (real collected, net of refunds − expenses)</p>
           <p className="mt-2 text-2xl font-semibold text-admin-text">${(report.netRevenue / 100).toLocaleString("en-US")}</p>
         </Card>
       </div>

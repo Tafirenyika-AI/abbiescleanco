@@ -168,14 +168,18 @@ export async function getMyBookingDetail(customerId: string, bookingId: string) 
     include: { address: true, lead: { include: { service: true } }, quote: true, payments: { orderBy: { createdAt: "desc" } }, statusHistory: { orderBy: { createdAt: "asc" } } },
   });
   if (!b) return null;
-  const paid = b.payments.filter((p) => p.status === "PAID").reduce((s, p) => s + p.amount, 0);
+  // Real bug found + fixed here: this summed raw PAID payment amounts without subtracting
+  // refundAmount, so a customer refunded $50 of a $150 payment still saw "Paid $150, Balance $0"
+  // -- the refund never showed up anywhere on their own booking. Net of refunds now, matching how
+  // invoiceStore.ts and financeStore.ts already compute real collected amounts elsewhere.
+  const paid = b.payments.filter((p) => p.status === "PAID").reduce((s, p) => s + (p.amount - p.refundAmount), 0);
   const total = b.quote?.total ?? null;
   return {
     id: b.id, reference: b.reference, status: b.status, scheduledStart: b.scheduledStart?.toISOString() ?? null, scheduledEnd: b.scheduledEnd?.toISOString() ?? null,
     serviceName: b.lead?.service.name ?? "—", serviceSlug: b.lead?.service.slug ?? null, leadId: b.leadId,
     address: `${b.address.line1}${b.address.line2 ? ", " + b.address.line2 : ""}, ${b.address.city}, ${b.address.state} ${b.address.zip}`,
     total, paid, balance: total === null ? null : Math.max(0, total - paid),
-    payments: b.payments.map((p) => ({ id: p.id, amount: p.amount, status: p.status, kind: p.kind, method: p.method, proofUrl: p.proofUrl, createdAt: p.createdAt.toISOString() })),
+    payments: b.payments.map((p) => ({ id: p.id, amount: p.amount, status: p.status, kind: p.kind, method: p.method, proofUrl: p.proofUrl, refundAmount: p.refundAmount, createdAt: p.createdAt.toISOString() })),
     history: b.statusHistory.map((h) => ({ status: h.toStatus, note: h.note, createdAt: h.createdAt.toISOString() })),
   };
 }

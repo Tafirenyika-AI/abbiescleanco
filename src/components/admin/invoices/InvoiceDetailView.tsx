@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Printer, Ban, ArrowLeft, Loader2 } from "lucide-react";
-import Badge from "@/components/admin/ui/Badge";
 import { useToast } from "@/components/admin/ui/Toast";
 import { invoiceStatusLabels, type InvoiceDetail } from "@/lib/invoices";
 import type { ContactInfo } from "@/lib/server/siteSettings";
@@ -13,14 +12,25 @@ function money(cents: number) {
   return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+const statusTextClass: Record<string, string> = {
+  PAID: "text-green-700",
+  PARTIALLY_PAID: "text-amber-600",
+  UNPAID: "text-red-700",
+  OVERDUE: "text-red-700",
+  REFUNDED: "text-blue-700",
+  CANCELLED: "text-slate-500",
+};
+
 export default function InvoiceDetailView({
   invoice: initialInvoice,
   business,
   contact,
+  logoUrl,
 }: {
   invoice: InvoiceDetail;
   business: { name: string; legalName: string; city: string; region: string };
   contact: ContactInfo;
+  logoUrl: string;
 }) {
   const { showToast } = useToast();
   const [invoice, setInvoice] = useState(initialInvoice);
@@ -57,17 +67,21 @@ export default function InvoiceDetailView({
 
       <div id="printable-area" className="ios-card-shadow mx-auto max-w-2xl rounded-2xl border border-admin-border bg-white p-8 print:rounded-none print:border-0 print:p-0 print:shadow-none">
         <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-navy-950">{business.legalName}</h1>
-            <p className="text-sm text-surface-700">{business.city}, {business.region}</p>
-            <p className="text-sm text-surface-700">{contact.phoneDisplay} · {contact.email}</p>
+          <div className="flex items-start gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logoUrl} alt={business.name} className="h-12 w-12 shrink-0 rounded-lg object-contain" />
+            <div>
+              <h1 className="text-xl font-bold text-navy-950">{business.legalName}</h1>
+              <p className="text-sm text-surface-700">{business.city}, {business.region}</p>
+              <p className="text-sm text-surface-700">{contact.phoneDisplay} · {contact.email}</p>
+            </div>
           </div>
           <div className="text-right">
             <h2 className="text-2xl font-bold uppercase tracking-wide text-navy-950">Invoice</h2>
             <p className="mt-1 text-sm text-surface-700">{invoice.invoiceNumber}</p>
-            <Badge tone={invoice.status === "PAID" ? "success" : invoice.status === "CANCELLED" ? "neutral" : invoice.status === "OVERDUE" ? "error" : "warning"} className="mt-1">
+            <p className={`mt-1 text-lg font-bold uppercase tracking-wide ${statusTextClass[invoice.status] ?? "text-slate-500"}`}>
               {invoiceStatusLabels[invoice.status]}
-            </Badge>
+            </p>
           </div>
         </div>
 

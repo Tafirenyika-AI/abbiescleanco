@@ -10,32 +10,52 @@ import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import { formatDateTime } from "@/lib/adminDate";
 
-const statusTone: Record<BookingStatusValue, "neutral" | "info" | "success" | "error" | "warning"> = {
+// More differentiated than a flat 3-color split -- REQUESTED/RESCHEDULED need admin action
+// (yellow), CONFIRMED/SCHEDULED are locked in (blue), ON_THE_WAY/IN_PROGRESS are happening right
+// now (teal, the brand accent -- distinct from "needs attention"), COMPLETED is done (green),
+// CANCELLED is dead (red).
+const statusTone: Record<BookingStatusValue, "neutral" | "info" | "success" | "error" | "warning" | "teal"> = {
   REQUESTED: "warning",
   CONFIRMED: "info",
   SCHEDULED: "info",
-  ON_THE_WAY: "warning",
-  IN_PROGRESS: "warning",
+  ON_THE_WAY: "teal",
+  IN_PROGRESS: "teal",
   COMPLETED: "success",
   CANCELLED: "error",
   RESCHEDULED: "warning",
 };
 
+const PAST_STATUSES: BookingStatusValue[] = ["COMPLETED", "CANCELLED"];
+
 export default function BookingsView({ bookings }: { bookings: BookingListItem[] }) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<BookingStatusValue | "ALL">("ALL");
-
-  const filtered = bookings.filter((b) => {
-    if (statusFilter !== "ALL" && b.status !== statusFilter) return false;
-    if (query.trim() && !`${b.customerName} ${b.reference} ${b.address}`.toLowerCase().includes(query.trim().toLowerCase())) return false;
-    return true;
-  });
+  const [timeframe, setTimeframe] = useState<"upcoming" | "past" | "all">("upcoming");
 
   const [{ now, todayKey }] = useState(() => {
     const n = Date.now();
     return { now: n, todayKey: new Date(n).toDateString() };
   });
-  const upcoming = bookings.filter((b) => b.scheduledStart && new Date(b.scheduledStart).getTime() > now && b.status !== "CANCELLED").length;
+
+  const isPast = (b: BookingListItem) => PAST_STATUSES.includes(b.status) || (!!b.scheduledStart && new Date(b.scheduledStart).getTime() < now);
+
+  const filtered = bookings
+    .filter((b) => {
+      if (timeframe === "upcoming" && isPast(b)) return false;
+      if (timeframe === "past" && !isPast(b)) return false;
+      if (statusFilter !== "ALL" && b.status !== statusFilter) return false;
+      if (query.trim() && !`${b.customerName} ${b.reference} ${b.address}`.toLowerCase().includes(query.trim().toLowerCase())) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      // Upcoming: soonest first (what needs attention next). Past: most recent first (what just
+      // happened, the useful lookup direction) -- not the same ordering.
+      const at = a.scheduledStart ? new Date(a.scheduledStart).getTime() : timeframe === "past" ? -Infinity : Infinity;
+      const bt = b.scheduledStart ? new Date(b.scheduledStart).getTime() : timeframe === "past" ? -Infinity : Infinity;
+      return timeframe === "past" ? bt - at : at - bt;
+    });
+
+  const upcoming = bookings.filter((b) => !isPast(b)).length;
   const today = bookings.filter((b) => b.scheduledStart && new Date(b.scheduledStart).toDateString() === todayKey).length;
 
   return (
@@ -59,7 +79,20 @@ export default function BookingsView({ bookings }: { bookings: BookingListItem[]
         </Card>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      <div className="mt-4 flex gap-1 rounded-full border border-admin-border bg-admin-card p-1 w-fit">
+        {(["upcoming", "past", "all"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTimeframe(t)}
+            className={`rounded-full px-3.5 py-1.5 text-xs font-semibold capitalize ${timeframe === t ? "bg-admin-navy text-white" : "text-admin-text-muted hover:text-admin-text"}`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-3">
         <div className="flex min-w-[220px] flex-1 items-center gap-2 rounded-lg border border-admin-border bg-admin-card px-3 py-2">
           <Search className="size-4 text-admin-text-muted" aria-hidden />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search customer, reference, address…" className="w-full bg-transparent text-sm text-admin-text placeholder:text-admin-text-muted focus:outline-none" />

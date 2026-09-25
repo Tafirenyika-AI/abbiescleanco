@@ -4,12 +4,12 @@ import { listBookingsInRange, bookingStatusLabels, type BookingStatusValue } fro
 import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 
-const statusTone: Record<BookingStatusValue, "neutral" | "info" | "success" | "error" | "warning"> = {
-  REQUESTED: "neutral",
+const statusTone: Record<BookingStatusValue, "neutral" | "info" | "success" | "error" | "warning" | "teal"> = {
+  REQUESTED: "warning",
   CONFIRMED: "info",
   SCHEDULED: "info",
-  ON_THE_WAY: "warning",
-  IN_PROGRESS: "warning",
+  ON_THE_WAY: "teal",
+  IN_PROGRESS: "teal",
   COMPLETED: "success",
   CANCELLED: "error",
   RESCHEDULED: "warning",
