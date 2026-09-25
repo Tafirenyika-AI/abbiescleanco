@@ -42,6 +42,7 @@ enum BookingStatus {
   REQUESTED // customer-requested date/time, not yet approved by the business
   CONFIRMED
   SCHEDULED
+  ON_THE_WAY // admin-triggered when the cleaner heads out -- no GPS/cleaner login exists yet, so this is a manual signal, not a live location
   IN_PROGRESS
   COMPLETED
   CANCELLED
@@ -87,6 +88,7 @@ enum AutomationEventType {
   REVIEW_REQUEST
   RECURRING_ENROLLMENT
   WIN_BACK
+  ON_THE_WAY_NOTICE
 }
 
 enum AutomationEventStatus {

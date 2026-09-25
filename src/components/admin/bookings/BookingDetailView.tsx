@@ -4,7 +4,7 @@ import ClientThreadPanel from "@/components/admin/ClientThreadPanel";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Phone, Mail, Loader2, CreditCard, Copy, ExternalLink, Star } from "lucide-react";
+import { ArrowLeft, ArrowRight, Phone, Mail, Loader2, CreditCard, Copy, ExternalLink, Star, MapPin } from "lucide-react";
 import type { BookingDetail, BookingStatusValue } from "@/lib/server/bookingStore";
 import { bookingStatusLabels } from "@/lib/server/bookingStore";
 import Card from "@/components/admin/ui/Card";
@@ -17,6 +17,7 @@ const statusTone: Record<BookingStatusValue, "neutral" | "info" | "success" | "e
   REQUESTED: "warning",
   CONFIRMED: "info",
   SCHEDULED: "info",
+  ON_THE_WAY: "warning",
   IN_PROGRESS: "warning",
   COMPLETED: "success",
   CANCELLED: "error",
@@ -26,22 +27,24 @@ const statusTone: Record<BookingStatusValue, "neutral" | "info" | "success" | "e
 /** The single logical next step from each status — shown as the primary action so "Update status" guides you forward instead of listing all 6 other statuses as equal options. */
 const nextStatus: Partial<Record<BookingStatusValue, BookingStatusValue>> = {
   REQUESTED: "CONFIRMED",
-  CONFIRMED: "IN_PROGRESS",
-  SCHEDULED: "IN_PROGRESS",
+  CONFIRMED: "ON_THE_WAY",
+  SCHEDULED: "ON_THE_WAY",
+  ON_THE_WAY: "IN_PROGRESS",
   IN_PROGRESS: "COMPLETED",
   RESCHEDULED: "CONFIRMED",
 };
 const nextStatusActionLabel: Partial<Record<BookingStatusValue, string>> = {
   REQUESTED: "Confirm booking",
-  CONFIRMED: "Start job",
-  SCHEDULED: "Start job",
+  CONFIRMED: "Mark on the way",
+  SCHEDULED: "Mark on the way",
+  ON_THE_WAY: "Start job",
   IN_PROGRESS: "Mark completed",
   RESCHEDULED: "Re-confirm booking",
 };
 // RESCHEDULED is deliberately excluded here — it's only ever set as a side effect of the
 // dedicated "Reschedule" form below (which also changes the date/time), never as a bare
 // status flip with no date change, since that would produce a nonsensical state.
-const OTHER_SELECTABLE_STATUSES: BookingStatusValue[] = ["REQUESTED", "CONFIRMED", "SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
+const OTHER_SELECTABLE_STATUSES: BookingStatusValue[] = ["REQUESTED", "CONFIRMED", "SCHEDULED", "ON_THE_WAY", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
 
 function toDateInput(iso: string | null) {
   return iso ? iso.slice(0, 10) : "";
@@ -238,32 +241,36 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
             <dl className="mt-3 space-y-1.5 text-sm">
               <div className="flex justify-between gap-3">
                 <dt className="text-admin-text-muted">Address</dt>
-                <dd className="text-right text-admin-text">
-                  {booking.address}
-                  <a
-                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(booking.address)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ml-2 inline-flex items-center gap-1 text-xs font-semibold text-admin-teal-hover hover:underline"
-                  >
-                    Directions <ExternalLink className="size-3" aria-hidden />
-                  </a>
-                </dd>
+                <dd className="text-right text-admin-text">{booking.address}</dd>
               </div>
               <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Scheduled</dt><dd className="text-admin-text">{booking.scheduledStart ? formatDateTime(booking.scheduledStart) : "Not scheduled"}</dd></div>
               {booking.arrivalWindow && <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Arrival window</dt><dd className="text-admin-text">{booking.arrivalWindow}</dd></div>}
             </dl>
-            {mapsApiKey ? (
-              <iframe
-                title="Client location"
-                className="mt-3 h-56 w-full rounded-lg border border-admin-border"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                src={`https://www.google.com/maps/embed/v1/place?key=${mapsApiKey}&q=${encodeURIComponent(booking.address)}`}
-              />
-            ) : (
-              <p className="mt-3 rounded-lg bg-admin-bg p-2.5 text-xs text-admin-text-muted">Live map unavailable -- add a Google Maps API key under Settings → Integrations to show it here.</p>
-            )}
+
+            <div className="mt-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="flex items-center gap-1.5 text-sm font-semibold text-admin-text"><MapPin className="size-4 text-admin-teal-hover" aria-hidden /> Client location</p>
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(booking.address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ios-press inline-flex items-center gap-1.5 rounded-full bg-admin-teal px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-admin-teal-hover"
+                >
+                  Get directions <ExternalLink className="size-3" aria-hidden />
+                </a>
+              </div>
+              {mapsApiKey ? (
+                <iframe
+                  title="Client location"
+                  className="mt-2.5 h-56 w-full rounded-lg border border-admin-border"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  src={`https://www.google.com/maps/embed/v1/place?key=${mapsApiKey}&q=${encodeURIComponent(booking.address)}`}
+                />
+              ) : (
+                <p className="mt-2.5 rounded-lg bg-admin-bg p-2.5 text-xs text-admin-text-muted">Live map unavailable -- add a Google Maps API key under Settings → Integrations to show it here.</p>
+              )}
+            </div>
             {booking.additionalInstructions && (
               <p className="mt-3 rounded-lg bg-admin-bg p-2.5 text-sm text-admin-text">{booking.additionalInstructions}</p>
             )}
@@ -411,6 +418,9 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
               <p className="mt-1.5 text-xs text-admin-text-muted">
                 Opens {formatDateTime(startsEarliestAt.toISOString())} (20 min before start). Starting sooner needs an approval note.
               </p>
+            )}
+            {nextStatus[booking.status] === "ON_THE_WAY" && (
+              <p className="mt-1.5 text-xs text-admin-text-muted">Notifies the client by email/text and shows on their booking page.</p>
             )}
 
             {booking.status !== "CANCELLED" && booking.status !== "COMPLETED" && (

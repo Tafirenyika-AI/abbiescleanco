@@ -1,7 +1,7 @@
 import { prisma, isDatabaseConfigured } from "@/lib/db";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { generateReference } from "@/lib/reference";
-import { scheduleBookingConfirmationAndReminders, schedulePostServiceThankYou } from "@/lib/server/automationStore";
+import { scheduleBookingConfirmationAndReminders, schedulePostServiceThankYou, notifyOnTheWay } from "@/lib/server/automationStore";
 
 function db() {
   if (!isDatabaseConfigured || !prisma) throw new Error("Bookings require DATABASE_URL to be configured.");
@@ -40,13 +40,14 @@ export async function withSlotLock<T>(fn: (tx: Prisma.TransactionClient) => Prom
   throw lastErr;
 }
 
-export const BOOKING_STATUSES = ["REQUESTED", "CONFIRMED", "SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "RESCHEDULED"] as const;
+export const BOOKING_STATUSES = ["REQUESTED", "CONFIRMED", "SCHEDULED", "ON_THE_WAY", "IN_PROGRESS", "COMPLETED", "CANCELLED", "RESCHEDULED"] as const;
 export type BookingStatusValue = (typeof BOOKING_STATUSES)[number];
 
 export const bookingStatusLabels: Record<BookingStatusValue, string> = {
   REQUESTED: "Requested",
   CONFIRMED: "Confirmed",
   SCHEDULED: "Scheduled",
+  ON_THE_WAY: "On the way",
   IN_PROGRESS: "In progress",
   COMPLETED: "Completed",
   CANCELLED: "Cancelled",
@@ -230,6 +231,9 @@ export async function updateBookingStatus(id: string, status: BookingStatusValue
 
   if (status === "CONFIRMED" && existing.status !== "CONFIRMED" && existing.scheduledStart) {
     await scheduleBookingConfirmationAndReminders(id, existing.scheduledStart);
+  }
+  if (status === "ON_THE_WAY" && existing.status !== "ON_THE_WAY") {
+    await notifyOnTheWay(id);
   }
   if (status === "COMPLETED" && existing.status !== "COMPLETED") {
     await schedulePostServiceThankYou(id);

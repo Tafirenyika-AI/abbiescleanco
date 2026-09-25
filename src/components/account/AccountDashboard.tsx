@@ -62,7 +62,7 @@ function quoteTone(status: string) {
 function bookingTone(status: string) {
   if (status === "CANCELLED") return "error" as const;
   if (status === "COMPLETED") return "success" as const;
-  if (status === "REQUESTED") return "warning" as const;
+  if (status === "REQUESTED" || status === "ON_THE_WAY") return "warning" as const;
   return "info" as const;
 }
 function paymentTone(status: string) {

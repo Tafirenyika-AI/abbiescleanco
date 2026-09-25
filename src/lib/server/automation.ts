@@ -120,6 +120,24 @@ export async function sendAppointmentReminder(
   return results;
 }
 
+/** Sent the moment an admin marks a booking ON_THE_WAY -- immediate, not scheduled, since there's
+ *  no delay concept for "right now". Same dual-channel pattern as the appointment reminder. */
+export async function sendOnTheWayNotice(recipient: RecipientInfo, details: { serviceName: string }) {
+  const results = recipient.email
+    ? [
+        await sendEmail({
+          to: recipient.email,
+          subject: `Your ${details.serviceName} cleaner is on the way`,
+          html: `<p>Hi ${escapeHtml(recipient.name)}, good news -- your ${escapeHtml(details.serviceName)} cleaner is on the way now.</p>`,
+        }),
+      ]
+    : [];
+  if (recipient.smsConsent) {
+    results.push(await sendSms(recipient.phone, `Good news -- your ${details.serviceName} cleaner is on the way!`));
+  }
+  return results;
+}
+
 /** Sent after a job is marked complete. */
 export async function sendPostServiceFollowUp(recipient: RecipientInfo) {
   if (!recipient.email) return skipped();

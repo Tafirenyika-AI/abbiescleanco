@@ -5,6 +5,7 @@ import {
   sendFinalQuoteFollowUp,
   sendBookingConfirmation,
   sendAppointmentReminder,
+  sendOnTheWayNotice,
   sendPostServiceFollowUp,
   sendReviewRequest,
   sendWinBackMessage,
@@ -326,6 +327,21 @@ export async function listRecentAutomationEvents(limit = 100): Promise<Automatio
 }
 
 /** Manual, admin-triggered send — review requests are only ever sent to a customer who's confirmed they're happy, never automatically. */
+/**
+ * Fired immediately when an admin marks a booking ON_THE_WAY -- not scheduled through the
+ * PENDING-event cron, since the whole point is "right now". Best-effort: a customer with no
+ * email and no SMS consent genuinely has nothing to send to, recorded as SKIPPED rather than
+ * treated as an error, and a real send failure never blocks the status change itself (the
+ * booking is on the way regardless of whether the notification got through).
+ */
+export async function notifyOnTheWay(bookingId: string): Promise<void> {
+  const booking = await getBookingWithRecipient(bookingId);
+  if (!booking) return;
+  const results = await sendOnTheWayNotice(booking.recipient, { serviceName: booking.serviceName });
+  const status = results.length === 0 ? "SKIPPED" : results.every((r) => r.ok) ? "SENT" : "FAILED";
+  await db().automationEvent.create({ data: { type: "ON_THE_WAY_NOTICE", bookingId, status, processedAt: new Date() } });
+}
+
 export async function sendManualReviewRequest(bookingId: string, publicReviewUrl: string): Promise<{ ok: boolean; error?: string }> {
   const booking = await getBookingWithRecipient(bookingId);
   if (!booking) return { ok: false, error: "Booking or customer not found" };

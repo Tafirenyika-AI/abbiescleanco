@@ -14,6 +14,7 @@ const statusTone: Record<BookingStatusValue, "neutral" | "info" | "success" | "e
   REQUESTED: "warning",
   CONFIRMED: "info",
   SCHEDULED: "info",
+  ON_THE_WAY: "warning",
   IN_PROGRESS: "warning",
   COMPLETED: "success",
   CANCELLED: "error",
