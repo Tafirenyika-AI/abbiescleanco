@@ -44,7 +44,7 @@ export async function generatePosterImage(input: { prompt: string; size?: Poster
 
   const buffer = Buffer.from(b64, "base64");
   try {
-    const { url } = await saveGeneratedFile(buffer, "png", "image/png", "ai-poster", MAX_POSTER_BYTES);
+    const { url } = await saveGeneratedFile(buffer, "image/png", MAX_POSTER_BYTES);
     return { ok: true, url };
   } catch (err) {
     if (err instanceof UploadError) return { ok: false, error: err.message };
@@ -61,7 +61,7 @@ export async function saveGeneratedVideo(buffer: Buffer): Promise<{ ok: true; ur
     return { ok: false, error: "That doesn't look like a real video file." };
   }
   try {
-    const { url } = await saveGeneratedFile(buffer, detected.ext, detected.mime, "ai-video", MAX_VIDEO_BYTES);
+    const { url } = await saveGeneratedFile(buffer, detected.mime, MAX_VIDEO_BYTES);
     return { ok: true, url };
   } catch (err) {
     if (err instanceof UploadError) return { ok: false, error: err.message };

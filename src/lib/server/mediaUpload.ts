@@ -1,16 +1,8 @@
-import { promises as fs } from "fs";
-import path from "path";
 import { randomUUID } from "crypto";
 import sharp from "sharp";
+import { prisma, isDatabaseConfigured } from "@/lib/db";
 
 export class MediaError extends Error {}
-
-/** Same real bug/fix as upload.ts's assertStorageAvailable() -- see its comment for the full story. */
-function assertStorageAvailable() {
-  if (process.env.VERCEL && !process.env.BLOB_READ_WRITE_TOKEN) {
-    throw new MediaError("File storage isn't connected yet. Please try again shortly.");
-  }
-}
 
 export const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 export const MAX_VIDEO_BYTES = 60 * 1024 * 1024;
@@ -39,18 +31,18 @@ export function sniffMedia(buf: Buffer): DetectedMedia | null {
   return null;
 }
 
-async function storeBuffer(buf: Buffer, ext: string, contentType: string): Promise<string> {
-  const filename = `${randomUUID().replace(/-/g, "")}.${ext}`; // 128 bits of randomness -- unguessable URL
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
-    const { put } = await import("@vercel/blob");
-    const blob = await put(`client-media/${filename}`, buf, { access: "public", contentType, addRandomSuffix: true });
-    return blob.url;
-  }
-  assertStorageAvailable();
-  const dir = path.join(process.cwd(), "public", "uploads", "client");
-  await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(path.join(dir, filename), buf);
-  return `/api/uploads/client/${filename}`;
+/**
+ * Stores customer-provided media as a database row and returns its serving URL. Large
+ * walkthrough videos (over what fits in one request) still go straight to Vercel Blob from the
+ * browser -- see /api/account/media/token -- since that's the only way to bypass Vercel's own
+ * per-request body size limit; this path handles everything else (photos, voice notes, and any
+ * video small enough to arrive as a normal upload).
+ */
+async function storeBuffer(buf: Buffer, contentType: string): Promise<string> {
+  if (!isDatabaseConfigured || !prisma) throw new MediaError("Storage isn't available right now -- the database isn't configured.");
+  const id = randomUUID().replace(/-/g, "");
+  await prisma.storedFile.create({ data: { id, contentType, data: new Uint8Array(buf), size: buf.length } });
+  return `/api/files/${id}`;
 }
 
 export interface SavedMedia {
@@ -80,12 +72,12 @@ export async function saveCustomerMedia(file: File): Promise<SavedMedia> {
     } catch {
       throw new MediaError("We couldn't read that photo. Try a JPG or PNG.");
     }
-    return { url: await storeBuffer(out, "jpg", "image/jpeg"), kind: "IMAGE", mimeType: "image/jpeg", sizeBytes: out.length };
+    return { url: await storeBuffer(out, "image/jpeg"), kind: "IMAGE", mimeType: "image/jpeg", sizeBytes: out.length };
   }
 
   if (detected.kind === "AUDIO" && file.size > MAX_AUDIO_BYTES) throw new MediaError("Voice note is too large (max 15MB).");
 
-  return { url: await storeBuffer(buf, detected.ext, detected.mime), kind: detected.kind, mimeType: detected.mime, sizeBytes: buf.length };
+  return { url: await storeBuffer(buf, detected.mime), kind: detected.kind, mimeType: detected.mime, sizeBytes: buf.length };
 }
 
 /** Bytes of a normalized JPEG for sending to a vision model (already validated upstream). */
@@ -97,8 +89,14 @@ export async function prepareImageForAnalysis(file: File): Promise<{ base64: str
   return { base64: out.toString("base64"), buffer: out };
 }
 
-/** URLs we'll accept as already-uploaded media (guards against pointing an attachment at an arbitrary site). */
+/**
+ * URLs we'll accept as already-uploaded media (guards against pointing an attachment at an
+ * arbitrary site). The blob.vercel-storage.com and /api/uploads/client patterns are kept for
+ * attachments saved before the switch to database-backed storage; new uploads always get
+ * /api/files/[id] (database) or, for large direct-uploaded videos, a real Blob URL.
+ */
 export function isTrustedMediaUrl(url: string): boolean {
+  if (/^\/api\/files\/[a-f0-9]{32}$/.test(url)) return true;
   if (/^\/api\/uploads\/client\/[a-f0-9]{32}\.(jpg|png|webp|mp4|mov|webm|wav|mp3|ogg|m4a)$/.test(url)) return true;
   try {
     const u = new URL(url);

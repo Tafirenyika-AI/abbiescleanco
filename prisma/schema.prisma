@@ -808,6 +808,24 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+/**
+ * Uploaded/generated files (admin images, AI-generated posters/videos, customer photos and
+ * voice notes) stored as rows rather than on Vercel's read-only-at-runtime filesystem or in
+ * external object storage -- served back out through /api/files/[id]. The id is a 32-hex
+ * randomUUID (set by the app, not Prisma's default cuid) so it doubles as an unguessable
+ * bearer token, matching the "public but unguessable URL" security model the app already used
+ * for Vercel Blob URLs.
+ */
+model StoredFile {
+  id          String   @id
+  contentType String
+  data        Bytes
+  size        Int
+  createdAt   DateTime @default(now())
+
+  @@map("stored_files")
+}
+
 // ---------- Team & expenses ----------
 
 model TeamMember {

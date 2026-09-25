@@ -10,9 +10,9 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ ok: true, posts });
 }
 
-// Accepts either a real absolute URL (Vercel Blob in production) or a root-relative local
-// path (the /uploads/ fallback used when BLOB_READ_WRITE_TOKEN isn't set, e.g. local dev) --
-// z.string().url() alone would reject the local-fallback shape these upload endpoints return.
+// Accepts either a root-relative path (/api/files/[id], the normal database-backed storage
+// URL) or a real absolute URL (a large customer video uploaded straight to Vercel Blob) --
+// z.string().url() alone would reject the root-relative shape most upload endpoints return.
 const mediaUrlSchema = z.string().trim().min(1).refine((v) => v.startsWith("/") || /^https?:\/\//.test(v), "Must be a real uploaded file URL").nullable();
 
 const schema = z.object({
