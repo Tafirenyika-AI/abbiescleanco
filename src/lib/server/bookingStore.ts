@@ -64,6 +64,7 @@ export interface BookingListItem {
   staffAssignee: string | null;
   customerName: string;
   address: string;
+  city: string | null;
   serviceName: string;
 }
 
@@ -84,6 +85,7 @@ function mapBooking(b: {
     staffAssignee: b.staffAssignee,
     customerName: b.customer ? `${b.customer.firstName} ${b.customer.lastName}`.trim() : "—",
     address: b.address ? `${b.address.line1}, ${b.address.city}, ${b.address.state} ${b.address.zip}` : "—",
+    city: b.address?.city ?? null,
     serviceName: b.lead?.service.name ?? "—",
   };
 }
