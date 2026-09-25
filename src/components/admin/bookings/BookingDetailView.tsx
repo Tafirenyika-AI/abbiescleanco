@@ -50,7 +50,7 @@ function toTimeInput(iso: string | null) {
   return iso ? new Date(iso).toTimeString().slice(0, 5) : "";
 }
 
-export default function BookingDetailView({ booking }: { booking: BookingDetail }) {
+export default function BookingDetailView({ booking, mapsApiKey }: { booking: BookingDetail; mapsApiKey: string | null }) {
   const router = useRouter();
   const { showToast } = useToast();
   const [staff, setStaff] = useState(booking.staffAssignee ?? "");
@@ -253,6 +253,17 @@ export default function BookingDetailView({ booking }: { booking: BookingDetail 
               <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Scheduled</dt><dd className="text-admin-text">{booking.scheduledStart ? formatDateTime(booking.scheduledStart) : "Not scheduled"}</dd></div>
               {booking.arrivalWindow && <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Arrival window</dt><dd className="text-admin-text">{booking.arrivalWindow}</dd></div>}
             </dl>
+            {mapsApiKey ? (
+              <iframe
+                title="Client location"
+                className="mt-3 h-56 w-full rounded-lg border border-admin-border"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                src={`https://www.google.com/maps/embed/v1/place?key=${mapsApiKey}&q=${encodeURIComponent(booking.address)}`}
+              />
+            ) : (
+              <p className="mt-3 rounded-lg bg-admin-bg p-2.5 text-xs text-admin-text-muted">Live map unavailable -- add a Google Maps API key under Settings → Integrations to show it here.</p>
+            )}
             {booking.additionalInstructions && (
               <p className="mt-3 rounded-lg bg-admin-bg p-2.5 text-sm text-admin-text">{booking.additionalInstructions}</p>
             )}
