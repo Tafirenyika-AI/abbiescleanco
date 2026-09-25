@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { MapPin, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import TrackChat from "@/components/track/TrackChat";
 
 interface JobInfo {
   active: boolean;
@@ -126,6 +127,8 @@ export default function TrackingShareClient({ token }: { token: string }) {
           <CheckCircle2 className="size-4" aria-hidden /> Share my location
         </button>
       )}
+
+      <TrackChat token={token} />
     </div>
   );
 }

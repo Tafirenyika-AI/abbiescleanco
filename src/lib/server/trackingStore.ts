@@ -1,6 +1,8 @@
 import { randomUUID } from "crypto";
 import { prisma, isDatabaseConfigured } from "@/lib/db";
 import { sendSms } from "@/lib/server/sms";
+import { sendEmail } from "@/lib/server/email";
+import { initiateCall } from "@/lib/server/voice";
 import { business } from "@/lib/data/business";
 
 /**
@@ -41,7 +43,7 @@ export async function createLocationShare(bookingId: string, phone: string, admi
 
   const id = randomUUID().replace(/-/g, "");
   await db().cleanerLocationShare.create({
-    data: { id, bookingId, expiresAt: new Date(Date.now() + SHARE_HOURS * 60 * 60 * 1000), createdById: adminUserId },
+    data: { id, bookingId, phone, expiresAt: new Date(Date.now() + SHARE_HOURS * 60 * 60 * 1000), createdById: adminUserId },
   });
 
   const url = `${siteUrl()}/track/${id}`;
@@ -118,4 +120,96 @@ export async function getActiveLocationForBooking(bookingId: string): Promise<Bo
   });
   if (!share || share.lastLat === null || share.lastLng === null || !share.lastUpdatedAt) return { active: false };
   return { active: true, lat: share.lastLat, lng: share.lastLng, updatedAt: share.lastUpdatedAt.toISOString() };
+}
+
+/** Loose lookup by token -- unlike location/messaging reads, this doesn't require the share to
+ *  still be "active"; a cleaner should be able to keep messaging/calling through the job even
+ *  after GPS sharing itself has stopped. Only a genuinely nonexistent token, or a booking that's
+ *  wrapped up, is rejected. */
+export async function resolveBookingForToken(token: string) {
+  if (!/^[a-f0-9]{32}$/.test(token)) return null;
+  const share = await db().cleanerLocationShare.findUnique({ where: { id: token }, select: { bookingId: true, phone: true } });
+  if (!share) return null;
+  const booking = await db().booking.findUnique({ where: { id: share.bookingId }, select: { status: true } });
+  if (!booking || ["COMPLETED", "CANCELLED"].includes(booking.status)) return null;
+  return { bookingId: share.bookingId, cleanerPhone: share.phone };
+}
+
+async function getCleanerPhone(bookingId: string): Promise<string | null> {
+  const share = await db().cleanerLocationShare.findFirst({ where: { bookingId, phone: { not: null } }, orderBy: { createdAt: "desc" } });
+  return share?.phone ?? null;
+}
+
+async function getCustomerContact(bookingId: string) {
+  const booking = await db().booking.findUnique({ where: { id: bookingId }, include: { customer: true } });
+  if (!booking) return null;
+  return { name: `${booking.customer.firstName} ${booking.customer.lastName}`.trim(), phone: booking.customer.phone, email: booking.customer.email };
+}
+
+export interface CleanerMessageItem {
+  id: string;
+  sender: "CUSTOMER" | "CLEANER";
+  body: string;
+  createdAt: string;
+}
+
+export async function listMessagesForBooking(bookingId: string): Promise<CleanerMessageItem[]> {
+  const rows = await db().cleanerMessage.findMany({ where: { bookingId }, orderBy: { createdAt: "asc" }, take: 200 });
+  return rows.map((m) => ({ id: m.id, sender: m.sender as "CUSTOMER" | "CLEANER", body: m.body.slice(0, 2000), createdAt: m.createdAt.toISOString() }));
+}
+
+/** Best-effort: the message is saved regardless of whether notifying the other party succeeds. */
+export async function sendMessage(bookingId: string, sender: "CUSTOMER" | "CLEANER", body: string): Promise<{ ok: boolean; error?: string }> {
+  const trimmed = body.trim().slice(0, 2000);
+  if (!trimmed) return { ok: false, error: "Message can't be empty" };
+  await db().cleanerMessage.create({ data: { bookingId, sender, body: trimmed } });
+
+  if (sender === "CUSTOMER") {
+    const phone = await getCleanerPhone(bookingId);
+    if (phone) await sendSms(phone, `New message from your client: ${trimmed}`);
+  } else {
+    const customer = await getCustomerContact(bookingId);
+    if (customer?.phone) await sendSms(customer.phone, `New message from ${business.name}: ${trimmed}`);
+    if (customer?.email) await sendEmail({ to: customer.email, subject: "New message about your cleaning visit", html: `<p>${trimmed.replace(/</g, "&lt;")}</p>` });
+  }
+  return { ok: true };
+}
+
+/**
+ * Creates a short-lived bridge pointer and dials `firstLegPhone`; once they answer, Twilio's
+ * webhook resolves this bridge to `targetPhone` and dials that -- neither party's real number is
+ * ever exposed to the other or embedded in a client-visible URL.
+ */
+async function startBridgedCall(bookingId: string, firstLegPhone: string, targetPhone: string): Promise<{ ok: boolean; error?: string }> {
+  const id = randomUUID().replace(/-/g, "");
+  await db().callBridge.create({ data: { id, bookingId, targetPhone } });
+  const result = await initiateCall(firstLegPhone, `${siteUrl()}/api/twiml/bridge/${id}`);
+  if (!result.ok) return { ok: false, error: result.error || "Couldn't place the call" };
+  return { ok: true };
+}
+
+export async function callCleanerFromCustomer(bookingId: string): Promise<{ ok: boolean; error?: string }> {
+  const [customer, cleanerPhone] = await Promise.all([getCustomerContact(bookingId), getCleanerPhone(bookingId)]);
+  if (!customer) return { ok: false, error: "Booking not found" };
+  if (!cleanerPhone) return { ok: false, error: "No cleaner phone on file yet for this job" };
+  return startBridgedCall(bookingId, customer.phone, cleanerPhone);
+}
+
+export async function callCustomerFromCleaner(token: string): Promise<{ ok: boolean; error?: string }> {
+  const resolved = await resolveBookingForToken(token);
+  if (!resolved) return { ok: false, error: "This link isn't active" };
+  if (!resolved.cleanerPhone) return { ok: false, error: "No phone on file for this link" };
+  const customer = await getCustomerContact(resolved.bookingId);
+  if (!customer) return { ok: false, error: "Booking not found" };
+  return startBridgedCall(resolved.bookingId, resolved.cleanerPhone, customer.phone);
+}
+
+const BRIDGE_MAX_AGE_MS = 10 * 60 * 1000;
+
+/** Called only by Twilio's own webhook request for a call session we just created. */
+export async function getCallBridgeTarget(id: string): Promise<string | null> {
+  if (!/^[a-f0-9]{32}$/.test(id)) return null;
+  const bridge = await db().callBridge.findUnique({ where: { id } });
+  if (!bridge || Date.now() - bridge.createdAt.getTime() > BRIDGE_MAX_AGE_MS) return null;
+  return bridge.targetPhone;
 }

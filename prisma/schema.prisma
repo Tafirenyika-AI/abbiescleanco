@@ -532,6 +532,8 @@ model Booking {
   clientNotes       ClientNote[]
   expenses          Expense[]
   locationShares    CleanerLocationShare[]
+  cleanerMessages   CleanerMessage[]
+  callBridges       CallBridge[]
 
   @@index([status])
   @@index([scheduledStart])
@@ -551,6 +553,7 @@ model CleanerLocationShare {
   id        String   @id
   bookingId String
   booking   Booking  @relation(fields: [bookingId], references: [id])
+  phone     String? // the number this link was texted to -- reused to notify the cleaner of a new message or bridge a call, without ever storing a persistent cleaner identity
 
   createdAt DateTime @default(now())
   expiresAt DateTime
@@ -566,6 +569,39 @@ model CleanerLocationShare {
 
   @@index([bookingId])
   @@map("cleaner_location_shares")
+}
+
+/** Real two-way text between the customer and whoever's on the job for this booking -- reuses
+ *  the same tokened/no-login access model as location sharing. */
+model CleanerMessage {
+  id        String   @id @default(cuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+
+  sender String // CUSTOMER | CLEANER
+  body   String
+
+  createdAt DateTime @default(now())
+
+  @@index([bookingId])
+  @@map("cleaner_messages")
+}
+
+/**
+ * A short-lived, single-use pointer for bridging a real phone call without either side ever
+ * seeing the other's real number. Whoever taps "Call" gets dialed by Twilio first; when they
+ * answer, Twilio requests TwiML from /api/twiml/bridge/[id], which looks up targetPhone here and
+ * dials it -- the phone number itself never appears in a client-reachable URL or param.
+ */
+model CallBridge {
+  id          String   @id
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id])
+  targetPhone String
+
+  createdAt DateTime @default(now())
+
+  @@map("call_bridges")
 }
 
 model BookingStatusHistory {

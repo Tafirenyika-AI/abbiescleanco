@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { X, Loader2, CreditCard, CalendarClock, XCircle, CheckCircle2, Truck } from "lucide-react";
 import MediaThread from "@/components/account/MediaThread";
 import LiveTrackingMap from "@/components/account/LiveTrackingMap";
+import CleanerChat from "@/components/account/CleanerChat";
 import { labelForMethod } from "@/lib/paymentMethods";
 
 type Kind = "request" | "quote" | "booking";
@@ -225,6 +226,7 @@ function BookingDetail({ id, onChanged }: { id: string; onChanged: () => void })
         )}
         <p className="text-sm text-navy-950">{b.scheduledStart ? dt(b.scheduledStart) : "Not yet scheduled"} · <span className="font-semibold">{title(b.status)}</span></p>
         <p className="mt-0.5 text-sm text-surface-700">{b.address}</p>
+        {(b.status === "ON_THE_WAY" || b.status === "IN_PROGRESS") && <CleanerChat bookingId={id} />}
       </Section>
 
       <Section heading="Payment">
