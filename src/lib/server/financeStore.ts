@@ -48,7 +48,9 @@ export async function getFinanceOverview(range: "today" | "month" | "year"): Pro
 
   const [acceptedQuotes, paidPayments, expenses, openInvoices] = await Promise.all([
     prisma.quote.findMany({ where: { status: "ACCEPTED", createdAt: { gte: start, lte: end }, deletedAt: null }, select: { total: true } }),
-    prisma.payment.findMany({ where: { status: "PAID", createdAt: { gte: start, lte: end } }, select: { amount: true, refundAmount: true } }),
+    // Excludes payments whose booking has since been deleted -- deleting a booking now actually
+    // moves this number instead of the payment staying counted forever.
+    prisma.payment.findMany({ where: { status: "PAID", createdAt: { gte: start, lte: end }, OR: [{ bookingId: null }, { booking: { deletedAt: null } }] }, select: { amount: true, refundAmount: true } }),
     prisma.expense.findMany({ where: { date: { gte: start, lte: end }, deletedAt: null }, select: { amount: true } }),
     // Outstanding balance is a point-in-time fact, not scoped to the range -- an invoice from last
     // month that's still unpaid is still owed today.
@@ -142,7 +144,7 @@ export async function getRevenueVsExpensesTrend(days: number): Promise<{ date: s
   start.setHours(0, 0, 0, 0);
 
   const [payments, expenses] = await Promise.all([
-    prisma.payment.findMany({ where: { status: "PAID", createdAt: { gte: start } }, select: { amount: true, refundAmount: true, createdAt: true } }),
+    prisma.payment.findMany({ where: { status: "PAID", createdAt: { gte: start }, OR: [{ bookingId: null }, { booking: { deletedAt: null } }] }, select: { amount: true, refundAmount: true, createdAt: true } }),
     prisma.expense.findMany({ where: { date: { gte: start }, deletedAt: null }, select: { amount: true, date: true } }),
   ]);
 

@@ -56,8 +56,13 @@ export async function getReportsSummary(rangeStart: Date, rangeEnd: Date): Promi
   // Real bug found + fixed here: netRevenue used to be acceptedValue (quote totals agreed to, not
   // actually collected) minus expenses, so a refund never moved this number at all -- it wasn't
   // reading Payment rows in the first place. Now it's real cash: PAID payments in this window,
-  // net of whatever's actually been refunded against them.
-  const paidPayments = await prisma.payment.findMany({ where: { status: "PAID", createdAt: { gte: rangeStart, lte: rangeEnd } }, select: { amount: true, refundAmount: true } });
+  // net of whatever's actually been refunded against them. Also excludes payments whose booking
+  // has since been deleted -- deleting a booking (or its data) now actually moves this number,
+  // instead of the payment silently staying counted forever.
+  const paidPayments = await prisma.payment.findMany({
+    where: { status: "PAID", createdAt: { gte: rangeStart, lte: rangeEnd }, OR: [{ bookingId: null }, { booking: { deletedAt: null } }] },
+    select: { amount: true, refundAmount: true },
+  });
   const netCollected = paidPayments.reduce((sum, p) => sum + (p.amount - p.refundAmount), 0);
 
   const bySource = new Map<string, number>();
@@ -116,7 +121,10 @@ export async function getDailyRevenue(days: number): Promise<{ date: string; cen
   start.setDate(start.getDate() - (days - 1));
   start.setHours(0, 0, 0, 0);
 
-  const payments = await prisma.payment.findMany({ where: { status: "PAID", createdAt: { gte: start } }, select: { amount: true, refundAmount: true, createdAt: true } });
+  const payments = await prisma.payment.findMany({
+    where: { status: "PAID", createdAt: { gte: start }, OR: [{ bookingId: null }, { booking: { deletedAt: null } }] },
+    select: { amount: true, refundAmount: true, createdAt: true },
+  });
 
   for (let i = 0; i < days; i++) {
     const dayStart = new Date(start);
