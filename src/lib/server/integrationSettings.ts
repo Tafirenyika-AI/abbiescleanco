@@ -16,6 +16,14 @@ import { prisma, isDatabaseConfigured } from "@/lib/db";
 export interface IntegrationSettings {
   resendApiKey?: string;
   emailFrom?: string;
+  // Real SMTP mail server, an alternative to Resend for businesses that want to send from their
+  // own mail server / Google Workspace / Office 365 instead of a third-party API. Preferred over
+  // Resend when configured -- see sendEmail() in email.ts for the exact fallback order.
+  smtpHost?: string;
+  smtpPort?: string;
+  smtpUsername?: string;
+  smtpPassword?: string;
+  smtpSecure?: string; // "true" | "false" -- TLS on connect (port 465) vs STARTTLS (587/25)
   twilioAccountSid?: string;
   twilioAuthToken?: string;
   twilioFromNumber?: string;
@@ -45,6 +53,7 @@ export interface IntegrationSettings {
 
 const SECRET_FIELDS: (keyof IntegrationSettings)[] = [
   "resendApiKey",
+  "smtpPassword",
   "twilioAccountSid",
   "twilioAuthToken",
   "stripeSecretKey",
@@ -78,6 +87,11 @@ export async function getIntegrationStatus(): Promise<Record<keyof IntegrationSe
   const envMap: Record<keyof IntegrationSettings, string> = {
     resendApiKey: "RESEND_API_KEY",
     emailFrom: "EMAIL_FROM",
+    smtpHost: "SMTP_HOST",
+    smtpPort: "SMTP_PORT",
+    smtpUsername: "SMTP_USERNAME",
+    smtpPassword: "SMTP_PASSWORD",
+    smtpSecure: "SMTP_SECURE",
     twilioAccountSid: "TWILIO_ACCOUNT_SID",
     twilioAuthToken: "TWILIO_AUTH_TOKEN",
     twilioFromNumber: "TWILIO_FROM_NUMBER",

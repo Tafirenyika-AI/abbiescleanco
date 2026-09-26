@@ -17,7 +17,10 @@ const nextConfig: NextConfig = {
   // Next's bundler can pull it into the serverless function bundle in a way that breaks the
   // native binary at runtime on Vercel specifically (works fine in local dev, where the bundler
   // behaves differently). This keeps sharp as a real external require() at runtime instead.
-  serverExternalPackages: ["sharp"],
+  // nodemailer (email.ts's SMTP path) uses Node builtins (net/tls/dns) internally for raw socket
+  // connections -- same class of bundling problem, same fix (a real build failure hit while
+  // adding SMTP support: "the chunking context does not support external modules (node:net)").
+  serverExternalPackages: ["sharp", "nodemailer"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

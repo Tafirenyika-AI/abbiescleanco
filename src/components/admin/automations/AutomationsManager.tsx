@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { Loader2, Play, Zap } from "lucide-react";
-import type { AutomationRules, AutomationEventLogItem, ConfigurableAutomationType } from "@/lib/server/automationStore";
-import { automationRuleLabels, CONFIGURABLE_AUTOMATION_TYPES } from "@/lib/server/automationStore";
+import type { AutomationEventLogItem } from "@/lib/server/automationStore";
+import type { AutomationRules, ConfigurableAutomationType } from "@/lib/automations";
+import { automationRuleLabels, CONFIGURABLE_AUTOMATION_TYPES } from "@/lib/automations";
 import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";

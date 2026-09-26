@@ -41,7 +41,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
 
   if (result.customerEmail) {
-    const { subject, html } = bookingRequestReceivedEmail({
+    const { subject, html } = await bookingRequestReceivedEmail({
       firstName: result.customerName.split(" ")[0] || "there",
       reference: result.reference,
       serviceName: result.serviceName,

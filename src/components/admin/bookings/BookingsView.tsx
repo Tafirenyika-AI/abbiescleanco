@@ -3,8 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Search, CalendarClock } from "lucide-react";
-import type { BookingListItem, BookingStatusValue } from "@/lib/server/bookingStore";
-import { BOOKING_STATUSES, bookingStatusLabels } from "@/lib/server/bookingStore";
+import type { BookingListItem } from "@/lib/server/bookingStore";
+import type { BookingStatusValue } from "@/lib/bookings";
+import { BOOKING_STATUSES, bookingStatusLabels } from "@/lib/bookings";
 import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";

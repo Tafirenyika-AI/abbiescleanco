@@ -111,6 +111,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { href: "/admin/users", label: "Admin users", description: "Admin accounts & roles", icon: ShieldCheck, permission: "MANAGE_USERS", built: true },
       { href: "/admin/settings", label: "Settings", description: "Business & integrations", icon: Settings, permission: "MANAGE_CONTENT", built: true },
+      { href: "/admin/settings/email-templates", label: "Email templates", description: "Edit every automated email", icon: Mail, permission: "MANAGE_USERS", built: true },
       { href: "/admin/audit-log", label: "Audit log", description: "Who changed what, when", icon: ScrollText, permission: "MANAGE_USERS", built: true },
     ],
   },

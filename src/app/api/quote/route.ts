@@ -106,30 +106,25 @@ export async function POST(req: NextRequest) {
     ? "Manual quote required, we'll follow up after reviewing your property details."
     : `$${estimate.totalLow}–$${estimate.totalHigh} (preliminary)`;
 
-  await sendEmail({
-    to: input.email,
-    ...customerConfirmationEmail({
-      firstName: input.firstName,
-      reference,
-      serviceName: service.name,
-      estimateLabel,
-    }),
+  const customerEmailContent = await customerConfirmationEmail({
+    firstName: input.firstName,
+    reference,
+    serviceName: service.name,
+    estimateLabel,
   });
+  await sendEmail({ to: input.email, ...customerEmailContent });
 
-  await sendEmail({
-    to: business.email,
-    replyTo: input.email,
-    ...businessNotificationEmail({
-      reference,
-      name: `${input.firstName} ${input.lastName}`,
-      phone: input.phone,
-      email: input.email,
-      serviceName: service.name,
-      estimateLabel,
-      preferredContactMethod: input.preferredContactMethod,
-      zip: input.zip,
-    }),
+  const businessEmailContent = await businessNotificationEmail({
+    reference,
+    name: `${input.firstName} ${input.lastName}`,
+    phone: input.phone,
+    email: input.email,
+    serviceName: service.name,
+    estimateLabel,
+    preferredContactMethod: input.preferredContactMethod,
+    zip: input.zip,
   });
+  await sendEmail({ to: business.email, replyTo: input.email, ...businessEmailContent });
 
   if (input.smsConsent) {
     await sendSms(

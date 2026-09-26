@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       "/admin/payments"
     );
     if (parsed.data.status === "PAID" && booking?.customerEmail) {
-      const { subject, html } = paymentReceiptEmail({
+      const { subject, html } = await paymentReceiptEmail({
         firstName: booking.customerName.split(" ")[0] || "there",
         amountLabel: `$${(parsed.data.amount / 100).toFixed(2)}`,
         description: `your ${parsed.data.kind === "deposit" ? "deposit" : "payment"} (${booking.reference})`,

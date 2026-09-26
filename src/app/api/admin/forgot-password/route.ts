@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   if (token) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
     const resetUrl = `${siteUrl}/admin/reset-password?token=${token}`;
-    const { subject, html } = adminPasswordResetEmail({ resetUrl });
+    const { subject, html } = await adminPasswordResetEmail({ resetUrl });
     await sendEmail({ to: parsed.data.email, subject, html });
   }
   return NextResponse.json({ ok: true });

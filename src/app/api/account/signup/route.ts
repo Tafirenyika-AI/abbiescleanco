@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: result.error }, { status: 400 });
     }
 
-    const { subject, html } = welcomeEmail({ firstName: parsed.data.firstName });
+    const { subject, html } = await welcomeEmail({ firstName: parsed.data.firstName });
     await sendEmail({ to: parsed.data.email, subject, html });
 
     const token = createCustomerSessionToken(result.userId);

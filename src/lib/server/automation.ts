@@ -9,7 +9,7 @@
  *
  * The rest (follow-ups, reminders, post-service, recurring, win-back) are
  * time-delayed and depend on business decisions the client hasn't confirmed
- * yet (follow-up timing, reminder offsets, re-clean window — see
+ * yet (follow-up timing, reminder offsets, re-clean window -- see
  * CLIENT_CONFIRMATION_CHECKLIST.md), so they're implemented as pure,
  * independently-testable functions here rather than wired to a live
  * scheduler. To activate them in production:
@@ -23,10 +23,16 @@
  *
  * This keeps the actual send logic decoupled from *when* it runs, so it's
  * unit-testable without a real scheduler.
+ *
+ * The real subject/html for every email here is editable (see
+ * src/lib/server/emailTemplates.ts and /admin/settings/email-templates) --
+ * this file's only job is to gather the real variables and call
+ * renderEmailTemplate(), never to hardcode wording itself.
  */
 
 import { sendEmail, type SendEmailResult } from "./email";
 import { sendSms } from "./sms";
+import { renderEmailTemplate, escapeHtml } from "./emailTemplates";
 import { business } from "@/lib/data/business";
 
 interface RecipientInfo {
@@ -45,25 +51,22 @@ function skipped(): SendEmailResult {
 /** Sent once, shortly after QUOTE_FOLLOW_UP delay, if a quote hasn't been confirmed. */
 export async function sendQuoteFollowUp(recipient: RecipientInfo, reference: string) {
   if (!recipient.email) return skipped();
-  return sendEmail({
-    to: recipient.email,
-    subject: `Still interested? Your estimate ${reference} is waiting`,
-    html: `<p>Hi ${escapeHtml(recipient.name)}, just checking in on your cleaning estimate (${escapeHtml(
-      reference
-    )}). Reply here or call/text ${business.phoneDisplay} whenever works for you.</p>`,
+  const { subject, html } = await renderEmailTemplate("QUOTE_FOLLOW_UP_1", {
+    name: escapeHtml(recipient.name),
+    reference: escapeHtml(reference),
+    businessPhone: business.phoneDisplay,
   });
+  return sendEmail({ to: recipient.email, subject, html });
 }
 
 /** Sent once more if the first follow-up went unanswered. Stops after this. */
 export async function sendFinalQuoteFollowUp(recipient: RecipientInfo, reference: string) {
   if (!recipient.email) return skipped();
-  return sendEmail({
-    to: recipient.email,
-    subject: `Last check-in on estimate ${reference}`,
-    html: `<p>Hi ${escapeHtml(
-      recipient.name
-    )}, we'll close out this estimate soon unless we hear from you. No worries either way, just reply or reach out if you'd like to move forward.</p>`,
+  const { subject, html } = await renderEmailTemplate("QUOTE_FOLLOW_UP_2", {
+    name: escapeHtml(recipient.name),
+    reference: escapeHtml(reference),
   });
+  return sendEmail({ to: recipient.email, subject, html });
 }
 
 /** Sent when an administrator confirms a booking. */
@@ -77,19 +80,18 @@ export async function sendBookingConfirmation(
     month: "long",
     day: "numeric",
   });
-  return sendEmail({
-    to: recipient.email,
-    subject: `Your ${details.serviceName} visit is confirmed, ${dateLabel}`,
-    html: `
-      <p>Hi ${escapeHtml(recipient.name)}, your ${escapeHtml(details.serviceName)} visit is confirmed for
-      ${dateLabel}${details.arrivalWindow ? ` (${escapeHtml(details.arrivalWindow)})` : ""}.</p>
-      <p>Reference: ${escapeHtml(details.reference)}. Need to reschedule?
-      See our <a href="${siteUrl()}/policies/cancellation">Cancellation &amp; Rescheduling Policy</a>.</p>
-    `,
+  const { subject, html } = await renderEmailTemplate("BOOKING_CONFIRMATION", {
+    name: escapeHtml(recipient.name),
+    serviceName: escapeHtml(details.serviceName),
+    dateLabel,
+    arrivalWindowBlockHtml: details.arrivalWindow ? ` (${escapeHtml(details.arrivalWindow)})` : "",
+    reference: escapeHtml(details.reference),
+    cancellationUrl: `${siteUrl()}/policies/cancellation`,
   });
+  return sendEmail({ to: recipient.email, subject, html });
 }
 
-/** 48h / 24h / day-of reminder — same content, different offset (offset is a scheduling concern, not this function's). */
+/** 48h / 24h / day-of reminder -- same content, different offset (offset is a scheduling concern, not this function's). */
 export async function sendAppointmentReminder(
   recipient: RecipientInfo,
   details: { serviceName: string; scheduledStart: Date; stage: "48h" | "24h" | "day-of" }
@@ -103,13 +105,14 @@ export async function sendAppointmentReminder(
   // customer with no email on file -- only skip the email channel itself, not the whole reminder.
   const results = recipient.email
     ? [
-        await sendEmail({
-          to: recipient.email,
-          subject: `Reminder: ${details.serviceName} on ${dateLabel}`,
-          html: `<p>Hi ${escapeHtml(recipient.name)}, this is a reminder about your upcoming ${escapeHtml(
-            details.serviceName
-          )} visit on ${dateLabel}.</p>`,
-        }),
+        await (async () => {
+          const { subject, html } = await renderEmailTemplate("APPOINTMENT_REMINDER", {
+            name: escapeHtml(recipient.name),
+            serviceName: escapeHtml(details.serviceName),
+            dateLabel,
+          });
+          return sendEmail({ to: recipient.email!, subject, html });
+        })(),
       ]
     : [];
   if (recipient.smsConsent) {
@@ -125,11 +128,13 @@ export async function sendAppointmentReminder(
 export async function sendOnTheWayNotice(recipient: RecipientInfo, details: { serviceName: string }) {
   const results = recipient.email
     ? [
-        await sendEmail({
-          to: recipient.email,
-          subject: `Your ${details.serviceName} cleaner is on the way`,
-          html: `<p>Hi ${escapeHtml(recipient.name)}, good news -- your ${escapeHtml(details.serviceName)} cleaner is on the way now.</p>`,
-        }),
+        await (async () => {
+          const { subject, html } = await renderEmailTemplate("ON_THE_WAY", {
+            name: escapeHtml(recipient.name),
+            serviceName: escapeHtml(details.serviceName),
+          });
+          return sendEmail({ to: recipient.email!, subject, html });
+        })(),
       ]
     : [];
   if (recipient.smsConsent) {
@@ -141,46 +146,27 @@ export async function sendOnTheWayNotice(recipient: RecipientInfo, details: { se
 /** Sent after a job is marked complete. */
 export async function sendPostServiceFollowUp(recipient: RecipientInfo) {
   if (!recipient.email) return skipped();
-  return sendEmail({
-    to: recipient.email,
-    subject: "How did we do?",
-    html: `
-      <p>Hi ${escapeHtml(recipient.name)}, thank you for choosing ${business.name}! We'd love to know
-      how your cleaning went.</p>
-      <p>If everything was great, we'd be grateful for a review. If anything fell short, please reply
-      here directly so we can make it right, no public link needed.</p>
-    `,
+  const { subject, html } = await renderEmailTemplate("POST_SERVICE_FOLLOWUP", {
+    name: escapeHtml(recipient.name),
+    businessName: business.name,
   });
+  return sendEmail({ to: recipient.email, subject, html });
 }
 
-/** Sent only to customers who confirm satisfaction — points to the client-approved public review link. */
+/** Sent only to customers who confirm satisfaction -- points to the client-approved public review link. */
 export async function sendReviewRequest(recipient: RecipientInfo, publicReviewUrl: string) {
   if (!recipient.email) return skipped();
-  return sendEmail({
-    to: recipient.email,
-    subject: "Would you share a quick review?",
-    html: `<p>So glad it went well! If you have a minute, a review helps other Spokane Valley
-      families find us: <a href="${publicReviewUrl}">${publicReviewUrl}</a>. Totally optional, and
-      thank you either way.</p>`,
-  });
+  const { subject, html } = await renderEmailTemplate("REVIEW_REQUEST", { publicReviewUrl });
+  return sendEmail({ to: recipient.email, subject, html });
 }
 
 /** Respectful re-engagement for customers inactive past a configurable period. Must honor opt-outs. */
 export async function sendWinBackMessage(recipient: RecipientInfo) {
   if (!recipient.email) return skipped();
-  return sendEmail({
-    to: recipient.email,
-    subject: "We'd love to clean for you again",
-    html: `<p>Hi ${escapeHtml(recipient.name)}, it's been a while! If you'd like to get back on the
-      schedule, just reply or request a new estimate. If you'd rather not hear from us again, reply
-      "unsubscribe" and we'll stop.</p>`,
-  });
+  const { subject, html } = await renderEmailTemplate("WIN_BACK", { name: escapeHtml(recipient.name) });
+  return sendEmail({ to: recipient.email, subject, html });
 }
 
 function siteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL || "https://abbiescleanco.com";
-}
-
-function escapeHtml(value: string) {
-  return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
 }

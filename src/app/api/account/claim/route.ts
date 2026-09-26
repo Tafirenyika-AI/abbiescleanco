@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     }
 
     const profile = await getProfile(result.userId);
-    const { subject, html } = welcomeEmail({ firstName: profile?.customer?.firstName || "there" });
+    const { subject, html } = await welcomeEmail({ firstName: profile?.customer?.firstName || "there" });
     await sendEmail({ to: parsed.data.email, subject, html });
 
     const token = createCustomerSessionToken(result.userId);

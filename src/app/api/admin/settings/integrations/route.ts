@@ -8,6 +8,11 @@ import { getIntegrationStatus, saveIntegrationSettings, clearIntegrationField } 
 const schema = z.object({
   resendApiKey: z.string().trim().max(300).optional(),
   emailFrom: z.string().trim().max(300).optional(),
+  smtpHost: z.string().trim().max(300).optional(),
+  smtpPort: z.string().trim().max(10).optional(),
+  smtpUsername: z.string().trim().max(300).optional(),
+  smtpPassword: z.string().trim().max(300).optional(),
+  smtpSecure: z.string().trim().max(10).optional(),
   twilioAccountSid: z.string().trim().max(300).optional(),
   twilioAuthToken: z.string().trim().max(300).optional(),
   twilioFromNumber: z.string().trim().max(60).optional(),

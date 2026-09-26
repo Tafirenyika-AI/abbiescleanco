@@ -24,7 +24,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!quote) return NextResponse.json({ ok: false, error: "Quote not found" }, { status: 404 });
   if (!quote.customerEmail) return NextResponse.json({ ok: false, error: "This lead has no email on file" }, { status: 400 });
 
-  const { subject, html } = quoteEmail({
+  const { subject, html } = await quoteEmail({
     firstName: quote.customerName.split(" ")[0] || "there",
     quoteNumber: quote.quoteNumber,
     items: quote.items,

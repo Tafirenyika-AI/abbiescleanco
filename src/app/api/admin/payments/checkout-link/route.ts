@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
   if (!recorded.ok) return NextResponse.json({ ok: false, error: recorded.error }, { status: 400 });
 
   if (parsed.data.emailToCustomer && booking.customerEmail) {
-    const { subject, html } = paymentLinkEmail({
+    const { subject, html } = await paymentLinkEmail({
       firstName: booking.customerName.split(" ")[0] || "there",
       amountLabel: `$${(parsed.data.amount / 100).toFixed(2)}`,
       description: `${parsed.data.kind === "deposit" ? "A deposit is requested" : "Payment is requested"} for your ${booking.serviceName.toLowerCase()} (${booking.reference}).`,

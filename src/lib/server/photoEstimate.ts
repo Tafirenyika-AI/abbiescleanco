@@ -3,6 +3,7 @@ import { getIntegrationValue } from "@/lib/server/integrationSettings";
 import { getPricingConfig } from "@/lib/server/pricingStore";
 import { calculateEstimate, type Condition, type PropertyType } from "@/lib/pricing";
 import { serviceIds } from "@/lib/validation/quote";
+import { HOUSE_WRITING_STYLE } from "@/lib/aiStyle";
 
 export type PhotoServiceId = Exclude<(typeof serviceIds)[number], "commercial-cleaning" | "residential-cleaning" | "laundry-organization">;
 const PHOTO_SERVICES = serviceIds.filter((s) => !["commercial-cleaning", "residential-cleaning", "laundry-organization"].includes(s)) as PhotoServiceId[];
@@ -88,6 +89,7 @@ function buildPrompt(input: PhotoEstimateInput, addOns: { key: string; label: st
     "Choose the single best-fit service and any add-ons the photos justify, using ONLY these add-on keys: " + addOns.map((a) => `${a.key} (${a.label})`).join(", ") + ".",
     "List supplies/equipment the crew should bring for what is visible (e.g. oven cleaner, descaler for hard-water glass, extra microfiber, HEPA vacuum for pet hair).",
     "Do NOT state any prices or hours. If photos are blurry, unrelated to cleaning, or show possible biohazard/mold/damage, set needsManualReview true and confidence low.",
+    HOUSE_WRITING_STYLE,
     "Call the report_cleaning_assessment tool with your result.",
   ].filter(Boolean).join("\n");
 }

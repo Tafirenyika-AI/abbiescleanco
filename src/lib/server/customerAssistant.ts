@@ -1,5 +1,6 @@
 import { getMyRequests, getMyQuotes, getMyBookings, getMyPayments } from "@/lib/server/customerHistory";
 import { runAgent, type AgentTool } from "@/lib/server/aiAgent";
+import { HOUSE_WRITING_STYLE } from "@/lib/aiStyle";
 
 /**
  * Customer-facing counterpart to src/lib/server/assistant.ts -- a real, model-backed assistant
@@ -81,7 +82,9 @@ Rules:
 - Only state facts that came from a tool call this turn -- never guess or recall a number from earlier in the conversation.
 - You can only see THIS customer's own data. If asked about anything else, say you can't help with that here.
 - If no tool answers the question, say so honestly and suggest they send a note from a booking or request for anything more specific.
-- Keep replies short (1-2 sentences) and warm but direct.`;
+- Keep replies short (1-2 sentences) and warm but direct.
+
+${HOUSE_WRITING_STYLE}`;
 
 export async function resolveCustomerAssistantQuery(customerId: string, rawQuery: string): Promise<CustomerAssistantResult> {
   const q = rawQuery.trim();

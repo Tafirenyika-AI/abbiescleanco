@@ -10,42 +10,16 @@ import {
   sendReviewRequest,
   sendWinBackMessage,
 } from "./automation";
+import { CONFIGURABLE_AUTOMATION_TYPES, automationRuleLabels, type ConfigurableAutomationType, type AutomationRuleConfig, type AutomationRules } from "@/lib/automations";
+
+// Re-exported for existing server-side callers that import these from this file -- the real
+// definitions live in the client-safe lib/automations.ts (see its own comment for why).
+export { CONFIGURABLE_AUTOMATION_TYPES, automationRuleLabels, type ConfigurableAutomationType, type AutomationRuleConfig, type AutomationRules };
 
 function db() {
   if (!isDatabaseConfigured || !prisma) throw new Error("Automations require DATABASE_URL to be configured.");
   return prisma;
 }
-
-/** The subset of AutomationEventType that's scheduled/processed by the cron loop below. NEW_LEAD fires synchronously in /api/quote; REVIEW_REQUEST is admin-triggered by a button, not time-based; RECURRING_ENROLLMENT has no feature to hang off yet. */
-export const CONFIGURABLE_AUTOMATION_TYPES = [
-  "QUOTE_FOLLOW_UP_1",
-  "QUOTE_FOLLOW_UP_2",
-  "BOOKING_CONFIRMATION",
-  "REMINDER_48H",
-  "REMINDER_24H",
-  "REMINDER_DAY_OF",
-  "POST_SERVICE_THANK_YOU",
-  "WIN_BACK",
-] as const;
-export type ConfigurableAutomationType = (typeof CONFIGURABLE_AUTOMATION_TYPES)[number];
-
-export interface AutomationRuleConfig {
-  enabled: boolean;
-  /** Hours after the triggering event for time-delayed types; days-of-inactivity for WIN_BACK. Ignored by the fixed-offset reminder/confirmation types. */
-  offsetHours?: number;
-}
-export type AutomationRules = Record<ConfigurableAutomationType, AutomationRuleConfig>;
-
-export const automationRuleLabels: Record<ConfigurableAutomationType, string> = {
-  QUOTE_FOLLOW_UP_1: "First quote follow-up",
-  QUOTE_FOLLOW_UP_2: "Second (final) quote follow-up",
-  BOOKING_CONFIRMATION: "Booking confirmation",
-  REMINDER_48H: "48-hour appointment reminder",
-  REMINDER_24H: "24-hour appointment reminder",
-  REMINDER_DAY_OF: "Day-of appointment reminder",
-  POST_SERVICE_THANK_YOU: "Post-service thank-you",
-  WIN_BACK: "Win-back re-engagement",
-};
 
 // WIN_BACK defaults to off — a re-engagement message needs a business decision on tone/timing
 // before it goes out unattended, matching how recurring-service discounts stayed off by default

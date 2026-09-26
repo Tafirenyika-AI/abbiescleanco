@@ -3,6 +3,7 @@ import { getIntegrationValue } from "@/lib/server/integrationSettings";
 import { getContactInfo } from "@/lib/server/siteSettings";
 import { business } from "@/lib/data/business";
 import { PROSPECT_CATEGORIES, PROSPECT_STATUSES, prospectCategoryLabels, type ProspectCategory, type ProspectStatus, type ProspectRow } from "@/lib/prospects";
+import { HOUSE_WRITING_STYLE } from "@/lib/aiStyle";
 
 export { PROSPECT_CATEGORIES, prospectCategoryLabels, PROSPECT_STATUSES, prospectStatusLabels, type ProspectCategory, type ProspectStatus, type ProspectRow } from "@/lib/prospects";
 
@@ -534,7 +535,9 @@ export async function researchProspect(id: string): Promise<ResearchResult> {
 3. Recent reviews, complaints, or posts mentioning cleanliness or a need for cleaning services.
 4. How large/established the business appears to be, and anything else useful before contacting them.
 
-Only report things you actually find -- if you can't find a real social media profile or listing for them, say so plainly rather than guessing or inventing a URL. Keep the summary under 200 words and cite every real source you used.`;
+Only report things you actually find -- if you can't find a real social media profile or listing for them, say so plainly rather than guessing or inventing a URL. Keep the summary under 200 words and cite every real source you used.
+
+${HOUSE_WRITING_STYLE}`;
 
   const baseUrl = (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com").replace(/\/$/, "");
   let text = "";

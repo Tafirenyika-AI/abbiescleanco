@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
           result.bookingId ? `/admin/bookings/${result.bookingId}` : "/admin/payments"
         );
         if (result.customerEmail) {
-          const { subject, html } = paymentReceiptEmail({
+          const { subject, html } = await paymentReceiptEmail({
             firstName: result.customerName.split(" ")[0] || "there",
             amountLabel: `$${(result.amount / 100).toFixed(2)}`,
             description: "your booking",

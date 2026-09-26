@@ -153,6 +153,7 @@ model AdminUser {
   approvedMarketingPosts MarketingPost[] @relation("MarketingPostApprovedBy")
   socialConnections SocialConnection[]
   sentLocationShares CleanerLocationShare[]
+  editedEmailTemplates EmailTemplate[]
 
   @@index([email])
   @@map("admin_users")
@@ -876,6 +877,26 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@map("audit_logs")
+}
+
+/**
+ * Editable copy for every real transactional/lifecycle email the app sends. `key` matches a real
+ * code path (see src/lib/server/emailTemplates.ts for the fixed list and each one's real
+ * variables) -- subject/html are stored with {{variableName}} placeholders, substituted at send
+ * time. A missing row for a given key just means "use the built-in default", so this table only
+ * ever needs to hold the ones an admin has actually customized.
+ */
+model EmailTemplate {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  subject     String
+  html        String   @db.Text
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   AdminUser? @relation(fields: [updatedById], references: [id])
+
+  @@map("email_templates")
 }
 
 /**

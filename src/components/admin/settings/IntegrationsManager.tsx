@@ -12,8 +12,13 @@ interface FieldMeta {
 }
 
 const fields: FieldMeta[] = [
-  { key: "resendApiKey", label: "Resend API key", isSecret: true, wired: true, help: "Powers customer/business confirmation emails." },
+  { key: "resendApiKey", label: "Resend API key", isSecret: true, wired: true, help: "Powers customer/business confirmation emails. Used only if no SMTP server is set below." },
   { key: "emailFrom", label: "Email \"from\" address", isSecret: false, wired: true, help: "e.g. Abbie's Clean Method <hello@abbiescleanco.com>" },
+  { key: "smtpHost", label: "SMTP server (host)", isSecret: false, wired: true, help: "Your own mail server, e.g. smtp.gmail.com or mail.yourdomain.com. Set this to send through your own mailbox instead of Resend -- it takes priority when set." },
+  { key: "smtpPort", label: "SMTP port", isSecret: false, wired: true, help: "Usually 587 (STARTTLS) or 465 (SSL)." },
+  { key: "smtpUsername", label: "SMTP username", isSecret: false, wired: true, help: "Usually the full mailbox address." },
+  { key: "smtpPassword", label: "SMTP password", isSecret: true, wired: true, help: "For Gmail/Google Workspace this is an app password, not your regular login password." },
+  { key: "smtpSecure", label: "SMTP secure connection", isSecret: false, wired: true, help: "Type \"true\" for port 465, \"false\" for 587/25 (STARTTLS). Leave blank to guess from the port." },
   { key: "twilioAccountSid", label: "Twilio Account SID", isSecret: true, wired: true, help: "SMS notifications when a customer opts in." },
   { key: "twilioAuthToken", label: "Twilio Auth Token", isSecret: true, wired: true, help: "" },
   { key: "twilioFromNumber", label: "Twilio From Number", isSecret: false, wired: true, help: "e.g. +16505551234" },
@@ -48,6 +53,24 @@ export default function IntegrationsManager({ initialStatus }: { initialStatus: 
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
+  const [testEmailTo, setTestEmailTo] = useState("");
+  const [testingEmail, setTestingEmail] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  async function sendTestEmail() {
+    if (!testEmailTo.trim()) return;
+    setTestingEmail(true);
+    setTestEmailResult(null);
+    const res = await fetch("/api/admin/settings/integrations/test-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to: testEmailTo.trim() }),
+    });
+    const data = await res.json().catch(() => null);
+    setTestingEmail(false);
+    if (!data?.ok) return setTestEmailResult({ ok: false, message: data?.error || "Couldn't send" });
+    setTestEmailResult({ ok: true, message: data.mode === "mock" ? "No email provider configured -- this was only logged, not actually sent." : `Sent via ${data.mode === "live" ? "your configured provider" : data.mode}.` });
+  }
 
   async function saveField(key: string) {
     const value = drafts[key];
@@ -85,6 +108,31 @@ export default function IntegrationsManager({ initialStatus }: { initialStatus: 
           encrypted environment variables. Values you save here take priority over environment
           variables of the same name.
         </p>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-admin-border bg-admin-card p-4">
+        <p className="text-sm font-semibold text-admin-text">Send a test email</p>
+        <p className="text-xs text-admin-text-muted">Confirms whatever email setup is saved (SMTP if set, otherwise Resend) actually works, before customers rely on it.</p>
+        <div className="mt-2.5 flex items-center gap-2">
+          <input
+            type="email"
+            placeholder="you@example.com"
+            value={testEmailTo}
+            onChange={(e) => setTestEmailTo(e.target.value)}
+            className="flex-1 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm"
+          />
+          <button
+            type="button"
+            onClick={sendTestEmail}
+            disabled={testingEmail || !testEmailTo.trim()}
+            className="inline-flex items-center gap-1.5 rounded-full bg-admin-navy px-3.5 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {testingEmail ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : "Send test"}
+          </button>
+        </div>
+        {testEmailResult && (
+          <p className={`mt-2 text-xs ${testEmailResult.ok ? "text-admin-teal-hover" : "text-red-600"}`}>{testEmailResult.message}</p>
+        )}
       </div>
 
       <div className="mt-5 space-y-3">

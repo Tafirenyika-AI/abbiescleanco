@@ -5,6 +5,7 @@ import { getServicePriceLabel } from "@/lib/pricing";
 import { listServiceAreas } from "@/lib/server/content";
 import { getContactInfo, getBusinessHours } from "@/lib/server/siteSettings";
 import { runAgent, type AgentTool } from "@/lib/server/aiAgent";
+import { HOUSE_WRITING_STYLE } from "@/lib/aiStyle";
 
 /**
  * Public/guest counterpart to the admin and customer Abbie AI assistants -- a real, model-backed
@@ -90,7 +91,9 @@ Rules:
 - You have NO access to any customer, lead, or booking data, and can't look any up -- if asked something like that, say you can't help with that here.
 - You're comfortable confirming the business works around pets and can note special instructions at booking, since that's a real, standing policy -- no tool needed for that one.
 - If nothing here answers the question, say so honestly and point to calling/texting the business (use get_contact_info) rather than guessing.
-- Keep replies short (1-2 sentences), friendly, and direct.`;
+- Keep replies short (1-2 sentences), friendly, and direct.
+
+${HOUSE_WRITING_STYLE}`;
 
 export async function resolveGuestAssistantQuery(rawQuery: string): Promise<GuestAssistantResult> {
   const q = rawQuery.trim();

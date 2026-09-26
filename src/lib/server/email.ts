@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { business } from "@/lib/data/business";
 import { getIntegrationValue } from "@/lib/server/integrationSettings";
+import { renderEmailTemplate, escapeHtml } from "@/lib/server/emailTemplates";
 
 export interface SendEmailInput {
   to: string;
@@ -17,23 +18,35 @@ export interface SendEmailResult {
 }
 
 /**
- * Sends transactional email via Resend once a key is configured — from
- * /admin/settings (checked first) or RESEND_API_KEY (fallback). Falls back
- * to a logged "mock send" so the full lead/quote flow can be exercised
- * without a live email provider. See .env.example.
+ * Sends transactional email. Two real provider options, checked in order — from /admin/settings
+ * (checked first for each) or the matching env var (fallback):
+ *   1. SMTP (a real mail server — your own domain, Google Workspace, Office 365, etc.), if a host
+ *      is configured. Preferred when set, since it means an admin deliberately chose their own
+ *      mail server over the default.
+ *   2. Resend, if an API key is configured.
+ * Falls back to a logged "mock send" so the full lead/quote flow can be exercised without either.
+ * See .env.example.
  */
 export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
-  const resendApiKey = await getIntegrationValue("resendApiKey", "RESEND_API_KEY");
-  if (!resendApiKey) {
-    console.info(`[mock email] to=${input.to} subject="${input.subject}"`);
-    return { ok: true, mode: "mock" };
-  }
-  const fromAddress = (await getIntegrationValue("emailFrom", "EMAIL_FROM")) || "Abbie's Clean Method <onboarding@resend.dev>";
-  const resend = new Resend(resendApiKey);
+  const smtpHost = await getIntegrationValue("smtpHost", "SMTP_HOST");
+  if (smtpHost) return sendViaSmtp(smtpHost, input);
 
+  const resendApiKey = await getIntegrationValue("resendApiKey", "RESEND_API_KEY");
+  if (resendApiKey) return sendViaResend(resendApiKey, input);
+
+  console.info(`[mock email] to=${input.to} subject="${input.subject}"`);
+  return { ok: true, mode: "mock" };
+}
+
+async function fromAddress(): Promise<string> {
+  return (await getIntegrationValue("emailFrom", "EMAIL_FROM")) || "Abbie's Clean Method <onboarding@resend.dev>";
+}
+
+async function sendViaResend(resendApiKey: string, input: SendEmailInput): Promise<SendEmailResult> {
+  const resend = new Resend(resendApiKey);
   try {
     const { data, error } = await resend.emails.send({
-      from: fromAddress,
+      from: await fromAddress(),
       to: input.to,
       subject: input.subject,
       html: input.html,
@@ -46,30 +59,58 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
   }
 }
 
-export function customerConfirmationEmail(params: {
+async function sendViaSmtp(host: string, input: SendEmailInput): Promise<SendEmailResult> {
+  const [port, username, password, secureRaw] = await Promise.all([
+    getIntegrationValue("smtpPort", "SMTP_PORT"),
+    getIntegrationValue("smtpUsername", "SMTP_USERNAME"),
+    getIntegrationValue("smtpPassword", "SMTP_PASSWORD"),
+    getIntegrationValue("smtpSecure", "SMTP_SECURE"),
+  ]);
+  const portNum = Number(port) || 587;
+  try {
+    // Dynamic import, not a static top-level one -- nodemailer's internal conditional requires
+    // (net/tls/dns, plus its various transport backends) tripped Turbopack's production bundler
+    // even with serverExternalPackages set (a real build failure hit while adding this: "the
+    // chunking context does not support external modules (node:net)"). Deferring the require to
+    // here, only reached once SMTP is actually configured, avoids Turbopack tracing it at all.
+    const { default: nodemailer } = await import("nodemailer");
+    const transporter = nodemailer.createTransport({
+      host,
+      port: portNum,
+      secure: secureRaw ? secureRaw === "true" : portNum === 465,
+      auth: username && password ? { user: username, pass: password } : undefined,
+    });
+    const info = await transporter.sendMail({
+      from: await fromAddress(),
+      to: input.to,
+      subject: input.subject,
+      html: input.html,
+      replyTo: input.replyTo,
+    });
+    return { ok: true, mode: "live", id: info.messageId };
+  } catch (err) {
+    return { ok: false, mode: "live", error: err instanceof Error ? err.message : "Unknown SMTP error" };
+  }
+}
+
+const bizVars = { businessName: business.name, businessCity: business.city, businessRegion: business.region, businessPhone: business.phoneDisplay };
+
+export async function customerConfirmationEmail(params: {
   firstName: string;
   reference: string;
   serviceName: string;
   estimateLabel: string;
 }) {
-  const { firstName, reference, serviceName, estimateLabel } = params;
-  return {
-    subject: `We received your estimate request, ${reference}`,
-    html: `
-      <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
-        <h2 style="color:#0b1f33">Thanks, ${escapeHtml(firstName)}!</h2>
-        <p>We received your request for <strong>${escapeHtml(serviceName)}</strong>.</p>
-        <p><strong>Reference number:</strong> ${escapeHtml(reference)}</p>
-        <p><strong>Preliminary estimate:</strong> ${escapeHtml(estimateLabel)}</p>
-        <p>This is a preliminary estimate only. A member of our team will follow up to confirm final pricing and your preferred date before anything is booked.</p>
-        <p>Questions in the meantime? Call or text us at ${business.phoneDisplay}, or reply to this email.</p>
-        <p style="margin-top:24px;color:#4a5a6a;font-size:14px">${business.name} · ${business.city}, ${business.region}</p>
-      </div>
-    `,
-  };
+  return renderEmailTemplate("CUSTOMER_QUOTE_CONFIRMATION", {
+    firstName: escapeHtml(params.firstName),
+    reference: escapeHtml(params.reference),
+    serviceName: escapeHtml(params.serviceName),
+    estimateLabel: escapeHtml(params.estimateLabel),
+    ...bizVars,
+  });
 }
 
-export function businessNotificationEmail(params: {
+export async function businessNotificationEmail(params: {
   reference: string;
   name: string;
   phone: string;
@@ -79,71 +120,39 @@ export function businessNotificationEmail(params: {
   preferredContactMethod: string;
   zip: string;
 }) {
-  const { reference, name, phone, email, serviceName, estimateLabel, preferredContactMethod, zip } = params;
-  return {
-    subject: `New lead: ${name}, ${serviceName} (${reference})`,
-    html: `
-      <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
-        <h2>New estimate request</h2>
-        <ul>
-          <li><strong>Reference:</strong> ${escapeHtml(reference)}</li>
-          <li><strong>Name:</strong> ${escapeHtml(name)}</li>
-          <li><strong>Phone:</strong> ${escapeHtml(phone)}</li>
-          <li><strong>Email:</strong> ${escapeHtml(email)}</li>
-          <li><strong>ZIP:</strong> ${escapeHtml(zip)}</li>
-          <li><strong>Service:</strong> ${escapeHtml(serviceName)}</li>
-          <li><strong>Preliminary estimate:</strong> ${escapeHtml(estimateLabel)}</li>
-          <li><strong>Preferred contact:</strong> ${escapeHtml(preferredContactMethod)}</li>
-        </ul>
-        <p>Open the admin dashboard to review the full request and respond.</p>
-      </div>
-    `,
-  };
+  const leadDetailsListHtml = [
+    ["Reference", params.reference],
+    ["Name", params.name],
+    ["Phone", params.phone],
+    ["Email", params.email],
+    ["ZIP", params.zip],
+    ["Service", params.serviceName],
+    ["Preliminary estimate", params.estimateLabel],
+    ["Preferred contact", params.preferredContactMethod],
+  ]
+    .map(([label, value]) => `<li><strong>${label}:</strong> ${escapeHtml(value)}</li>`)
+    .join("");
+  return renderEmailTemplate("BUSINESS_NEW_LEAD_NOTIFICATION", {
+    reference: escapeHtml(params.reference),
+    name: escapeHtml(params.name),
+    serviceName: escapeHtml(params.serviceName),
+    leadDetailsListHtml,
+  });
 }
 
-export function welcomeEmail(params: { firstName: string }) {
-  return {
-    subject: `Welcome to ${business.name}`,
-    html: `
-      <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
-        <h2 style="color:#0b1f33">Welcome, ${escapeHtml(params.firstName)}!</h2>
-        <p>Your account with ${escapeHtml(business.name)} is set up. You can sign in any time to track estimate requests, view your booking history, and update your details.</p>
-        <p>Questions in the meantime? Call or text us at ${business.phoneDisplay}.</p>
-        <p style="margin-top:24px;color:#4a5a6a;font-size:14px">${business.name} · ${business.city}, ${business.region}</p>
-      </div>
-    `,
-  };
+export async function welcomeEmail(params: { firstName: string }) {
+  return renderEmailTemplate("WELCOME", { firstName: escapeHtml(params.firstName), ...bizVars });
 }
 
-export function adminInviteEmail(params: { name: string; loginUrl: string }) {
-  return {
-    subject: `You've been added as an admin, ${business.name}`,
-    html: `
-      <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
-        <h2 style="color:#0b1f33">Hi ${escapeHtml(params.name)},</h2>
-        <p>An administrator account was created for you on the ${escapeHtml(business.name)} dashboard.</p>
-        <p><a href="${params.loginUrl}" style="color:#0d8f83">${params.loginUrl}</a></p>
-        <p>Sign in with the email address and password your admin set for you. If you don't know your password, use "Forgot password?" on the sign-in page.</p>
-      </div>
-    `,
-  };
+export async function adminInviteEmail(params: { name: string; loginUrl: string }) {
+  return renderEmailTemplate("ADMIN_INVITE", { name: escapeHtml(params.name), loginUrl: params.loginUrl, businessName: business.name });
 }
 
-export function adminPasswordResetEmail(params: { resetUrl: string }) {
-  return {
-    subject: "Reset your admin password",
-    html: `
-      <div style="font-family:sans-serif;color:#0f2438;max-width:480px;margin:0 auto">
-        <h2>Reset your admin password</h2>
-        <p>Click the link below to choose a new password. This link expires in 1 hour.</p>
-        <p><a href="${params.resetUrl}" style="color:#0d8f83">${params.resetUrl}</a></p>
-        <p style="color:#4a5a6a;font-size:13px">If you didn't request this, you can safely ignore this email.</p>
-      </div>
-    `,
-  };
+export async function adminPasswordResetEmail(params: { resetUrl: string }) {
+  return renderEmailTemplate("ADMIN_PASSWORD_RESET", { resetUrl: params.resetUrl });
 }
 
-export function quoteEmail(params: {
+export async function quoteEmail(params: {
   firstName: string;
   quoteNumber: string;
   items: { label: string; quantity: number; unitPrice: number; total: number }[];
@@ -155,91 +164,58 @@ export function quoteEmail(params: {
   message?: string;
 }) {
   const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
-  const rows = params.items
+  const itemRows = params.items
     .map(
       (i) =>
         `<tr><td style="padding:6px 0">${escapeHtml(i.label)} ${i.quantity > 1 ? `× ${i.quantity}` : ""}</td><td style="padding:6px 0;text-align:right">${money(i.total)}</td></tr>`
     )
     .join("");
-  return {
-    subject: `Your quote from ${business.name}, ${params.quoteNumber}`,
-    html: `
-      <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
-        <h2 style="color:#0b1f33">Hi ${escapeHtml(params.firstName)},</h2>
-        ${params.message ? `<p>${escapeHtml(params.message)}</p>` : ""}
-        <p>Here's your quote <strong>${escapeHtml(params.quoteNumber)}</strong>:</p>
-        <table style="width:100%;border-collapse:collapse">
-          ${rows}
-          ${params.discount ? `<tr><td style="padding:6px 0">Discount</td><td style="padding:6px 0;text-align:right">-${money(params.discount)}</td></tr>` : ""}
-          ${params.tax ? `<tr><td style="padding:6px 0">Tax</td><td style="padding:6px 0;text-align:right">${money(params.tax)}</td></tr>` : ""}
-          <tr style="border-top:1px solid #e2e8f0;font-weight:bold"><td style="padding:8px 0">Total</td><td style="padding:8px 0;text-align:right">${money(params.total)}</td></tr>
-          ${params.deposit ? `<tr><td style="padding:6px 0">Deposit due to confirm</td><td style="padding:6px 0;text-align:right">${money(params.deposit)}</td></tr>` : ""}
-        </table>
-        ${params.expiresAt ? `<p style="color:#4a5a6a;font-size:13px">This quote is valid until ${new Date(params.expiresAt).toLocaleDateString()}.</p>` : ""}
-        <p>Reply to this email or call/text us at ${business.phoneDisplay} to accept or ask questions.</p>
-        <p style="margin-top:24px;color:#4a5a6a;font-size:14px">${business.name} · ${business.city}, ${business.region}</p>
-      </div>
-    `,
-  };
+  const discountRow = params.discount ? `<tr><td style="padding:6px 0">Discount</td><td style="padding:6px 0;text-align:right">-${money(params.discount)}</td></tr>` : "";
+  const taxRow = params.tax ? `<tr><td style="padding:6px 0">Tax</td><td style="padding:6px 0;text-align:right">${money(params.tax)}</td></tr>` : "";
+  const totalRow = `<tr style="border-top:1px solid #e2e8f0;font-weight:bold"><td style="padding:8px 0">Total</td><td style="padding:8px 0;text-align:right">${money(params.total)}</td></tr>`;
+  const depositRow = params.deposit ? `<tr><td style="padding:6px 0">Deposit due to confirm</td><td style="padding:6px 0;text-align:right">${money(params.deposit)}</td></tr>` : "";
+  return renderEmailTemplate("QUOTE_SENT", {
+    firstName: escapeHtml(params.firstName),
+    messageBlockHtml: params.message ? `<p>${escapeHtml(params.message)}</p>` : "",
+    quoteNumber: escapeHtml(params.quoteNumber),
+    itemsRowsHtml: itemRows + discountRow + taxRow + totalRow + depositRow,
+    expiresBlockHtml: params.expiresAt ? `<p style="color:#4a5a6a;font-size:13px">This quote is valid until ${new Date(params.expiresAt).toLocaleDateString()}.</p>` : "",
+    ...bizVars,
+  });
 }
 
-export function paymentLinkEmail(params: { firstName: string; amountLabel: string; description: string; url: string }) {
-  return {
-    subject: `Payment request from ${business.name}, ${params.amountLabel}`,
-    html: `
-      <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
-        <h2 style="color:#0b1f33">Hi ${escapeHtml(params.firstName)},</h2>
-        <p>${escapeHtml(params.description)}</p>
-        <p style="font-size:20px;font-weight:bold">${params.amountLabel}</p>
-        <p style="margin:24px 0">
-          <a href="${params.url}" style="display:inline-block;background:#0d8f83;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">Pay now</a>
-        </p>
-        <p style="color:#4a5a6a;font-size:13px">Secure payment powered by Stripe. Card, Apple Pay, and Google Pay are all accepted.</p>
-        <p>Questions? Call or text us at ${business.phoneDisplay}.</p>
-        <p style="margin-top:24px;color:#4a5a6a;font-size:14px">${business.name} · ${business.city}, ${business.region}</p>
-      </div>
-    `,
-  };
+export async function paymentLinkEmail(params: { firstName: string; amountLabel: string; description: string; url: string }) {
+  return renderEmailTemplate("PAYMENT_LINK", {
+    firstName: escapeHtml(params.firstName),
+    description: escapeHtml(params.description),
+    amountLabel: params.amountLabel,
+    url: params.url,
+    ...bizVars,
+  });
 }
 
-export function bookingRequestReceivedEmail(params: {
+export async function bookingRequestReceivedEmail(params: {
   firstName: string;
   reference: string;
   serviceName: string;
   scheduledStartLabel: string;
 }) {
-  return {
-    subject: `We've got your booking request, ${params.reference}`,
-    html: `
-      <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
-        <h2 style="color:#0b1f33">Thanks, ${escapeHtml(params.firstName)}!</h2>
-        <p>We received your request for <strong>${escapeHtml(params.serviceName)}</strong> on <strong>${escapeHtml(params.scheduledStartLabel)}</strong>.</p>
-        <p><strong>Reference number:</strong> ${escapeHtml(params.reference)}</p>
-        <p>This time slot is being held for you, but not confirmed yet. A member of our team will review it shortly and confirm your appointment.</p>
-        <p>Questions in the meantime? Call or text us at ${business.phoneDisplay}.</p>
-        <p style="margin-top:24px;color:#4a5a6a;font-size:14px">${business.name} · ${business.city}, ${business.region}</p>
-      </div>
-    `,
-  };
+  return renderEmailTemplate("BOOKING_REQUEST_RECEIVED", {
+    firstName: escapeHtml(params.firstName),
+    reference: escapeHtml(params.reference),
+    serviceName: escapeHtml(params.serviceName),
+    scheduledStartLabel: escapeHtml(params.scheduledStartLabel),
+    ...bizVars,
+  });
 }
 
-export function paymentReceiptEmail(params: { firstName: string; amountLabel: string; description: string; receiptUrl?: string | null; methodLabel?: string }) {
-  return {
-    subject: `${business.name}: payment received (${params.amountLabel})`,
-    html: `
-      <div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">
-        <h2 style="color:#0b1f33">Thanks, ${escapeHtml(params.firstName)}!</h2>
-        <p>We've received your payment for ${escapeHtml(params.description)}.</p>
-        <p style="font-size:20px;font-weight:bold">${params.amountLabel}</p>
-        ${params.methodLabel ? `<p style="color:#4a5a6a;font-size:14px">Paid via ${escapeHtml(params.methodLabel)}</p>` : ""}
-        ${params.receiptUrl ? `<p><a href="${params.receiptUrl}" style="color:#0d8f83">View your receipt</a></p>` : ""}
-        <p>Questions? Call or text us at ${business.phoneDisplay}.</p>
-        <p style="margin-top:24px;color:#4a5a6a;font-size:14px">${business.name} · ${business.city}, ${business.region}</p>
-      </div>
-    `,
-  };
-}
-
-function escapeHtml(value: string) {
-  return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+export async function paymentReceiptEmail(params: { firstName: string; amountLabel: string; description: string; receiptUrl?: string | null; methodLabel?: string }) {
+  return renderEmailTemplate("PAYMENT_RECEIPT", {
+    firstName: escapeHtml(params.firstName),
+    description: escapeHtml(params.description),
+    amountLabel: params.amountLabel,
+    methodBlockHtml: params.methodLabel ? `<p style="color:#4a5a6a;font-size:14px">Paid via ${escapeHtml(params.methodLabel)}</p>` : "",
+    receiptBlockHtml: params.receiptUrl ? `<p><a href="${params.receiptUrl}" style="color:#0d8f83">View your receipt</a></p>` : "",
+    ...bizVars,
+  });
 }

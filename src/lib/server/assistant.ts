@@ -5,6 +5,7 @@ import { listBookingsAwaitingPayment } from "@/lib/server/paymentStore";
 import { getReportsSummary } from "@/lib/server/reportsStore";
 import { allNavItems } from "@/lib/admin/nav";
 import { runAgent, type AgentTool } from "@/lib/server/aiAgent";
+import { HOUSE_WRITING_STYLE } from "@/lib/aiStyle";
 
 /**
  * Abbie AI -- the blueprint's "Abbie Chat, level 1, 2 & 3": a real, model-backed assistant that
@@ -175,7 +176,9 @@ Rules:
 - If no tool can answer the question, say so plainly and suggest where in the dashboard they might look (use find_admin_page), rather than guessing.
 - To change a lead's status, ALWAYS use propose_lead_status_change -- never claim you've changed something, since only an explicit admin confirmation in the UI actually writes it.
 - To open a dashboard page, use find_admin_page and mention the page name; the app handles the actual navigation.
-- Keep replies short (1-2 sentences) and direct, like a colleague answering over Slack -- no filler, no "I'd be happy to help".`;
+- Keep replies short (1-2 sentences) and direct, like a colleague answering over Slack -- no filler, no "I'd be happy to help".
+
+${HOUSE_WRITING_STYLE}`;
 
 export async function resolveAssistantQuery(rawQuery: string): Promise<AssistantResult> {
   const q = rawQuery.trim();

@@ -40,19 +40,10 @@ export async function withSlotLock<T>(fn: (tx: Prisma.TransactionClient) => Prom
   throw lastErr;
 }
 
-export const BOOKING_STATUSES = ["REQUESTED", "CONFIRMED", "SCHEDULED", "ON_THE_WAY", "IN_PROGRESS", "COMPLETED", "CANCELLED", "RESCHEDULED"] as const;
-export type BookingStatusValue = (typeof BOOKING_STATUSES)[number];
-
-export const bookingStatusLabels: Record<BookingStatusValue, string> = {
-  REQUESTED: "Requested",
-  CONFIRMED: "Confirmed",
-  SCHEDULED: "Scheduled",
-  ON_THE_WAY: "On the way",
-  IN_PROGRESS: "In progress",
-  COMPLETED: "Completed",
-  CANCELLED: "Cancelled",
-  RESCHEDULED: "Rescheduled",
-};
+// Re-exported for existing server-side callers that import these from this file -- the real
+// definitions live in the client-safe lib/bookings.ts (see its own comment for why).
+export { BOOKING_STATUSES, bookingStatusLabels, type BookingStatusValue } from "@/lib/bookings";
+import { type BookingStatusValue } from "@/lib/bookings";
 
 export interface BookingListItem {
   id: string;
