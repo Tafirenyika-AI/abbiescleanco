@@ -1,0 +1,20 @@
+name: Process due automations
+
+# Vercel's Hobby-plan cron is capped at once per day regardless of the schedule in vercel.json,
+# which is too infrequent for time-sensitive sends (a "3 hours before" appointment reminder can't
+# wait up to 24h). This runs independently of Vercel's plan limits, every 15 minutes, hitting the
+# same /api/automation/process route the Vercel cron and the admin "Run now" button also use.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  process-automations:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call /api/automation/process
+        run: |
+          curl -sf -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://abbiescleanco.vercel.app/api/automation/process"

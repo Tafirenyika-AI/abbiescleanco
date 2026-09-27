@@ -3,10 +3,14 @@ import { processDueAutomationEvents } from "@/lib/server/automationStore";
 import { requireAdmin } from "@/lib/server/requireAdmin";
 
 /**
- * Two ways in: Vercel Cron (Authorization: Bearer CRON_SECRET, set automatically
- * by Vercel when this path is listed in vercel.json's crons) or a logged-in admin
- * clicking "Run now" on /admin/automations — useful since Vercel Hobby cron runs
- * at most once/day, and for testing without waiting on a schedule.
+ * Three ways in: Vercel Cron (Authorization: Bearer CRON_SECRET -- Vercel only sends this header
+ * if a CRON_SECRET env var has actually been set on the project; it is NOT generated or wired up
+ * automatically just because this path is listed in vercel.json's crons, and a real production
+ * backlog of 7+ day-old PENDING events confirmed this was never actually set, so the daily cron
+ * had been silently 401'ing forever), a scheduled GitHub Actions workflow using the same bearer
+ * token (see .github/workflows/automation-cron.yml -- runs every 15 minutes, since Vercel's Hobby
+ * plan cron is capped at once/day regardless of the schedule configured in vercel.json), or a
+ * logged-in admin clicking "Run now" on /admin/automations for manual/testing use.
  */
 async function isAuthorized(req: NextRequest): Promise<boolean> {
   const authHeader = req.headers.get("authorization");

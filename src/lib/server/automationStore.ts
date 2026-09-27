@@ -164,6 +164,9 @@ async function dispatchEvent(event: EventRow): Promise<"SENT" | "SKIPPED" | "FAI
       const booking = await getBookingWithRecipient(event.bookingId);
       if (!booking || !booking.scheduledStart) return "FAILED";
       if (booking.status === "CANCELLED") return "SKIPPED";
+      // If processing was delayed long enough that the appointment already happened (e.g. a
+      // backlog from a cron outage), "your booking is confirmed" no longer makes sense to send.
+      if (booking.scheduledStart < new Date()) return "SKIPPED";
       if (!booking.recipient.email) return "SKIPPED";
       const result = await sendBookingConfirmation(booking.recipient, {
         serviceName: booking.serviceName,
