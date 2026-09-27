@@ -30,6 +30,7 @@ export interface PublicProfile {
     firstName: string;
     lastName: string;
     phone: string;
+    avatarUrl: string | null;
   } | null;
 }
 
@@ -37,7 +38,7 @@ function toPublicProfile(user: {
   id: string;
   email: string;
   name: string | null;
-  customer: { id: string; firstName: string; lastName: string; phone: string } | null;
+  customer: { id: string; firstName: string; lastName: string; phone: string; avatarUrl: string | null } | null;
 }): PublicProfile {
   return { id: user.id, email: user.email, name: user.name, customer: user.customer };
 }
@@ -108,6 +109,13 @@ export async function updateProfile(userId: string, input: { name?: string; firs
       },
     });
   }
+}
+
+export async function setAvatar(userId: string, avatarUrl: string | null): Promise<boolean> {
+  const user = await db().user.findUnique({ where: { id: userId }, include: { customer: true } });
+  if (!user?.customer) return false;
+  await db().customer.update({ where: { id: user.customer.id }, data: { avatarUrl } });
+  return true;
 }
 
 export async function changePassword(userId: string, currentPassword: string, newPassword: string): Promise<boolean> {

@@ -121,8 +121,8 @@
 .admin-search { position: relative; width: clamp(230px, 29vw, 430px); }
 .admin-search > div:first-child { border-radius: 12px; background: #fff9; border-color: #d8e4ed; }
 .admin-search input { min-height: 24px; }
-.admin-header summary { min-height: 40px; min-width: 40px; }
-.admin-header details > div { max-width: calc(100vw - 32px); }
+.admin-header-menu > button { min-height: 40px; min-width: 40px; }
+.admin-header-menu > div { max-width: calc(100vw - 32px); }
 .admin-navigation { background: #f9fcff54; border-bottom: 1px solid #fff; }
 .admin-group-nav, .admin-page-nav { display: flex; align-items: center; gap: 6px; padding: 0 22px; overflow-x: auto; scrollbar-width: thin; }
 .admin-group-nav a { padding: 16px 14px; white-space: nowrap; color: #66758b; font-size: 13px; font-weight: 500; border-bottom: 2px solid transparent; }
@@ -200,8 +200,8 @@
   .admin-workspace { margin: 6px; border-radius: 16px; }
   .admin-main { padding: 16px 12px; }
   .admin-header { gap: 8px; padding: 12px; }
-  .admin-header details { position: static; }
-  .admin-header details > div { left: 12px; right: 12px; top: calc(100% + 6px); width: auto; max-height: calc(100dvh - 140px); overflow-y: auto; }
+  .admin-header-menu { position: static; }
+  .admin-header-menu > div { left: 12px; right: 12px; top: calc(100% + 6px); width: auto; max-height: calc(100dvh - 140px); overflow-y: auto; }
   .admin-header-title { min-width: 70px; }
   .admin-search { order: 9; width: 100%; }
   .admin-group-nav a { padding: 12px 10px; }

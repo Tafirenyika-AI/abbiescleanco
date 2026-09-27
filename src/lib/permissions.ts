@@ -43,6 +43,7 @@ export interface AdminProfile {
   id: string;
   email: string;
   name: string;
+  avatarUrl: string | null;
   role: string;
   permissions: AdminPermission[];
   isActive: boolean;

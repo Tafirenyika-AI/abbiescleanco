@@ -61,7 +61,7 @@ function relativeTime(iso: string) {
   return `${Math.round(hours / 24)}d ago`;
 }
 
-export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { adminName: string; adminRole: string; onOpenMenu: () => void }) {
+export default function AdminHeader({ adminName, adminRole, adminAvatarUrl, onOpenMenu }: { adminName: string; adminRole: string; adminAvatarUrl: string | null; onOpenMenu: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const activeItem = findNavItem(pathname);
@@ -75,9 +75,23 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
   const [confirming, setConfirming] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
+  // Notifications/Create/Account menus: a click anywhere outside the open menu closes it (a plain
+  // <details>/<summary> only closes on a second click of its own <summary>, which read as "stuck
+  // open" -- these are controlled the same way the search box above already is).
+  const [openMenu, setOpenMenu] = useState<"notifications" | "create" | "account" | null>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
+  const createRef = useRef<HTMLDivElement>(null);
+  const accountRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     function onClick(e: MouseEvent) {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) { setSearchOpen(false); setAnswer(null); setPendingAction(null); }
+      const menuRefs = { notifications: notificationsRef, create: createRef, account: accountRef };
+      setOpenMenu((current) => {
+        if (!current) return current;
+        const ref = menuRefs[current];
+        return ref.current && !ref.current.contains(e.target as Node) ? null : current;
+      });
     }
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
@@ -221,8 +235,14 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
         )}
       </div>
 
-      <details className="relative">
-        <summary aria-label="Notifications" className="ios-press flex size-9 cursor-pointer list-none items-center justify-center rounded-lg text-admin-text-muted hover:bg-admin-bg [&::-webkit-details-marker]:hidden">
+      <div ref={notificationsRef} className="relative admin-header-menu">
+        <button
+          type="button"
+          aria-label="Notifications"
+          aria-expanded={openMenu === "notifications"}
+          onClick={() => setOpenMenu((m) => (m === "notifications" ? null : "notifications"))}
+          className="ios-press flex size-9 cursor-pointer items-center justify-center rounded-lg text-admin-text-muted hover:bg-admin-bg"
+        >
           <span className="relative">
             <Bell className="size-5" aria-hidden />
             {!!unreadCount && (
@@ -231,103 +251,126 @@ export default function AdminHeader({ adminName, adminRole, onOpenMenu }: { admi
               </span>
             )}
           </span>
-        </summary>
-        <div className="ios-sheet-in absolute right-0 top-full z-20 mt-1.5 w-80 rounded-xl border border-admin-border bg-admin-card p-2 shadow-[0_4px_12px_rgba(15,23,42,0.08),0_16px_40px_rgba(15,23,42,0.1)]">
-          <div className="flex items-center justify-between px-2 py-1">
-            <p className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Notifications</p>
-            {unreadCount > 0 && (
-              <button type="button" onClick={markAllRead} className="ios-press flex items-center gap-1 text-xs font-semibold text-admin-teal-hover hover:underline">
-                <CheckCheck className="size-3.5" aria-hidden /> Mark all read
-              </button>
-            )}
-          </div>
-          {notifications.length === 0 ? (
-            <p className="px-2 py-3 text-sm text-admin-text-muted">You&apos;re all caught up.</p>
-          ) : (
-            <div className="max-h-96 overflow-y-auto">
-              {notifications.map((n) => (
-                <Link
-                  key={n.id}
-                  href={n.link ?? "/admin/notifications"}
-                  onClick={() => !n.isRead && markRead(n.id)}
-                  className={`ios-press block rounded-lg px-2.5 py-2 text-sm hover:bg-admin-bg ${n.isRead ? "text-admin-text-muted" : "text-admin-text"}`}
-                >
-                  <span className="flex items-center gap-1.5">
-                    {!n.isRead && <span className="size-1.5 shrink-0 rounded-full bg-admin-teal" aria-hidden />}
-                    <span className="font-medium">{n.title}</span>
-                  </span>
-                  <span className="mt-0.5 block truncate text-xs text-admin-text-muted">{n.body} · {relativeTime(n.createdAt)}</span>
-                </Link>
-              ))}
+        </button>
+        {openMenu === "notifications" && (
+          <div className="ios-sheet-in absolute right-0 top-full z-20 mt-1.5 w-80 rounded-xl border border-admin-border bg-admin-card p-2 shadow-[0_4px_12px_rgba(15,23,42,0.08),0_16px_40px_rgba(15,23,42,0.1)]">
+            <div className="flex items-center justify-between px-2 py-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Notifications</p>
+              {unreadCount > 0 && (
+                <button type="button" onClick={markAllRead} className="ios-press flex items-center gap-1 text-xs font-semibold text-admin-teal-hover hover:underline">
+                  <CheckCheck className="size-3.5" aria-hidden /> Mark all read
+                </button>
+              )}
             </div>
-          )}
-          <Link href="/admin/notifications" className="ios-press mt-1 block rounded-lg px-2.5 py-2 text-center text-xs font-semibold text-admin-teal-hover hover:bg-admin-bg">
-            View all
-          </Link>
-        </div>
-      </details>
+            {notifications.length === 0 ? (
+              <p className="px-2 py-3 text-sm text-admin-text-muted">You&apos;re all caught up.</p>
+            ) : (
+              <div className="max-h-96 overflow-y-auto">
+                {notifications.map((n) => (
+                  <Link
+                    key={n.id}
+                    href={n.link ?? "/admin/notifications"}
+                    onClick={() => { if (!n.isRead) markRead(n.id); setOpenMenu(null); }}
+                    className={`ios-press block rounded-lg px-2.5 py-2 text-sm hover:bg-admin-bg ${n.isRead ? "text-admin-text-muted" : "text-admin-text"}`}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      {!n.isRead && <span className="size-1.5 shrink-0 rounded-full bg-admin-teal" aria-hidden />}
+                      <span className="font-medium">{n.title}</span>
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs text-admin-text-muted">{n.body} · {relativeTime(n.createdAt)}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+            <Link href="/admin/notifications" onClick={() => setOpenMenu(null)} className="ios-press mt-1 block rounded-lg px-2.5 py-2 text-center text-xs font-semibold text-admin-teal-hover hover:bg-admin-bg">
+              View all
+            </Link>
+          </div>
+        )}
+      </div>
 
-      <details className="relative">
-        <summary aria-label="Create new item" className="ios-press flex list-none items-center gap-1.5 rounded-full bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white shadow-[0_1px_2px_rgba(15,157,138,0.25),0_6px_16px_rgba(15,157,138,0.22)] hover:bg-admin-teal-hover [&::-webkit-details-marker]:hidden">
+      <div ref={createRef} className="relative admin-header-menu">
+        <button
+          type="button"
+          aria-label="Create new item"
+          aria-expanded={openMenu === "create"}
+          onClick={() => setOpenMenu((m) => (m === "create" ? null : "create"))}
+          className="ios-press flex items-center gap-1.5 rounded-full bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white shadow-[0_1px_2px_rgba(15,157,138,0.25),0_6px_16px_rgba(15,157,138,0.22)] hover:bg-admin-teal-hover"
+        >
           <Plus className="size-4" aria-hidden />
           <span className="hidden sm:inline">Create</span>
-        </summary>
-        <div className="ios-sheet-in absolute right-0 top-full z-20 mt-1.5 w-52 rounded-xl border border-admin-border bg-admin-card p-1.5 shadow-[0_4px_12px_rgba(15,23,42,0.08),0_16px_40px_rgba(15,23,42,0.1)]">
-          {quickCreateItems.map((item) =>
-            item.href ? (
-              <Link key={item.label} href={item.href} className="ios-press flex items-center justify-between rounded-lg px-2.5 py-2 text-sm text-admin-text hover:bg-admin-bg">
-                {item.label}
-              </Link>
-            ) : (
-              <span
-                key={item.label}
-                title="Coming soon, this module isn't built yet"
-                className="flex cursor-not-allowed items-center justify-between rounded-lg px-2.5 py-2 text-sm text-admin-text-muted"
-              >
-                {item.label}
-                <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">Soon</span>
-              </span>
-            )
-          )}
-        </div>
-      </details>
+        </button>
+        {openMenu === "create" && (
+          <div className="ios-sheet-in absolute right-0 top-full z-20 mt-1.5 w-52 rounded-xl border border-admin-border bg-admin-card p-1.5 shadow-[0_4px_12px_rgba(15,23,42,0.08),0_16px_40px_rgba(15,23,42,0.1)]">
+            {quickCreateItems.map((item) =>
+              item.href ? (
+                <Link key={item.label} href={item.href} onClick={() => setOpenMenu(null)} className="ios-press flex items-center justify-between rounded-lg px-2.5 py-2 text-sm text-admin-text hover:bg-admin-bg">
+                  {item.label}
+                </Link>
+              ) : (
+                <span
+                  key={item.label}
+                  title="Coming soon, this module isn't built yet"
+                  className="flex cursor-not-allowed items-center justify-between rounded-lg px-2.5 py-2 text-sm text-admin-text-muted"
+                >
+                  {item.label}
+                  <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">Soon</span>
+                </span>
+              )
+            )}
+          </div>
+        )}
+      </div>
 
-      <details className="relative">
-        <summary aria-label="Account menu" className="ios-press flex cursor-pointer list-none items-center gap-2 rounded-lg py-1 pl-1 pr-2 hover:bg-admin-bg [&::-webkit-details-marker]:hidden">
-          <span className="flex size-8 items-center justify-center rounded-full bg-admin-teal/15 text-sm font-semibold text-admin-teal-hover">
-            {adminName.charAt(0).toUpperCase()}
-          </span>
+      <div ref={accountRef} className="relative admin-header-menu">
+        <button
+          type="button"
+          aria-label="Account menu"
+          aria-expanded={openMenu === "account"}
+          onClick={() => setOpenMenu((m) => (m === "account" ? null : "account"))}
+          className="ios-press flex cursor-pointer items-center gap-2 rounded-lg py-1 pl-1 pr-2 hover:bg-admin-bg"
+        >
+          {adminAvatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={adminAvatarUrl} alt="" className="size-8 shrink-0 rounded-full object-cover" />
+          ) : (
+            <span className="flex size-8 items-center justify-center rounded-full bg-admin-teal/15 text-sm font-semibold text-admin-teal-hover">
+              {adminName.charAt(0).toUpperCase()}
+            </span>
+          )}
           <span className="hidden text-left sm:block">
             <span className="block text-sm font-semibold text-admin-text">{adminName}</span>
             <span className="block text-xs text-admin-text-muted">{adminRole}</span>
           </span>
-        </summary>
-        <div className="ios-sheet-in absolute right-0 top-full z-20 mt-1.5 w-52 rounded-xl border border-admin-border bg-admin-card p-1.5 shadow-[0_4px_12px_rgba(15,23,42,0.08),0_16px_40px_rgba(15,23,42,0.1)]">
-          <Link href="/admin/profile" className="ios-press flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-admin-text hover:bg-admin-bg">
-            <UserCircle className="size-4 text-admin-text-muted" aria-hidden /> My profile
-          </Link>
-          <Link href="/admin/settings" className="ios-press flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-admin-text hover:bg-admin-bg">
-            <Settings className="size-4 text-admin-text-muted" aria-hidden /> Business settings
-          </Link>
-          <Link href="/" className="ios-press flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-admin-text hover:bg-admin-bg">
-            <ExternalLink className="size-4 text-admin-text-muted" aria-hidden /> View public website
-          </Link>
-          <div className="mt-1 border-t border-admin-border pt-1">
-            <SignOutButton
-              renderAs={(onClick, loading) => (
-                <button
-                  type="button"
-                  onClick={onClick}
-                  disabled={loading}
-                  className="ios-press flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-admin-error hover:bg-red-50"
-                >
-                  <LogOut className="size-4" aria-hidden /> {loading ? "Signing out…" : "Sign out"}
-                </button>
-              )}
-            />
+        </button>
+        {openMenu === "account" && (
+          <div className="ios-sheet-in absolute right-0 top-full z-20 mt-1.5 w-52 rounded-xl border border-admin-border bg-admin-card p-1.5 shadow-[0_4px_12px_rgba(15,23,42,0.08),0_16px_40px_rgba(15,23,42,0.1)]">
+            <Link href="/admin/profile" onClick={() => setOpenMenu(null)} className="ios-press flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-admin-text hover:bg-admin-bg">
+              <UserCircle className="size-4 text-admin-text-muted" aria-hidden /> My profile
+            </Link>
+            <Link href="/admin/settings" onClick={() => setOpenMenu(null)} className="ios-press flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-admin-text hover:bg-admin-bg">
+              <Settings className="size-4 text-admin-text-muted" aria-hidden /> Business settings
+            </Link>
+            <Link href="/" onClick={() => setOpenMenu(null)} className="ios-press flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-admin-text hover:bg-admin-bg">
+              <ExternalLink className="size-4 text-admin-text-muted" aria-hidden /> View public website
+            </Link>
+            <div className="mt-1 border-t border-admin-border pt-1">
+              <SignOutButton
+                renderAs={(onClick, loading) => (
+                  <button
+                    type="button"
+                    onClick={onClick}
+                    disabled={loading}
+                    className="ios-press flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-admin-error hover:bg-red-50"
+                  >
+                    <LogOut className="size-4" aria-hidden /> {loading ? "Signing out…" : "Sign out"}
+                  </button>
+                )}
+              />
+            </div>
           </div>
-        </div>
-      </details>
+        )}
+      </div>
     </header>
   );
 }

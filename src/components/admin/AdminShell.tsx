@@ -11,11 +11,13 @@ import type { AdminPermission } from "@/lib/permissions";
 export default function AdminShell({
   adminName,
   adminRole,
+  adminAvatarUrl,
   permissions,
   children,
 }: {
   adminName: string;
   adminRole: string;
+  adminAvatarUrl: string | null;
   permissions: AdminPermission[];
   children: ReactNode;
 }) {
@@ -28,7 +30,7 @@ export default function AdminShell({
         <AdminSidebar permissions={permissions} open={mobileOpen} onClose={() => setMobileOpen(false)} />
 
         <div className="admin-content">
-          <AdminHeader adminName={adminName} adminRole={adminRole} onOpenMenu={() => setMobileOpen(true)} />
+          <AdminHeader adminName={adminName} adminRole={adminRole} adminAvatarUrl={adminAvatarUrl} onOpenMenu={() => setMobileOpen(true)} />
           <AdminNavigation permissions={permissions} />
           <main id="admin-main" className="admin-main">{children}</main>
         </div>

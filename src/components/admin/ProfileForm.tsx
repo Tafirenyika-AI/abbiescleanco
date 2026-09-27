@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { CheckCircle2, Loader2, ShieldCheck, ShieldOff, Copy } from "lucide-react";
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { CheckCircle2, Loader2, ShieldCheck, ShieldOff, Copy, Upload, X } from "lucide-react";
 
 type TwoFactorStep = "idle" | "setup" | "confirm" | "backup-codes";
 
@@ -10,12 +11,50 @@ export default function ProfileForm({
   email,
   isDemo,
   twoFactorEnabled,
+  avatarUrl,
 }: {
   name: string;
   email: string;
   isDemo: boolean;
   twoFactorEnabled: boolean;
+  avatarUrl: string | null;
 }) {
+  const router = useRouter();
+  const [avatar, setAvatar] = useState(avatarUrl);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  async function uploadAvatar(file: File) {
+    setAvatarBusy(true);
+    setAvatarError("");
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch("/api/admin/profile/avatar", { method: "POST", body: formData });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        setAvatarError(json.error || "Upload failed");
+        return;
+      }
+      setAvatar(json.url);
+      router.refresh();
+    } catch {
+      setAvatarError("Upload failed, check your connection and try again.");
+    } finally {
+      setAvatarBusy(false);
+    }
+  }
+
+  async function removeAvatar() {
+    setAvatarBusy(true);
+    setAvatarError("");
+    await fetch("/api/admin/profile/avatar", { method: "DELETE" }).catch(() => {});
+    setAvatar(null);
+    setAvatarBusy(false);
+    router.refresh();
+  }
+
   const [nameValue, setNameValue] = useState(name);
   const [nameState, setNameState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [nameError, setNameError] = useState("");
@@ -138,6 +177,57 @@ export default function ProfileForm({
 
   return (
     <div className="space-y-8">
+      <div className="rounded-2xl border border-admin-border bg-admin-card p-5">
+        <h2 className="font-semibold text-admin-text">Profile picture</h2>
+        <div className="mt-4 flex items-center gap-4">
+          {avatar ? (
+            // Admin-uploaded avatar URLs are same-origin (/api/files/[id]) -- a plain <img> is simpler
+            // than configuring next/image for a single small circle.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatar} alt="" className="size-16 shrink-0 rounded-full border border-admin-border object-cover" />
+          ) : (
+            <span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-admin-teal/15 text-xl font-semibold text-admin-teal-hover">
+              {name.charAt(0).toUpperCase()}
+            </span>
+          )}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={avatarBusy}
+                className="ios-press inline-flex items-center gap-1.5 rounded-full border border-admin-border px-3.5 py-1.5 text-xs font-semibold text-admin-text hover:bg-admin-bg disabled:opacity-60"
+              >
+                {avatarBusy ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Upload className="size-3.5" aria-hidden />}
+                {avatar ? "Change photo" : "Upload photo"}
+              </button>
+              {avatar && (
+                <button
+                  type="button"
+                  onClick={removeAvatar}
+                  disabled={avatarBusy}
+                  className="ios-press inline-flex items-center gap-1 rounded-full border border-admin-border px-3 py-1.5 text-xs font-semibold text-admin-text-muted hover:bg-admin-bg disabled:opacity-60"
+                >
+                  <X className="size-3.5" aria-hidden /> Remove
+                </button>
+              )}
+            </div>
+            {avatarError && <p className="text-xs text-red-600">{avatarError}</p>}
+          </div>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/heic"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) uploadAvatar(file);
+              e.target.value = "";
+            }}
+          />
+        </div>
+      </div>
+
       <form onSubmit={saveName} className="rounded-2xl border border-admin-border bg-admin-card p-5">
         <h2 className="font-semibold text-admin-text">Your details</h2>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -14,7 +14,7 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
   }
 
   return (
-    <AdminShell adminName={admin.name} adminRole={admin.role} permissions={admin.permissions}>
+    <AdminShell adminName={admin.name} adminRole={admin.role} adminAvatarUrl={admin.avatarUrl} permissions={admin.permissions}>
       {children}
     </AdminShell>
   );

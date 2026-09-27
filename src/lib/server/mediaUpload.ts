@@ -80,6 +80,27 @@ export async function saveCustomerMedia(file: File): Promise<SavedMedia> {
   return { url: await storeBuffer(buf, detected.mime), kind: detected.kind, mimeType: detected.mime, sizeBytes: buf.length };
 }
 
+/**
+ * Stores a profile picture (admin or customer) -- magic-byte-validated like customer media above,
+ * not trusted off the browser-supplied file.type the way the older admin content-image upload is.
+ * Downscaled small (a profile picture is never shown large) and re-encoded, which also strips EXIF.
+ */
+export async function saveAvatarImage(file: File): Promise<{ url: string }> {
+  if (file.size === 0) throw new MediaError("That file is empty.");
+  if (file.size > MAX_IMAGE_BYTES) throw new MediaError("Image is too large (max 12MB).");
+  const buf = Buffer.from(await file.arrayBuffer());
+  const detected = sniffMedia(buf);
+  if (!detected || detected.kind !== "IMAGE") throw new MediaError("Unsupported file. Please upload a JPG, PNG, WEBP or HEIC photo.");
+
+  let out: Buffer;
+  try {
+    out = await sharp(buf).rotate().resize({ width: 512, height: 512, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 85, mozjpeg: true }).toBuffer();
+  } catch {
+    throw new MediaError("We couldn't read that photo. Try a JPG or PNG.");
+  }
+  return { url: await storeBuffer(out, "image/jpeg") };
+}
+
 /** Bytes of a normalized JPEG for sending to a vision model (already validated upstream). */
 export async function prepareImageForAnalysis(file: File): Promise<{ base64: string; buffer: Buffer } | null> {
   const buf = Buffer.from(await file.arrayBuffer());

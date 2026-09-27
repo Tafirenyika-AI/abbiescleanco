@@ -131,6 +131,7 @@ model AdminUser {
   email        String   @unique
   passwordHash String
   name         String
+  avatarUrl    String? // /api/files/[id] -- profile picture, optional
   role         String   @default("admin") // display label, e.g. "Owner", "Staff"
   permissions  AdminPermission[] @default([])
   isActive     Boolean  @default(true)
@@ -185,6 +186,7 @@ model Customer {
   lastName  String
   email     String? // nullable -- some real clients (not tech-savvy) genuinely have no email; phone is the one required contact method
   phone     String
+  avatarUrl String? // /api/files/[id] -- profile picture, optional
   notes     String?
   petsNote  String?
   accessInstructions String? // never sent in email subject lines or to analytics
