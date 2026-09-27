@@ -19,13 +19,27 @@ export interface TeamMemberItem {
   completedJobs: number;
 }
 
+interface StaffJobCountRow { name: string; total: bigint; completed: bigint }
+
 export async function listTeamMembers(): Promise<TeamMemberItem[]> {
   if (!isDatabaseConfigured || !prisma) return [];
   const members = await prisma.teamMember.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" } });
-  const bookings = await prisma.booking.findMany({ where: { deletedAt: null, staffAssignee: { not: null } }, select: { staffAssignee: true, status: true } });
+
+  // staffAssignee is free-text (no real FK until staff accounts exist -- see schema comment), so this
+  // is a grouped DB aggregate rather than pulling every booking ever assigned into memory to
+  // string-match in JS, which only got slower as the booking table grew.
+  const counts = await prisma.$queryRaw<StaffJobCountRow[]>`
+    SELECT LOWER(TRIM("staffAssignee")) AS name,
+           COUNT(*) AS total,
+           COUNT(*) FILTER (WHERE status = 'COMPLETED') AS completed
+    FROM bookings
+    WHERE "deletedAt" IS NULL AND "staffAssignee" IS NOT NULL
+    GROUP BY LOWER(TRIM("staffAssignee"))
+  `;
+  const countsByName = new Map(counts.map((c) => [c.name, c]));
 
   return members.map((m) => {
-    const matching = bookings.filter((b) => b.staffAssignee?.trim().toLowerCase() === m.name.trim().toLowerCase());
+    const row = countsByName.get(m.name.trim().toLowerCase());
     return {
       id: m.id,
       name: m.name,
@@ -36,8 +50,8 @@ export async function listTeamMembers(): Promise<TeamMemberItem[]> {
       workingHours: m.workingHours,
       isActive: m.isActive,
       notes: m.notes,
-      assignedJobs: matching.length,
-      completedJobs: matching.filter((b) => b.status === "COMPLETED").length,
+      assignedJobs: row ? Number(row.total) : 0,
+      completedJobs: row ? Number(row.completed) : 0,
     };
   });
 }

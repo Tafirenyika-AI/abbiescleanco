@@ -64,25 +64,36 @@ export async function listCustomers(): Promise<CustomerSummary[]> {
 
   const customers = await prisma.customer.findMany({
     where: { deletedAt: null },
-    include: {
-      addresses: { take: 1, orderBy: { createdAt: "asc" } },
-      bookings: { select: { status: true, scheduledStart: true } },
-      payments: { select: { status: true, amount: true } },
-      leads: { select: { id: true } },
-    },
+    include: { addresses: { take: 1, orderBy: { createdAt: "asc" } } },
     orderBy: { createdAt: "desc" },
     take: 200,
   });
+  const ids = customers.map((c) => c.id);
+  const now = new Date();
 
-  const now = Date.now();
+  // Aggregated per-customer via groupBy instead of pulling every booking/payment/lead row into
+  // memory -- a customer with hundreds of jobs (e.g. a property manager) no longer drags the
+  // whole /admin/customers page down with it.
+  const [bookingCounts, lastCleanings, nextCleanings, leadCounts, paidSums, pendingSums] = await Promise.all([
+    prisma.booking.groupBy({ by: ["customerId"], where: { customerId: { in: ids } }, _count: { _all: true } }),
+    prisma.booking.groupBy({ by: ["customerId"], where: { customerId: { in: ids }, status: "COMPLETED", scheduledStart: { not: null } }, _max: { scheduledStart: true } }),
+    prisma.booking.groupBy({ by: ["customerId"], where: { customerId: { in: ids }, scheduledStart: { gt: now } }, _min: { scheduledStart: true } }),
+    prisma.lead.groupBy({ by: ["customerId"], where: { customerId: { in: ids } }, _count: { _all: true } }),
+    prisma.payment.groupBy({ by: ["customerId"], where: { customerId: { in: ids }, status: "PAID" }, _sum: { amount: true } }),
+    prisma.payment.groupBy({ by: ["customerId"], where: { customerId: { in: ids }, status: "PENDING" }, _sum: { amount: true } }),
+  ]);
+  const totalBookingsById = new Map(bookingCounts.map((b) => [b.customerId, b._count._all]));
+  const lastCleaningById = new Map(lastCleanings.map((b) => [b.customerId, b._max.scheduledStart]));
+  const nextCleaningById = new Map(nextCleanings.map((b) => [b.customerId, b._min.scheduledStart]));
+  const leadCountById = new Map(leadCounts.map((l) => [l.customerId ?? "", l._count._all]));
+  const lifetimeValueById = new Map(paidSums.map((p) => [p.customerId, p._sum.amount ?? 0]));
+  const outstandingBalanceById = new Map(pendingSums.map((p) => [p.customerId, p._sum.amount ?? 0]));
+
   return customers.map((c) => {
-    const completed = c.bookings.filter((b) => b.status === "COMPLETED" && b.scheduledStart);
-    const upcoming = c.bookings.filter((b) => b.scheduledStart && new Date(b.scheduledStart).getTime() > now);
-    const lastCleaning = completed.sort((a, b) => (b.scheduledStart! > a.scheduledStart! ? 1 : -1))[0]?.scheduledStart ?? null;
-    const nextCleaning = upcoming.sort((a, b) => (a.scheduledStart! > b.scheduledStart! ? 1 : -1))[0]?.scheduledStart ?? null;
-    const lifetimeValue = c.payments.filter((p) => p.status === "PAID").reduce((sum, p) => sum + p.amount, 0);
-    const outstandingBalance = c.payments.filter((p) => p.status === "PENDING").reduce((sum, p) => sum + p.amount, 0);
     const primary = c.addresses[0];
+    const totalBookings = totalBookingsById.get(c.id) ?? 0;
+    const lastCleaning = lastCleaningById.get(c.id) ?? null;
+    const nextCleaning = nextCleaningById.get(c.id) ?? null;
 
     return {
       id: c.id,
@@ -90,12 +101,12 @@ export async function listCustomers(): Promise<CustomerSummary[]> {
       email: c.email,
       phone: c.phone,
       primaryAddress: primary ? `${primary.city}, ${primary.state} ${primary.zip}` : null,
-      totalBookings: c.bookings.length,
+      totalBookings,
       lastCleaning: lastCleaning ? lastCleaning.toISOString() : null,
       nextCleaning: nextCleaning ? nextCleaning.toISOString() : null,
-      lifetimeValue,
-      outstandingBalance,
-      status: c.bookings.length > 0 ? "active" : c.leads.length > 0 ? "lead" : "new",
+      lifetimeValue: lifetimeValueById.get(c.id) ?? 0,
+      outstandingBalance: outstandingBalanceById.get(c.id) ?? 0,
+      status: totalBookings > 0 ? "active" : (leadCountById.get(c.id) ?? 0) > 0 ? "lead" : "new",
     };
   });
 }

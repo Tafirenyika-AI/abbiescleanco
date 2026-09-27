@@ -38,7 +38,32 @@ export interface FinanceOverview {
   subcontractorOwed: null; // always null -- no subcontractor data model exists yet
 }
 
-export async function getFinanceOverview(range: "today" | "month" | "year"): Promise<FinanceOverview> {
+/**
+ * Point-in-time fact, not scoped to a date range (an invoice from last month that's still unpaid
+ * is still owed today) -- computed once via a single grouped payment sum, not a per-invoice query,
+ * so the finance page's three parallel getFinanceOverview() calls (today/month/year) can share one
+ * result instead of tripling the same work.
+ */
+export async function computeOutstandingInvoices(): Promise<number> {
+  if (!isDatabaseConfigured || !prisma) return 0;
+
+  const openInvoices = await prisma.invoice.findMany({
+    where: { status: { in: ["UNPAID", "PARTIALLY_PAID", "OVERDUE"] } },
+    select: { quote: { select: { total: true } }, booking: { select: { id: true } } },
+  });
+  const bookingIds = openInvoices.map((inv) => inv.booking?.id).filter((id): id is string => !!id);
+  const paidByBooking = bookingIds.length
+    ? await prisma.payment.groupBy({ by: ["bookingId"], where: { bookingId: { in: bookingIds }, status: "PAID" }, _sum: { amount: true, refundAmount: true } })
+    : [];
+  const netByBooking = new Map(paidByBooking.map((p) => [p.bookingId, (p._sum.amount ?? 0) - (p._sum.refundAmount ?? 0)]));
+
+  return openInvoices.reduce((sum, inv) => {
+    const net = inv.booking ? (netByBooking.get(inv.booking.id) ?? 0) : 0;
+    return sum + Math.max(0, inv.quote.total - net);
+  }, 0);
+}
+
+export async function getFinanceOverview(range: "today" | "month" | "year", precomputedOutstanding?: number): Promise<FinanceOverview> {
   const { start, end } = rangeFor(range);
   const empty: FinanceOverview = {
     range, rangeStart: start.toISOString(), rangeEnd: end.toISOString(),
@@ -46,29 +71,18 @@ export async function getFinanceOverview(range: "today" | "month" | "year"): Pro
   };
   if (!isDatabaseConfigured || !prisma) return empty;
 
-  const [acceptedQuotes, paidPayments, expenses, openInvoices] = await Promise.all([
+  const [acceptedQuotes, paidPayments, expenses, outstandingInvoices] = await Promise.all([
     prisma.quote.findMany({ where: { status: "ACCEPTED", createdAt: { gte: start, lte: end }, deletedAt: null }, select: { total: true } }),
     // Excludes payments whose booking has since been deleted -- deleting a booking now actually
     // moves this number instead of the payment staying counted forever.
     prisma.payment.findMany({ where: { status: "PAID", createdAt: { gte: start, lte: end }, OR: [{ bookingId: null }, { booking: { deletedAt: null } }] }, select: { amount: true, refundAmount: true } }),
     prisma.expense.findMany({ where: { date: { gte: start, lte: end }, deletedAt: null }, select: { amount: true } }),
-    // Outstanding balance is a point-in-time fact, not scoped to the range -- an invoice from last
-    // month that's still unpaid is still owed today.
-    prisma.invoice.findMany({ where: { status: { in: ["UNPAID", "PARTIALLY_PAID", "OVERDUE"] } }, include: { quote: { select: { total: true } }, booking: { select: { id: true } } } }),
+    precomputedOutstanding ?? computeOutstandingInvoices(),
   ]);
 
   const revenue = acceptedQuotes.reduce((sum, q) => sum + q.total, 0);
   const collected = paidPayments.reduce((sum, p) => sum + (p.amount - p.refundAmount), 0);
   const expensesTotal = expenses.reduce((sum, e) => sum + e.amount, 0);
-
-  let outstandingInvoices = 0;
-  for (const inv of openInvoices) {
-    const paid = inv.booking
-      ? await prisma.payment.aggregate({ where: { bookingId: inv.booking.id, status: "PAID" }, _sum: { amount: true, refundAmount: true } })
-      : null;
-    const net = (paid?._sum.amount ?? 0) - (paid?._sum.refundAmount ?? 0);
-    outstandingInvoices += Math.max(0, inv.quote.total - net);
-  }
 
   return {
     range, rangeStart: start.toISOString(), rangeEnd: end.toISOString(),

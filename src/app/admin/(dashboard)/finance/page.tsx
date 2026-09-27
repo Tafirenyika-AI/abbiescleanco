@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { verifyAdminSessionToken, ADMIN_SESSION_COOKIE } from "@/lib/server/adminAuth";
 import { getAdminProfile, hasPermission } from "@/lib/server/adminUsers";
-import { getFinanceOverview, getExpensesByCategory, getRevenueByService, getRevenueVsExpensesTrend } from "@/lib/server/financeStore";
+import { getFinanceOverview, computeOutstandingInvoices, getExpensesByCategory, getRevenueByService, getRevenueVsExpensesTrend } from "@/lib/server/financeStore";
 import FinanceDashboard from "@/components/admin/finance/FinanceDashboard";
 
 export default async function AdminFinancePage() {
@@ -14,10 +14,11 @@ export default async function AdminFinancePage() {
     redirect("/admin");
   }
 
+  const outstandingInvoices = await computeOutstandingInvoices();
   const [today, month, year, expensesByCategory, revenueByService, trend] = await Promise.all([
-    getFinanceOverview("today"),
-    getFinanceOverview("month"),
-    getFinanceOverview("year"),
+    getFinanceOverview("today", outstandingInvoices),
+    getFinanceOverview("month", outstandingInvoices),
+    getFinanceOverview("year", outstandingInvoices),
     getExpensesByCategory("month"),
     getRevenueByService("month"),
     getRevenueVsExpensesTrend(30),

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MapPin, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { MapPin, CheckCircle2, XCircle } from "lucide-react";
 import TrackChat from "@/components/track/TrackChat";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 interface JobInfo {
   active: boolean;
@@ -79,7 +80,7 @@ export default function TrackingShareClient({ token }: { token: string }) {
   if (job === null) {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
-        <Loader2 className="size-6 animate-spin text-teal-400" aria-hidden />
+        <LoadingSpinner size="md" />
       </div>
     );
   }

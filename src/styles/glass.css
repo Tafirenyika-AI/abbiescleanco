@@ -176,7 +176,13 @@
   .admin-sidebar { border-radius: 0 20px 20px 0; width: 280px; }
   .admin-header { border-radius: 17px 17px 0 0; }
   .admin-main { padding: 20px; }
-  .admin-group-nav, .admin-page-nav { padding-inline: 14px; }
+  .admin-group-nav, .admin-page-nav {
+    padding-inline: 14px;
+    /* Rows overflow on narrow screens (overflow-x: auto handles the scroll) -- this fades the
+       trailing edge so a cut-off item reads as "swipe for more", not as clipped/broken. */
+    mask-image: linear-gradient(to right, black calc(100% - 28px), transparent);
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent);
+  }
 }
 @media (max-width: 767px) {
   .public-footer { padding-bottom: calc(5rem + env(safe-area-inset-bottom)); }

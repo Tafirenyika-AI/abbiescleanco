@@ -49,21 +49,40 @@ function normalizeHostname(url: string | null | undefined): string | null {
     return null;
   }
 }
-async function findLikelyDuplicate(input: { businessName?: string | null; phone?: string | null; website?: string | null }): Promise<boolean> {
-  if (input.phone) {
-    const byPhone = await db().prospect.findFirst({ where: { phone: input.phone } });
-    if (byPhone) return true;
+/** In-memory dedup index built once per search (not re-queried per candidate result -- a search
+ *  returning 40 places used to mean 40 full-table scans). `record()` folds a newly-created
+ *  prospect in immediately, so a duplicate showing up twice within the same batch is still caught,
+ *  matching the old per-query behavior. */
+interface DedupIndex { phones: Set<string>; hostnames: Set<string>; names: Set<string> }
+
+async function buildDedupIndex(): Promise<DedupIndex> {
+  const candidates = await db().prospect.findMany({ select: { businessName: true, website: true, phone: true } });
+  const index: DedupIndex = { phones: new Set(), hostnames: new Set(), names: new Set() };
+  for (const c of candidates) {
+    if (c.phone) index.phones.add(c.phone);
+    const hostname = normalizeHostname(c.website);
+    if (hostname) index.hostnames.add(hostname);
+    const normName = normalizeForDedup(c.businessName);
+    if (normName) index.names.add(normName);
   }
+  return index;
+}
+
+function isLikelyDuplicate(index: DedupIndex, input: { businessName?: string | null; phone?: string | null; website?: string | null }): boolean {
+  if (input.phone && index.phones.has(input.phone)) return true;
   const hostname = normalizeHostname(input.website);
+  if (hostname && index.hostnames.has(hostname)) return true;
   const normName = normalizeForDedup(input.businessName);
-  if (hostname || normName) {
-    const candidates = await db().prospect.findMany({ select: { businessName: true, website: true } });
-    for (const c of candidates) {
-      if (hostname && normalizeHostname(c.website) === hostname) return true;
-      if (normName && normalizeForDedup(c.businessName) === normName) return true;
-    }
-  }
+  if (normName && index.names.has(normName)) return true;
   return false;
+}
+
+function recordInDedupIndex(index: DedupIndex, input: { businessName?: string | null; phone?: string | null; website?: string | null }): void {
+  if (input.phone) index.phones.add(input.phone);
+  const hostname = normalizeHostname(input.website);
+  if (hostname) index.hostnames.add(hostname);
+  const normName = normalizeForDedup(input.businessName);
+  if (normName) index.names.add(normName);
 }
 
 function mapRow(p: {
@@ -247,6 +266,7 @@ export async function searchAndSaveProspects(query: string, category: ProspectCa
     return true;
   });
 
+  const dedupIndex = await buildDedupIndex();
   let created = 0;
   let duplicates = 0;
   let excludedCompetitors = 0;
@@ -260,10 +280,11 @@ export async function searchAndSaveProspects(query: string, category: ProspectCa
       duplicates++;
       continue;
     }
-    if (await findLikelyDuplicate({ businessName: r.name, phone: r.phone, website: r.website })) {
+    if (isLikelyDuplicate(dedupIndex, { businessName: r.name, phone: r.phone, website: r.website })) {
       duplicates++;
       continue;
     }
+    recordInDedupIndex(dedupIndex, { businessName: r.name, phone: r.phone, website: r.website });
     await db().prospect.create({
       data: {
         category: cat,
