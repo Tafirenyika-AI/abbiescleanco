@@ -8,6 +8,10 @@ import { QUOTE_STATUSES } from "@/lib/server/quoteStore";
 import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import BulkDeleteBar from "@/components/admin/ui/BulkDeleteBar";
+import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
+import { useToast } from "@/components/admin/ui/Toast";
+import { useBulkSelect } from "@/lib/admin/useBulkSelect";
 import { formatCalendarDate } from "@/lib/adminDate";
 
 const statusTone: Record<QuoteStatusValue, "neutral" | "info" | "success" | "error" | "warning"> = {
@@ -18,15 +22,43 @@ const statusTone: Record<QuoteStatusValue, "neutral" | "info" | "success" | "err
   EXPIRED: "warning",
 };
 
-export default function QuotesView({ quotes }: { quotes: QuoteListItem[] }) {
+export default function QuotesView({ quotes: initialQuotes }: { quotes: QuoteListItem[] }) {
+  const { showToast } = useToast();
+  const [quotes, setQuotes] = useState(initialQuotes);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<QuoteStatusValue | "ALL">("ALL");
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const filtered = quotes.filter((q) => {
     if (statusFilter !== "ALL" && q.status !== statusFilter) return false;
     if (query.trim() && !`${q.customerName} ${q.quoteNumber}`.toLowerCase().includes(query.trim().toLowerCase())) return false;
     return true;
   });
+
+  const bulk = useBulkSelect(filtered.map((q) => q.id));
+
+  async function deleteSelected() {
+    setBulkDeleting(true);
+    const ids = [...bulk.selected];
+    const res = await fetch("/api/admin/quotes/bulk", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    const json = await res.json();
+    setBulkDeleting(false);
+    setConfirmBulkDelete(false);
+    if (!res.ok || !json.ok) {
+      showToast(json.error || "Couldn't delete the selected quotes", "error");
+      return;
+    }
+    setQuotes((prev) => prev.filter((q) => !ids.includes(q.id)));
+    bulk.clear();
+    const parts = [`Deleted ${json.deleted} quote${json.deleted === 1 ? "" : "s"}`];
+    if (json.blocked) parts.push(`${json.blocked} has a real payment on file and can't be deleted`);
+    showToast(parts.join(" -- "), json.blocked ? "error" : "success");
+  }
 
   const sentAwaitingResponse = quotes.filter((q) => q.status === "SENT").length;
   const acceptedValue = quotes.filter((q) => q.status === "ACCEPTED").reduce((sum, q) => sum + q.total, 0);
@@ -66,7 +98,11 @@ export default function QuotesView({ quotes }: { quotes: QuoteListItem[] }) {
         </select>
       </div>
 
-      <div className="mt-4 admin-table-surface overflow-x-auto rounded-2xl border border-admin-border bg-admin-card">
+      <div className="mt-3">
+        <BulkDeleteBar count={bulk.selected.size} itemLabel="quote" onDelete={() => setConfirmBulkDelete(true)} onClear={bulk.clear} busy={bulkDeleting} />
+      </div>
+
+      <div className="mt-2 admin-table-surface overflow-x-auto rounded-2xl border border-admin-border bg-admin-card">
         {filtered.length === 0 ? (
           <EmptyState
             icon={FileSignature}
@@ -78,6 +114,9 @@ export default function QuotesView({ quotes }: { quotes: QuoteListItem[] }) {
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-admin-bg">
               <tr>
+                <th scope="col" className="w-10 p-3.5">
+                  <input type="checkbox" checked={bulk.isAllSelected} onChange={bulk.toggleAll} aria-label="Select all" />
+                </th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Quote #</th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Customer</th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Service</th>
@@ -89,6 +128,9 @@ export default function QuotesView({ quotes }: { quotes: QuoteListItem[] }) {
             <tbody>
               {filtered.map((q) => (
                 <tr key={q.id} className="border-t border-admin-border hover:bg-admin-bg/60">
+                  <td className="p-3.5">
+                    <input type="checkbox" checked={bulk.selected.has(q.id)} onChange={() => bulk.toggle(q.id)} aria-label={`Select ${q.quoteNumber}`} />
+                  </td>
                   <td className="p-3.5"><Link href={`/admin/quotes/${q.id}`} className="font-medium text-admin-text hover:text-admin-teal-hover hover:underline">{q.quoteNumber}</Link></td>
                   <td className="p-3.5 text-admin-text">{q.customerName}</td>
                   <td className="p-3.5 text-admin-text">{q.serviceName}</td>
@@ -101,6 +143,16 @@ export default function QuotesView({ quotes }: { quotes: QuoteListItem[] }) {
           </table>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        title={`Delete ${bulk.selected.size} quote${bulk.selected.size === 1 ? "" : "s"}?`}
+        description="This can't be undone. A quote with a real payment on file will be skipped."
+        confirmLabel={bulkDeleting ? "Deleting…" : "Delete"}
+        tone="danger"
+        onConfirm={deleteSelected}
+        onCancel={() => setConfirmBulkDelete(false)}
+      />
     </div>
   );
 }

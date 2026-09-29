@@ -258,9 +258,10 @@ export default function QuoteDetailView({
   async function confirmDeleteQuote() {
     if (!quote) return;
     const res = await fetch(`/api/admin/quotes/${quote.id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => null);
     setConfirmDelete(false);
-    if (!res.ok) {
-      showToast("Couldn't delete quote", "error");
+    if (!res.ok || !data?.ok) {
+      showToast(data?.error || "Couldn't delete quote", "error");
       return;
     }
     router.push("/admin/quotes");

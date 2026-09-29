@@ -52,7 +52,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!admin) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
 
-  const success = await deleteQuote(id);
-  if (!success) return NextResponse.json({ ok: false, error: "Quote not found" }, { status: 404 });
-  return NextResponse.json({ ok: true });
+  const result = await deleteQuote(id);
+  return NextResponse.json(result, { status: result.ok ? 200 : result.error === "Not found" ? 404 : 400 });
 }

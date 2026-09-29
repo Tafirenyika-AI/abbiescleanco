@@ -239,10 +239,11 @@ function NotesTab({ customer }: { customer: CustomerDetail }) {
   async function confirmDeleteCustomer() {
     setDeleting(true);
     const res = await fetch(`/api/admin/customers/${customer.id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => null);
     setDeleting(false);
     setConfirmDelete(false);
-    if (!res.ok) {
-      showToast("Couldn't delete customer", "error");
+    if (!res.ok || !data?.ok) {
+      showToast(data?.error || "Couldn't delete customer", "error");
       return;
     }
     showToast("Customer deleted", "success");

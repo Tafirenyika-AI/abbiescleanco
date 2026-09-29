@@ -257,11 +257,18 @@ export async function assignStaff(id: string, staffAssignee: string): Promise<vo
   await db().booking.update({ where: { id }, data: { staffAssignee } });
 }
 
-export async function deleteBooking(id: string): Promise<boolean> {
+export interface DeleteBookingResult { ok: boolean; error?: string }
+
+// Deliberately does NOT block deletion when the booking has a real payment on file, unlike
+// Customers/Quotes/Leads -- the user explicitly asked for a deleted booking's revenue to actually
+// move (see the "net revenue now moves when you delete a booking" fix), not for deletion to be
+// blocked. The revenue-aggregate queries already correctly stop counting a deleted booking's
+// payments (see reportsStore.ts/financeStore.ts's deletedAt filters).
+export async function deleteBooking(id: string): Promise<DeleteBookingResult> {
   const existing = await db().booking.findUnique({ where: { id } });
-  if (!existing) return false;
+  if (!existing || existing.deletedAt) return { ok: false, error: "Not found" };
   await db().booking.update({ where: { id }, data: { deletedAt: new Date() } });
-  return true;
+  return { ok: true };
 }
 
 export interface SelfServiceBookingResult {

@@ -9,6 +9,10 @@ import { BOOKING_STATUSES, bookingStatusLabels } from "@/lib/bookings";
 import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";
+import BulkDeleteBar from "@/components/admin/ui/BulkDeleteBar";
+import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
+import { useToast } from "@/components/admin/ui/Toast";
+import { useBulkSelect } from "@/lib/admin/useBulkSelect";
 import { formatDateTime } from "@/lib/adminDate";
 
 // More differentiated than a flat 3-color split -- REQUESTED/RESCHEDULED need admin action
@@ -28,10 +32,14 @@ const statusTone: Record<BookingStatusValue, "neutral" | "info" | "success" | "e
 
 const PAST_STATUSES: BookingStatusValue[] = ["COMPLETED", "CANCELLED"];
 
-export default function BookingsView({ bookings }: { bookings: BookingListItem[] }) {
+export default function BookingsView({ bookings: initialBookings }: { bookings: BookingListItem[] }) {
+  const { showToast } = useToast();
+  const [bookings, setBookings] = useState(initialBookings);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<BookingStatusValue | "ALL">("ALL");
   const [timeframe, setTimeframe] = useState<"upcoming" | "past" | "all">("upcoming");
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const [{ now, todayKey }] = useState(() => {
     const n = Date.now();
@@ -58,6 +66,28 @@ export default function BookingsView({ bookings }: { bookings: BookingListItem[]
 
   const upcoming = bookings.filter((b) => !isPast(b)).length;
   const today = bookings.filter((b) => b.scheduledStart && new Date(b.scheduledStart).toDateString() === todayKey).length;
+
+  const bulk = useBulkSelect(filtered.map((b) => b.id));
+
+  async function deleteSelected() {
+    setBulkDeleting(true);
+    const ids = [...bulk.selected];
+    const res = await fetch("/api/admin/bookings/bulk", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    const json = await res.json();
+    setBulkDeleting(false);
+    setConfirmBulkDelete(false);
+    if (!res.ok || !json.ok) {
+      showToast(json.error || "Couldn't delete the selected bookings", "error");
+      return;
+    }
+    setBookings((prev) => prev.filter((b) => !ids.includes(b.id)));
+    bulk.clear();
+    showToast(`Deleted ${json.deleted} booking${json.deleted === 1 ? "" : "s"}`, "success");
+  }
 
   return (
     <div>
@@ -106,7 +136,11 @@ export default function BookingsView({ bookings }: { bookings: BookingListItem[]
         </select>
       </div>
 
-      <div className="mt-4 admin-table-surface overflow-x-auto rounded-2xl border border-admin-border bg-admin-card">
+      <div className="mt-3">
+        <BulkDeleteBar count={bulk.selected.size} itemLabel="booking" onDelete={() => setConfirmBulkDelete(true)} onClear={bulk.clear} busy={bulkDeleting} />
+      </div>
+
+      <div className="mt-2 admin-table-surface overflow-x-auto rounded-2xl border border-admin-border bg-admin-card">
         {filtered.length === 0 ? (
           <EmptyState
             icon={CalendarClock}
@@ -118,6 +152,9 @@ export default function BookingsView({ bookings }: { bookings: BookingListItem[]
           <table className="w-full min-w-[920px] text-left text-sm">
             <thead className="bg-admin-bg">
               <tr>
+                <th scope="col" className="w-10 p-3.5">
+                  <input type="checkbox" checked={bulk.isAllSelected} onChange={bulk.toggleAll} aria-label="Select all" />
+                </th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Reference</th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Customer</th>
                 <th scope="col" className="p-3.5 font-semibold text-admin-text">Service</th>
@@ -130,6 +167,9 @@ export default function BookingsView({ bookings }: { bookings: BookingListItem[]
             <tbody>
               {filtered.map((b) => (
                 <tr key={b.id} className="border-t border-admin-border hover:bg-admin-bg/60">
+                  <td className="p-3.5">
+                    <input type="checkbox" checked={bulk.selected.has(b.id)} onChange={() => bulk.toggle(b.id)} aria-label={`Select ${b.reference}`} />
+                  </td>
                   <td className="p-3.5"><Link href={`/admin/bookings/${b.id}`} className="font-medium text-admin-text hover:text-admin-teal-hover hover:underline">{b.reference}</Link></td>
                   <td className="p-3.5 text-admin-text">{b.customerName}</td>
                   <td className="p-3.5 text-admin-text">{b.serviceName}</td>
@@ -143,6 +183,16 @@ export default function BookingsView({ bookings }: { bookings: BookingListItem[]
           </table>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        title={`Delete ${bulk.selected.size} booking${bulk.selected.size === 1 ? "" : "s"}?`}
+        description="This can't be undone."
+        confirmLabel={bulkDeleting ? "Deleting…" : "Delete"}
+        tone="danger"
+        onConfirm={deleteSelected}
+        onCancel={() => setConfirmBulkDelete(false)}
+      />
     </div>
   );
 }

@@ -186,12 +186,20 @@ export async function updateCustomer(
   return { ok: true };
 }
 
-export async function deleteCustomer(id: string, adminUserId: string): Promise<boolean> {
+export interface DeleteCustomerResult { ok: boolean; error?: string }
+
+export async function deleteCustomer(id: string, adminUserId: string): Promise<DeleteCustomerResult> {
   const before = await db().customer.findUnique({ where: { id } });
-  if (!before || before.deletedAt) return false;
+  if (!before || before.deletedAt) return { ok: false, error: "Not found" };
+
+  const paidPayment = await db().payment.findFirst({ where: { customerId: id, status: "PAID" } });
+  if (paidPayment) {
+    return { ok: false, error: "This customer has a real payment on file and can't be deleted. Void/cancel the related invoice or booking instead if it needs to be corrected." };
+  }
+
   await db().customer.update({ where: { id }, data: { deletedAt: new Date() } });
   await db().auditLog.create({
     data: { adminUserId, action: "customer.deleted", entityType: "customer", entityId: id, before: { email: before.email } },
   });
-  return true;
+  return { ok: true };
 }

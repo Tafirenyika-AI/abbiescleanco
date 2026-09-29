@@ -45,7 +45,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!admin) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
 
-  const deleted = await deleteCustomer(id, admin.id);
-  if (!deleted) return NextResponse.json({ ok: false, error: "Customer not found" }, { status: 404 });
-  return NextResponse.json({ ok: true });
+  const result = await deleteCustomer(id, admin.id);
+  return NextResponse.json(result, { status: result.ok ? 200 : result.error === "Not found" ? 404 : 400 });
 }

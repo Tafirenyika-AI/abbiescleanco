@@ -188,9 +188,17 @@ export async function duplicateQuote(id: string): Promise<{ id: string } | null>
   return { id: quote.id };
 }
 
-export async function deleteQuote(id: string): Promise<boolean> {
+export interface DeleteQuoteResult { ok: boolean; error?: string }
+
+export async function deleteQuote(id: string): Promise<DeleteQuoteResult> {
   const existing = await db().quote.findUnique({ where: { id } });
-  if (!existing) return false;
+  if (!existing || existing.deletedAt) return { ok: false, error: "Not found" };
+
+  const paidPayment = await db().payment.findFirst({ where: { quoteId: id, status: "PAID" } });
+  if (paidPayment) {
+    return { ok: false, error: "This quote has a real payment on file and can't be deleted. Void the related invoice instead if it needs to be corrected." };
+  }
+
   await db().quote.update({ where: { id }, data: { deletedAt: new Date() } });
-  return true;
+  return { ok: true };
 }
