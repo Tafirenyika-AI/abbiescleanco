@@ -41,6 +41,8 @@ export default function LeadsView({ initialLeads }: { initialLeads: StoredLead[]
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
   const [bulkStatus, setBulkStatus] = useState<LeadStatusValue | "">("");
   const [confirmBulk, setConfirmBulk] = useState(false);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const serviceOptions = useMemo(() => {
     const ids = new Set(leads.map((l) => l.input.service));
@@ -85,6 +87,38 @@ export default function LeadsView({ initialLeads }: { initialLeads: StoredLead[]
 
   function updateLeadInList(updated: StoredLead) {
     setLeads((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+  }
+
+  function removeLeadFromList(id: string) {
+    setLeads((prev) => prev.filter((l) => l.id !== id));
+    setSelected((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }
+
+  async function deleteSelected() {
+    setBulkDeleting(true);
+    const ids = [...selected];
+    const res = await fetch("/api/admin/leads/bulk", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    const json = await res.json();
+    setBulkDeleting(false);
+    setConfirmBulkDelete(false);
+    if (!res.ok || !json.ok) {
+      showToast(json.error || "Couldn't delete the selected leads", "error");
+      return;
+    }
+    setLeads((prev) => prev.filter((l) => !ids.includes(l.id)));
+    setSelected(new Set());
+    const parts = [`Deleted ${json.deleted} lead${json.deleted === 1 ? "" : "s"}`];
+    if (json.blocked) parts.push(`${json.blocked} has a real payment on file and can't be deleted`);
+    showToast(parts.join(" -- "), json.blocked ? "error" : "success");
   }
 
   async function applyBulkStatus() {
@@ -207,6 +241,13 @@ export default function LeadsView({ initialLeads }: { initialLeads: StoredLead[]
           >
             Apply
           </button>
+          <button
+            type="button"
+            onClick={() => setConfirmBulkDelete(true)}
+            className="ml-auto rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700"
+          >
+            Delete selected
+          </button>
           <button type="button" onClick={() => setSelected(new Set())} className="text-sm text-admin-text-muted hover:underline">
             Clear
           </button>
@@ -275,6 +316,7 @@ export default function LeadsView({ initialLeads }: { initialLeads: StoredLead[]
           lead={openLead}
           onClose={() => setOpenLeadId(null)}
           onUpdated={updateLeadInList}
+          onDeleted={removeLeadFromList}
         />
       )}
 
@@ -285,6 +327,16 @@ export default function LeadsView({ initialLeads }: { initialLeads: StoredLead[]
         confirmLabel="Update"
         onConfirm={applyBulkStatus}
         onCancel={() => setConfirmBulk(false)}
+      />
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        title={`Delete ${selected.size} lead${selected.size === 1 ? "" : "s"}?`}
+        description="This can't be undone. A lead with a real payment on file will be skipped."
+        confirmLabel={bulkDeleting ? "Deleting…" : "Delete"}
+        tone="danger"
+        onConfirm={deleteSelected}
+        onCancel={() => setConfirmBulkDelete(false)}
       />
     </div>
   );

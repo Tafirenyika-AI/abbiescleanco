@@ -23,10 +23,12 @@ export default function LeadDetailDrawer({
   lead,
   onClose,
   onUpdated,
+  onDeleted,
 }: {
   lead: StoredLead;
   onClose: () => void;
   onUpdated: (lead: StoredLead) => void;
+  onDeleted: (id: string) => void;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -126,7 +128,7 @@ export default function LeadDetailDrawer({
     }
     setConfirmDelete(false);
     showToast("Lead deleted", "success");
-    onClose();
+    onDeleted(lead.id);
   }
 
   const serviceName = services.find((s) => s.id === lead.input.service)?.name ?? lead.input.service;
