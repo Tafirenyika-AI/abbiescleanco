@@ -114,8 +114,9 @@ export default function LeadsView({ initialLeads }: { initialLeads: StoredLead[]
       showToast(json.error || "Couldn't delete the selected leads", "error");
       return;
     }
-    setLeads((prev) => prev.filter((l) => !ids.includes(l.id)));
-    setSelected(new Set());
+    const deletedIds = new Set<string>(json.deletedIds ?? ids);
+    setLeads((prev) => prev.filter((l) => !deletedIds.has(l.id)));
+    setSelected((prev) => new Set([...prev].filter((id) => !deletedIds.has(id))));
     const parts = [`Deleted ${json.deleted} lead${json.deleted === 1 ? "" : "s"}`];
     if (json.blocked) parts.push(`${json.blocked} has a real payment on file and can't be deleted`);
     showToast(parts.join(" -- "), json.blocked ? "error" : "success");

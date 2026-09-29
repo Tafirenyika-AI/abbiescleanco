@@ -53,8 +53,9 @@ export default function QuotesView({ quotes: initialQuotes }: { quotes: QuoteLis
       showToast(json.error || "Couldn't delete the selected quotes", "error");
       return;
     }
-    setQuotes((prev) => prev.filter((q) => !ids.includes(q.id)));
-    bulk.clear();
+    const deletedIds = new Set<string>(json.deletedIds ?? ids);
+    setQuotes((prev) => prev.filter((q) => !deletedIds.has(q.id)));
+    for (const id of deletedIds) bulk.toggle(id);
     const parts = [`Deleted ${json.deleted} quote${json.deleted === 1 ? "" : "s"}`];
     if (json.blocked) parts.push(`${json.blocked} has a real payment on file and can't be deleted`);
     showToast(parts.join(" -- "), json.blocked ? "error" : "success");

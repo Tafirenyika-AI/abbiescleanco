@@ -45,8 +45,11 @@ export default function CustomersView({ customers: initialCustomers }: { custome
       showToast(json.error || "Couldn't delete the selected customers", "error");
       return;
     }
-    setCustomers((prev) => prev.filter((c) => !ids.includes(c.id)));
-    bulk.clear();
+    const deletedIds = new Set<string>(json.deletedIds ?? ids);
+    setCustomers((prev) => prev.filter((c) => !deletedIds.has(c.id)));
+    // Only uncheck the rows that actually got deleted -- a blocked one stays selected so it's
+    // still visibly flagged, rather than silently vanishing from the selection too.
+    for (const id of deletedIds) bulk.toggle(id);
     const parts = [`Deleted ${json.deleted} customer${json.deleted === 1 ? "" : "s"}`];
     if (json.blocked) parts.push(`${json.blocked} has a real payment on file and can't be deleted`);
     showToast(parts.join(" -- "), json.blocked ? "error" : "success");

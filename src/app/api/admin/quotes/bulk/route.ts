@@ -12,8 +12,8 @@ export async function DELETE(req: NextRequest) {
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ ok: false, error: "No items selected" }, { status: 400 });
 
-  const results = await Promise.all(parsed.data.ids.map((id) => deleteQuote(id)));
-  const deleted = results.filter((r) => r.ok).length;
-  const blocked = results.filter((r) => !r.ok && r.error?.includes("real payment")).length;
-  return NextResponse.json({ ok: true, deleted, blocked, notFound: parsed.data.ids.length - deleted - blocked });
+  const results = await Promise.all(parsed.data.ids.map(async (id) => ({ id, result: await deleteQuote(id) })));
+  const deletedIds = results.filter((r) => r.result.ok).map((r) => r.id);
+  const blocked = results.filter((r) => !r.result.ok && r.result.error?.includes("real payment")).length;
+  return NextResponse.json({ ok: true, deleted: deletedIds.length, deletedIds, blocked, notFound: parsed.data.ids.length - deletedIds.length - blocked });
 }
