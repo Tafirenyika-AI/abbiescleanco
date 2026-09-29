@@ -21,7 +21,7 @@ function db() {
 }
 
 function siteUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL || "https://abbiescleanco.vercel.app";
+  return process.env.NEXT_PUBLIC_SITE_URL || "https://abbiescleanco.com";
 }
 
 export interface CreateShareResult {

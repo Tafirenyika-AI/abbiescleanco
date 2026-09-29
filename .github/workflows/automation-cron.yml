@@ -15,6 +15,6 @@ jobs:
     steps:
       - name: Call /api/automation/process
         run: |
-          curl -sf -X POST \
+          curl -sfL -X POST \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://abbiescleanco.vercel.app/api/automation/process"
+            "https://abbiescleanco.com/api/automation/process"
