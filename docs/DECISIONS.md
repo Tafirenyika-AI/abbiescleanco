@@ -2,6 +2,22 @@
 
 Reverse-chronological. Each entry: what was decided, why, what it costs.
 
+## Correction — the real domain cutover happened; every `.vercel.app` fallback/URL is now stale (2026-09-29)
+
+The real business domain `abbiescleanco.com` is now live (DNS pointed at Vercel, both apex and
+`www` verified with valid SSL), replacing the old WordPress site — the domain cutover the earlier
+2026-09-22 entry below described as "not yet done" has now happened. `getSiteUrl()`'s fallback
+(`src/lib/server/siteUrl.ts`, used for Meta/Google Ads/TikTok OAuth redirect URIs) was updated the
+same day from `abbiescleanco.vercel.app` to `abbiescleanco.com`, and `docs/SOCIAL_ADS_SETUP.md`'s
+redirect-URI instructions were corrected to match. **Real side effect worth remembering**:
+`abbiescleanco.vercel.app` now 308-redirects everything — including API routes — to
+`www.abbiescleanco.com`, which silently broke a same-day GitHub Actions cron job that called the
+old URL without following redirects (`curl` without `-L` never followed it, and treated the 308 as
+success). Lesson for any future domain change on this project: check whether anything (cron jobs,
+webhooks, hardcoded fallback URLs, third-party OAuth app redirect-URI registrations) still expects
+the OLD address to behave the same way — a domain going live can silently change the old address's
+behavior too, not just add the new one.
+
 ## Correction — the 2026-09-21 audit's "not deployed" claim was wrong (found 2026-09-22)
 
 `docs/REPO_AUDIT.md`, `docs/ARCHITECTURE.md`, and `docs/OPERATIONS.md` originally stated Vercel deployment was unconfirmed, based on inspecting repository files (`vercel.json`, env var references) rather than actually checking whether a live deployment existed. It does: `https://abbiescleanco.vercel.app/` is live, connected to this GitHub repo, and auto-deploys `main` — confirmed by fetching a route with no corresponding `route.ts` anywhere in the codebase (`/api/admin/totally-fake-route-xyz-check`) and getting back `src/proxy.ts`'s exact JSON response, proving that commit (pushed minutes earlier) was already running live.

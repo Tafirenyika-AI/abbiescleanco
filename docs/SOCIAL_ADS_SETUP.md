@@ -6,12 +6,13 @@ storage, real publish calls) is built and live-verified — what's missing is th
 each platform, which only the business owner can create (it's tied to your real business
 identity, not something this code can do on its own).
 
-**Before starting any of these**, confirm `NEXT_PUBLIC_SITE_URL` is set to
-`https://abbiescleanco.vercel.app` in the Vercel project's environment variables (Project →
-Settings → Environment Variables). Every redirect URI below is built from that value — if it's
-unset or wrong, the OAuth dialog will send Meta/Google/TikTok back to the wrong address and the
-connection will fail at the last step. (This app's live URL is intentionally the `.vercel.app`
-one, not `abbiescleanco.com` — see `docs/DECISIONS.md`.)
+**Before starting any of these**: the real domain `abbiescleanco.com` went live on 2026-09-29,
+replacing the old `.vercel.app` testing URL. `getSiteUrl()` now defaults to `https://abbiescleanco.com`
+even if `NEXT_PUBLIC_SITE_URL` is never explicitly set in Vercel — every redirect URI below is
+built from that. If a `NEXT_PUBLIC_SITE_URL` env var IS set in Vercel to something else (e.g. the
+old vercel.app URL), it overrides this default and the OAuth dialog will send Meta/Google/TikTok
+back to the wrong address, failing the connection at the last step — worth double-checking
+Project → Settings → Environment Variables if a connection mysteriously fails here.
 
 For each platform: create the app, then paste its ID/secret into **Admin → Settings →
 Integrations**, then click the matching **Connect** button on **Admin → Marketing studio →
@@ -28,7 +29,7 @@ Business or Creator account linked to that Page.
 2. App type: **Business**. Name it something like "Abbie's Clean Method Marketing".
 3. In the app dashboard, add the **Facebook Login** product (Settings → Client OAuth Settings).
 4. Under **Valid OAuth Redirect URIs**, add exactly:
-   `https://abbiescleanco.vercel.app/api/admin/marketing/connections/meta/callback`
+   `https://abbiescleanco.com/api/admin/marketing/connections/meta/callback`
 5. Add the **Instagram Graph API** product too (needed for Instagram posting, not just Facebook).
 6. Go to **App Settings → Basic** and copy the **App ID** and **App Secret**.
 7. Paste those into Admin → Settings → Integrations as **Meta App ID** / **Meta App Secret**.
@@ -58,7 +59,7 @@ through one), and patience — the developer token step below has a real approva
 3. **APIs & Services → Credentials → Create Credentials → OAuth client ID** → Application type
    **Web application**.
 4. Under **Authorized redirect URIs**, add exactly:
-   `https://abbiescleanco.vercel.app/api/admin/marketing/connections/google-ads/callback`
+   `https://abbiescleanco.com/api/admin/marketing/connections/google-ads/callback`
 5. Copy the **Client ID** and **Client Secret** → paste into Settings → Integrations as **Google
    Ads OAuth Client ID / Secret**.
 6. Go to [ads.google.com](https://ads.google.com/) → sign in → **Tools & Settings → Setup → API
@@ -87,7 +88,7 @@ You need: a TikTok Business account.
    account → **Manage apps → Create an app**.
 2. Add the **Login Kit** and **Content Posting API** products.
 3. Under redirect URI, add exactly:
-   `https://abbiescleanco.vercel.app/api/admin/marketing/connections/tiktok/callback`
+   `https://abbiescleanco.com/api/admin/marketing/connections/tiktok/callback`
 4. Request the scopes `user.info.basic`, `video.publish`, `video.upload`.
    - `video.publish` (direct posting to the account's public feed) is an **audited scope** —
      TikTok reviews and approves it separately, and approval isn't instant or guaranteed on a
