@@ -74,9 +74,23 @@ export async function exchangeGoogleAdsCode(code: string): Promise<{ ok: true; a
   const listRes = await fetch(`https://googleads.googleapis.com/${ADS_API_VERSION}/customers:listAccessibleCustomers`, {
     headers: { Authorization: `Bearer ${tokenData.access_token}`, "developer-token": developerToken },
   });
-  const listData = (await listRes.json().catch(() => null)) as { resourceNames?: string[]; error?: { message?: string } } | null;
+  const listRawText = await listRes.text();
+  let listData: { resourceNames?: string[]; error?: { message?: string; status?: string } } | null = null;
+  try {
+    listData = JSON.parse(listRawText);
+  } catch {
+    // Not JSON -- Google sometimes returns HTML/plain-text for certain auth failures. Log the raw
+    // body so this is diagnosable instead of a silent, generic failure (hit this exact case live
+    // while connecting, 2026-09-30 -- the fallback message below gave no way to tell what was
+    // actually wrong).
+    console.error("Google Ads listAccessibleCustomers returned non-JSON body:", listRes.status, listRawText.slice(0, 2000));
+  }
   if (!listRes.ok || !Array.isArray(listData?.resourceNames)) {
-    return { ok: false, error: listData?.error?.message || "Couldn't list accessible Google Ads accounts -- check the developer token is approved for this account." };
+    console.error("Google Ads listAccessibleCustomers failed:", listRes.status, JSON.stringify(listData ?? listRawText.slice(0, 2000)));
+    const detail = listData?.error?.message
+      ? `${listData.error.message}${listData.error.status ? ` (${listData.error.status})` : ""}`
+      : `HTTP ${listRes.status}${listRawText ? `: ${listRawText.slice(0, 300)}` : ""}`;
+    return { ok: false, error: `Couldn't list accessible Google Ads accounts -- ${detail}` };
   }
   if (listData.resourceNames.length === 0) {
     return { ok: false, error: "No accessible Google Ads accounts found for this login." };
