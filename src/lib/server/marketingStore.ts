@@ -1,4 +1,5 @@
 import { prisma, isDatabaseConfigured } from "@/lib/db";
+import { getSiteUrl } from "./siteUrl";
 
 /**
  * Marketing studio (real, buildable subset): campaign spend/ROI tracking using the UTM
@@ -295,11 +296,17 @@ export async function publishPost(id: string, adminUserId: string): Promise<{ ok
   const connection = post.socialConnection;
   let result: { ok: true; postId: string } | { ok: false; error: string };
 
+  // Meta's Graph API fetches the image itself server-side, so it needs a real, absolute,
+  // publicly-fetchable URL -- our own stored-file URLs are root-relative (/api/files/[id]), which
+  // Meta correctly rejects ("url should represent a valid URL"). Only stored-file paths need
+  // this; an already-absolute URL (e.g. a large video on Vercel Blob) is left untouched.
+  const absoluteMediaUrl = post.mediaUrl ? (post.mediaUrl.startsWith("/") ? `${getSiteUrl()}${post.mediaUrl}` : post.mediaUrl) : null;
+
   if (post.channel === "META_FACEBOOK") {
-    result = await publishToFacebookPage(connection.accountId, connection.accessToken, post.caption, post.mediaUrl);
+    result = await publishToFacebookPage(connection.accountId, connection.accessToken, post.caption, absoluteMediaUrl);
   } else if (post.channel === "META_INSTAGRAM") {
-    if (!post.mediaUrl) result = { ok: false, error: "Instagram requires an image -- add one to this post first." };
-    else result = await publishToInstagram(connection.accountId, connection.accessToken, post.caption, post.mediaUrl);
+    if (!absoluteMediaUrl) result = { ok: false, error: "Instagram requires an image -- add one to this post first." };
+    else result = await publishToInstagram(connection.accountId, connection.accessToken, post.caption, absoluteMediaUrl);
   } else {
     result = { ok: false, error: `Automated publishing to ${post.channel} isn't built yet -- the account is connected, but posting through it is a separate next step.` };
   }
