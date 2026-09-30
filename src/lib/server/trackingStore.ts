@@ -58,6 +58,9 @@ export interface TrackingPageInfo {
   address: string;
   serviceName: string;
   scheduledStart: string | null;
+  bookingStatus: string;
+  actualStart: string | null;
+  actualEnd: string | null;
 }
 
 export async function getShareForTrackingPage(token: string): Promise<TrackingPageInfo | { ok: false }> {
@@ -75,6 +78,9 @@ export async function getShareForTrackingPage(token: string): Promise<TrackingPa
     address: `${addr.line1}, ${addr.city}, ${addr.state} ${addr.zip}`,
     serviceName: share.booking.lead?.service.name ?? "cleaning",
     scheduledStart: share.booking.scheduledStart ? share.booking.scheduledStart.toISOString() : null,
+    bookingStatus: share.booking.status,
+    actualStart: share.booking.actualStart ? share.booking.actualStart.toISOString() : null,
+    actualEnd: share.booking.actualEnd ? share.booking.actualEnd.toISOString() : null,
   };
 }
 

@@ -516,7 +516,20 @@ model Booking {
   scheduledStart DateTime?
   scheduledEnd   DateTime?
   arrivalWindow  String?
-  durationMinutes Int?
+  durationMinutes Int? // the planned/estimated job length used for scheduling -- see actualStart/actualEnd for what really happened
+
+  // The real clock-in/clock-out times, set either by the cleaner tapping "Clock in"/"Clock out" on
+  // their /track/[token] link, or corrected by an admin afterward (e.g. the cleaner forgot to tap
+  // one). Deliberately separate columns from scheduledStart/scheduledEnd -- those stay the
+  // calendar's planned window (still needed for conflict detection), these are what actually
+  // happened on the day.
+  actualStart DateTime?
+  actualEnd   DateTime?
+  // Dedupe flags so the time-tracking reminder cron (processTimeTrackingReminders) only ever
+  // sends each reminder once per booking, not once per 15-minute cron tick.
+  clockInReminderSentAt  DateTime?
+  finishReminderSentAt   DateTime?
+  clockOutReminderSentAt DateTime?
 
   staffAssignee String? // free-text placeholder until staff accounts exist
 
@@ -1184,6 +1197,7 @@ enum AdminNotificationType {
   PRICING_CHANGED
   NEW_MESSAGE
   GENERAL
+  TIME_TRACKING
 }
 
 model AdminNotification {

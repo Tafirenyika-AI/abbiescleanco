@@ -104,6 +104,8 @@ export async function listBookingsInRange(startISO: string, endISO: string): Pro
 
 export interface BookingDetail extends BookingListItem {
   durationMinutes: number | null;
+  actualStart: string | null;
+  actualEnd: string | null;
   customerPhone: string;
   customerEmail: string;
   additionalInstructions: string | null;
@@ -126,6 +128,8 @@ export async function getBookingById(id: string): Promise<BookingDetail | null> 
   return {
     ...mapBooking(b),
     durationMinutes: b.durationMinutes,
+    actualStart: b.actualStart ? b.actualStart.toISOString() : null,
+    actualEnd: b.actualEnd ? b.actualEnd.toISOString() : null,
     customerPhone: b.customer?.phone ?? "",
     customerEmail: b.customer?.email ?? "",
     additionalInstructions: b.lead?.additionalInstructions ?? null,
@@ -232,6 +236,82 @@ export async function updateBookingStatus(id: string, status: BookingStatusValue
     await schedulePostServiceThankYou(id);
   }
 
+  return { ok: true };
+}
+
+const CLOCK_IN_STATUSES: BookingStatusValue[] = ["CONFIRMED", "SCHEDULED", "ON_THE_WAY"];
+
+export type ClockResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Real clock-in, tapped by the cleaner on their /track/[token] link -- deliberately does NOT run
+ * the EARLY_START_GRACE_MINUTES check above: that rule exists to stop an ADMIN casually marking a
+ * job "in progress" with no one actually there yet, but a cleaner physically clocking in IS the
+ * real-world confirmation that check exists to protect against, so there's nothing to gate here.
+ */
+export async function clockInViaToken(bookingId: string): Promise<ClockResult> {
+  const existing = await db().booking.findFirst({ where: { id: bookingId, deletedAt: null } });
+  if (!existing) return { ok: false, error: "Booking not found" };
+  if (!CLOCK_IN_STATUSES.includes(existing.status as BookingStatusValue)) {
+    return { ok: false, error: existing.status === "IN_PROGRESS" ? "Already clocked in" : "This job can't be clocked in from its current status" };
+  }
+  const now = new Date();
+  await db().booking.update({ where: { id: bookingId }, data: { status: "IN_PROGRESS", actualStart: now } });
+  await db().bookingStatusHistory.create({
+    data: { bookingId, fromStatus: existing.status, toStatus: "IN_PROGRESS", note: "Clocked in via tracking link" },
+  });
+  return { ok: true };
+}
+
+/** Real clock-out, tapped by the cleaner once the job is done -- marks the booking COMPLETED. */
+export async function clockOutViaToken(bookingId: string): Promise<ClockResult> {
+  const existing = await db().booking.findFirst({ where: { id: bookingId, deletedAt: null } });
+  if (!existing) return { ok: false, error: "Booking not found" };
+  if (existing.status !== "IN_PROGRESS") {
+    return { ok: false, error: existing.status === "COMPLETED" ? "Already clocked out" : "You need to clock in before you can clock out" };
+  }
+  const now = new Date();
+  await db().booking.update({ where: { id: bookingId }, data: { status: "COMPLETED", actualEnd: now } });
+  await db().bookingStatusHistory.create({
+    data: { bookingId, fromStatus: existing.status, toStatus: "COMPLETED", note: "Clocked out via tracking link" },
+  });
+  await schedulePostServiceThankYou(bookingId);
+  return { ok: true };
+}
+
+export type ActualTimesResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Lets an admin correct the real clock-in/out times -- e.g. the cleaner forgot to tap one, or
+ * tapped it late. Either field can be set independently; passing null clears it (e.g. undoing an
+ * accidental clock-out). Recorded to the audit log like any other manual edit, but NOT to
+ * bookingStatusHistory -- that log is a status-transition trail, not a place to retroactively edit.
+ */
+export async function setActualTimes(
+  id: string,
+  data: { actualStart?: string | null; actualEnd?: string | null },
+  adminUserId: string
+): Promise<ActualTimesResult> {
+  const existing = await db().booking.findFirst({ where: { id, deletedAt: null } });
+  if (!existing) return { ok: false, error: "Booking not found" };
+
+  const updateData: { actualStart?: Date | null; actualEnd?: Date | null } = {};
+  if ("actualStart" in data) updateData.actualStart = data.actualStart ? new Date(data.actualStart) : null;
+  if ("actualEnd" in data) updateData.actualEnd = data.actualEnd ? new Date(data.actualEnd) : null;
+  if (updateData.actualStart && updateData.actualEnd && updateData.actualEnd <= updateData.actualStart) {
+    return { ok: false, error: "Clock-out time must be after clock-in time" };
+  }
+
+  await db().booking.update({ where: { id }, data: updateData });
+  const newStart = "actualStart" in updateData ? updateData.actualStart : existing.actualStart;
+  const newEnd = "actualEnd" in updateData ? updateData.actualEnd : existing.actualEnd;
+  await db().auditLog.create({
+    data: {
+      adminUserId, action: "booking.actual_times_corrected", entityType: "booking", entityId: id,
+      before: { actualStart: existing.actualStart?.toISOString() ?? null, actualEnd: existing.actualEnd?.toISOString() ?? null },
+      after: { actualStart: newStart?.toISOString() ?? null, actualEnd: newEnd?.toISOString() ?? null },
+    },
+  });
   return { ok: true };
 }
 

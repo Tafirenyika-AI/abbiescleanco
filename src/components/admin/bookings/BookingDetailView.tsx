@@ -4,7 +4,7 @@ import ClientThreadPanel from "@/components/admin/ClientThreadPanel";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Phone, Mail, Loader2, CreditCard, Copy, ExternalLink, Star, MapPin } from "lucide-react";
+import { ArrowLeft, ArrowRight, Phone, Mail, Loader2, CreditCard, Copy, ExternalLink, Star, MapPin, Clock } from "lucide-react";
 import type { BookingDetail } from "@/lib/server/bookingStore";
 import type { BookingStatusValue } from "@/lib/bookings";
 import { bookingStatusLabels } from "@/lib/bookings";
@@ -53,6 +53,18 @@ function toDateInput(iso: string | null) {
 function toTimeInput(iso: string | null) {
   return iso ? new Date(iso).toTimeString().slice(0, 5) : "";
 }
+function toDateTimeInput(iso: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function formatDuration(minutes: number | null): string {
+  if (!minutes || minutes <= 0) return "—";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `${h}h${m > 0 ? ` ${m}m` : ""}` : `${m}m`;
+}
 
 export default function BookingDetailView({ booking, mapsApiKey }: { booking: BookingDetail; mapsApiKey: string | null }) {
   const router = useRouter();
@@ -81,6 +93,33 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
   const [earlyStart, setEarlyStart] = useState<{ earliest: string } | null>(null);
   const [earlyNote, setEarlyNote] = useState("");
   const [startingEarly, setStartingEarly] = useState(false);
+
+  const [actualStartInput, setActualStartInput] = useState(toDateTimeInput(booking.actualStart));
+  const [actualEndInput, setActualEndInput] = useState(toDateTimeInput(booking.actualEnd));
+  const [savingActualTimes, setSavingActualTimes] = useState(false);
+
+  async function saveActualTimes() {
+    setSavingActualTimes(true);
+    try {
+      const res = await fetch(`/api/admin/bookings/${booking.id}/actual-times`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          actualStart: actualStartInput ? `${actualStartInput}:00` : null,
+          actualEnd: actualEndInput ? `${actualEndInput}:00` : null,
+        }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) {
+        showToast(json?.error || "Couldn't save", "error");
+        return;
+      }
+      showToast("Job times updated", "success");
+      router.refresh();
+    } finally {
+      setSavingActualTimes(false);
+    }
+  }
 
   async function setStatus(status: BookingStatusValue, note?: string) {
     const res = await fetch(`/api/admin/bookings/${booking.id}/status`, {
@@ -350,6 +389,34 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
           </Card>
 
           <Card>
+            <h2 className="flex items-center gap-1.5 font-semibold text-admin-text"><Clock className="size-4" aria-hidden /> Job time</h2>
+            <dl className="mt-3 space-y-1.5 text-sm">
+              <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Est. duration (planned)</dt><dd className="text-admin-text">{formatDuration(booking.durationMinutes)}</dd></div>
+            </dl>
+            <p className="mt-3 text-xs text-admin-text-muted">
+              The exact start/finish below is set by the cleaner tapping Clock in / Clock out on their tracking link, or correct it manually here if they forgot.
+            </p>
+            <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-xs font-medium text-admin-text-muted">Actual start</span>
+                <input type="datetime-local" value={actualStartInput} onChange={(e) => setActualStartInput(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-admin-text-muted">Actual finish</span>
+                <input type="datetime-local" value={actualEndInput} onChange={(e) => setActualEndInput(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+              </label>
+            </div>
+            <button
+              type="button"
+              onClick={saveActualTimes}
+              disabled={savingActualTimes || (actualStartInput === toDateTimeInput(booking.actualStart) && actualEndInput === toDateTimeInput(booking.actualEnd))}
+              className="ios-press mt-3 flex items-center gap-2 rounded-lg bg-admin-navy px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+            >
+              {savingActualTimes ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null} Save
+            </button>
+          </Card>
+
+          <Card>
             <h2 className="font-semibold text-admin-text">Status history</h2>
             {booking.statusHistory.length === 0 ? (
               <p className="mt-2 text-sm text-admin-text-muted">No changes recorded yet.</p>
@@ -420,10 +487,10 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
             </div>
           </Card>
 
-          {!["IN_PROGRESS", "COMPLETED", "CANCELLED"].includes(booking.status) && (
+          {!["COMPLETED", "CANCELLED"].includes(booking.status) && (
             <Card>
-              <h2 className="font-semibold text-admin-text">Live tracking</h2>
-              <p className="mt-1 text-xs text-admin-text-muted">Text the cleaner a one-time link -- they tap it and share their live location, no login needed. The client sees it on their booking page.</p>
+              <h2 className="font-semibold text-admin-text">Live tracking &amp; clock in/out</h2>
+              <p className="mt-1 text-xs text-admin-text-muted">Text the cleaner a one-time link -- they tap it to share their live location AND to clock in/out for this job, no login needed. The client sees location sharing on their booking page.</p>
               <div className="mt-2 flex gap-2">
                 <input value={trackingPhone} onChange={(e) => setTrackingPhone(e.target.value)} placeholder="Cleaner's phone number" className="flex-1 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
                 <button type="button" onClick={sendTrackingLink} disabled={sendingTrackingLink || !trackingPhone.trim()} className="ios-press rounded-lg bg-admin-teal px-3 py-1.5 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">

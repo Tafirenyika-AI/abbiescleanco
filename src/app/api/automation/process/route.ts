@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processDueAutomationEvents } from "@/lib/server/automationStore";
+import { processTimeTrackingReminders } from "@/lib/server/timeTrackingReminders";
 import { requireAdmin } from "@/lib/server/requireAdmin";
 
 /**
@@ -23,7 +24,8 @@ async function isAuthorized(req: NextRequest): Promise<boolean> {
 export async function POST(req: NextRequest) {
   if (!(await isAuthorized(req))) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   const result = await processDueAutomationEvents();
-  return NextResponse.json({ ok: true, ...result });
+  const timeTracking = await processTimeTrackingReminders();
+  return NextResponse.json({ ok: true, ...result, timeTracking });
 }
 
 export async function GET(req: NextRequest) {
