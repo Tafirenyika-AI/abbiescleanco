@@ -194,7 +194,11 @@ export async function deleteQuote(id: string): Promise<DeleteQuoteResult> {
   const existing = await db().quote.findUnique({ where: { id } });
   if (!existing || existing.deletedAt) return { ok: false, error: "Not found" };
 
-  const paidPayment = await db().payment.findFirst({ where: { quoteId: id, status: "PAID" } });
+  // Real payments recorded via the admin "Record payment" flow (recordPayment in paymentStore.ts)
+  // only ever set Payment.bookingId/customerId, never quoteId -- so this has to check through the
+  // quote's bookings, not payment.quoteId directly (which nothing in the app actually populates),
+  // matching how deleteLead's equivalent guard already does it.
+  const paidPayment = await db().payment.findFirst({ where: { status: "PAID", OR: [{ quoteId: id }, { booking: { quoteId: id } }] } });
   if (paidPayment) {
     return { ok: false, error: "This quote has a real payment on file and can't be deleted. Void the related invoice instead if it needs to be corrected." };
   }
