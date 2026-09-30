@@ -62,15 +62,20 @@ through one), and patience — the developer token step below has a real approva
    `https://abbiescleanco.com/api/admin/marketing/connections/google-ads/callback`
 5. Copy the **Client ID** and **Client Secret** → paste into Settings → Integrations as **Google
    Ads OAuth Client ID / Secret**.
-6. Go to [ads.google.com](https://ads.google.com/) → sign in → **Tools & Settings → Setup → API
-   Center**. Apply for a developer token.
+6. **API Center is only available from a Manager (MCC) account — confirmed live 2026-09-30, a
+   standalone Ads account gets "The API Center is only available to manager accounts."** If you
+   don't already have one: [ads.google.com/home/tools/manager-accounts](https://ads.google.com/home/tools/manager-accounts/)
+   → create a free Manager account → link your existing standalone Ads account under it (the
+   standalone account keeps running independently, this just adds oversight). Switch into the
+   Manager account, go to **Tools & Settings → Setup → API Center**, and apply for a developer
+   token there.
    - A **test-account-only** token is usually granted quickly (sometimes instantly) — good enough
      to connect and verify the pipeline works.
    - **Basic Access** (needed to manage a real, live account with real spend) requires Google's
      manual review and can take several business days. Don't expect this step to be instant.
 7. Paste the developer token into Settings → Integrations as **Google Ads Developer Token**.
-8. If you're connecting through a Manager (MCC) account rather than a standalone Ads account, also
-   set **Google Ads Manager (MCC) Customer ID** (the 10-digit id, no dashes).
+8. Set **Google Ads Manager (MCC) Customer ID** to the Manager account's 10-digit id (no dashes) --
+   this is required, not optional, since the token only comes from a Manager account.
 9. On Marketing Studio → Connected accounts, click **Connect Google Ads** and approve access.
 
 What this unlocks once connected: a real, live OAuth connection (proven by successfully listing
