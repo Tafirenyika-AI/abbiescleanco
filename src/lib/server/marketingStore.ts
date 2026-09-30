@@ -231,6 +231,36 @@ export async function createPost(input: {
   return { ok: true, id: created.id };
 }
 
+export async function updatePost(
+  id: string,
+  input: {
+    campaignId: string | null;
+    channel: MarketingChannel;
+    caption: string;
+    mediaUrl: string | null;
+    videoUrl: string | null;
+    socialConnectionId: string | null;
+  },
+  adminUserId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const post = await db().marketingPost.findUnique({ where: { id } });
+  if (!post) return { ok: false, error: "Post not found" };
+  if (post.status !== "DRAFT") return { ok: false, error: "Only draft posts can be edited -- cancel an approved post back to draft first if it needs changes." };
+  await db().marketingPost.update({
+    where: { id },
+    data: {
+      campaignId: input.campaignId,
+      channel: input.channel,
+      caption: input.caption,
+      mediaUrl: input.mediaUrl,
+      videoUrl: input.videoUrl,
+      socialConnectionId: input.socialConnectionId,
+    },
+  });
+  await db().auditLog.create({ data: { adminUserId, action: "marketing_post.edited", entityType: "MarketingPost", entityId: id } });
+  return { ok: true };
+}
+
 export async function approvePost(id: string, adminUserId: string): Promise<{ ok: boolean; error?: string }> {
   const post = await db().marketingPost.findUnique({ where: { id } });
   if (!post) return { ok: false, error: "Post not found" };

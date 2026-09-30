@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Megaphone, Plus, Check, Send, X, Loader2, Trash2, Link2, Unlink, Image as ImageIcon, AlertTriangle } from "lucide-react";
+import { Megaphone, Plus, Check, Send, X, Loader2, Trash2, Link2, Unlink, Image as ImageIcon, AlertTriangle, Pencil } from "lucide-react";
 import Card from "@/components/admin/ui/Card";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import Badge from "@/components/admin/ui/Badge";
@@ -74,6 +74,7 @@ export default function MarketingManager({
   const [cSaving, setCSaving] = useState(false);
 
   const [showPostForm, setShowPostForm] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [pCampaignId, setPCampaignId] = useState("");
   const [pChannel, setPChannel] = useState<MarketingChannel>("META_INSTAGRAM");
   const [pCaption, setPCaption] = useState("");
@@ -235,29 +236,44 @@ export default function MarketingManager({
     }
   }
 
-  async function createPost() {
-    if (!pCaption.trim()) return showToast("Caption is required", "error");
-    setPSaving(true);
-    const res = await fetch("/api/admin/marketing/posts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        campaignId: pCampaignId || null,
-        channel: pChannel,
-        caption: pCaption.trim(),
-        mediaUrl: pMediaUrl,
-        videoUrl: pVideoUrl,
-        socialConnectionId: pConnectionId || null,
-        scheduledFor: null,
-      }),
-    });
-    const data = await res.json().catch(() => null);
-    setPSaving(false);
-    if (!data?.ok) return showToast(data?.error || "Couldn't create post", "error");
-    showToast("Post drafted.", "success");
+  function resetPostForm() {
     setShowPostForm(false);
+    setEditingPostId(null);
     setPCaption(""); setPCampaignId(""); setPMediaUrl(null); setPConnectionId("");
     setPPosterPrompt(""); setPImageMode("upload"); setPVideoSlides([]); setPVideoOverlay(""); setPVideoUrl(null);
+  }
+
+  function openEditPost(p: PostListItem) {
+    setEditingPostId(p.id);
+    setPChannel(p.channel);
+    setPCaption(p.caption);
+    setPMediaUrl(p.mediaUrl);
+    setPVideoUrl(p.videoUrl);
+    setPConnectionId(p.socialConnectionId ?? "");
+    setPCampaignId(p.campaignId ?? "");
+    setPImageMode("upload");
+    setShowPostForm(true);
+  }
+
+  async function savePost() {
+    if (!pCaption.trim()) return showToast("Caption is required", "error");
+    setPSaving(true);
+    const body = {
+      campaignId: pCampaignId || null,
+      channel: pChannel,
+      caption: pCaption.trim(),
+      mediaUrl: pMediaUrl,
+      videoUrl: pVideoUrl,
+      socialConnectionId: pConnectionId || null,
+    };
+    const res = editingPostId
+      ? await fetch(`/api/admin/marketing/posts/${editingPostId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      : await fetch("/api/admin/marketing/posts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, scheduledFor: null }) });
+    const data = await res.json().catch(() => null);
+    setPSaving(false);
+    if (!data?.ok) return showToast(data?.error || `Couldn't ${editingPostId ? "save changes to" : "create"} the post`, "error");
+    showToast(editingPostId ? "Draft updated." : "Post drafted.", "success");
+    resetPostForm();
     await refreshPosts();
   }
 
@@ -353,7 +369,7 @@ export default function MarketingManager({
       {tab === "posts" && (
         <div className="space-y-4">
           <div className="flex justify-end">
-            <button type="button" onClick={() => setShowPostForm(true)} className="ios-press inline-flex items-center gap-1.5 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover">
+            <button type="button" onClick={() => { setEditingPostId(null); setShowPostForm(true); }} className="ios-press inline-flex items-center gap-1.5 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover">
               <Plus className="size-4" aria-hidden /> Draft a post
             </button>
           </div>
@@ -405,6 +421,9 @@ export default function MarketingManager({
                         <div className="flex gap-1.5">
                           {p.status === "DRAFT" && (
                             <>
+                              <button type="button" disabled={busyId === p.id} onClick={() => openEditPost(p)} className="ios-press inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-admin-text-muted hover:bg-admin-bg disabled:opacity-50">
+                                <Pencil className="size-3.5" aria-hidden /> Edit
+                              </button>
                               <button type="button" disabled={busyId === p.id} onClick={() => postAction(p.id, "approve")} className="ios-press inline-flex items-center gap-1 rounded-full bg-admin-success/10 px-2.5 py-1 text-xs font-semibold text-admin-success hover:bg-admin-success/20 disabled:opacity-50">
                                 <Check className="size-3.5" aria-hidden /> Approve
                               </button>
@@ -515,9 +534,9 @@ export default function MarketingManager({
       )}
 
       {showPostForm && (
-        <div className="ios-backdrop-in fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm" onClick={() => setShowPostForm(false)}>
+        <div className="ios-backdrop-in fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm" onClick={resetPostForm}>
           <div className="ios-modal-in max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-admin-card p-6 shadow-[0_8px_24px_rgba(15,23,42,0.1),0_24px_64px_rgba(15,23,42,0.16)]" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-semibold text-admin-text">Draft a post</h2>
+            <h2 className="text-lg font-semibold text-admin-text">{editingPostId ? "Edit draft" : "Draft a post"}</h2>
             <div className="mt-4 space-y-3">
               <div>
                 <label className="text-xs font-semibold text-admin-text-muted">Channel</label>
@@ -625,9 +644,9 @@ export default function MarketingManager({
               </div>
             </div>
             <div className="mt-5 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowPostForm(false)} className="ios-press rounded-lg border border-admin-border px-3.5 py-2 text-sm font-semibold text-admin-text hover:bg-admin-bg">Cancel</button>
-              <button type="button" disabled={pSaving} onClick={createPost} className="ios-press rounded-lg bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
-                {pSaving ? "Saving…" : "Save draft"}
+              <button type="button" onClick={resetPostForm} className="ios-press rounded-lg border border-admin-border px-3.5 py-2 text-sm font-semibold text-admin-text hover:bg-admin-bg">Cancel</button>
+              <button type="button" disabled={pSaving} onClick={savePost} className="ios-press rounded-lg bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
+                {pSaving ? "Saving…" : editingPostId ? "Save changes" : "Save draft"}
               </button>
             </div>
           </div>

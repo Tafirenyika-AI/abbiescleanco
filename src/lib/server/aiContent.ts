@@ -1,3 +1,6 @@
+import path from "path";
+import fs from "fs/promises";
+import sharp from "sharp";
 import { getIntegrationValue } from "./integrationSettings";
 import { saveGeneratedFile, UploadError } from "./upload";
 import { sniffMedia } from "./mediaUpload";
@@ -29,6 +32,7 @@ export async function generatePosterImage(input: { prompt: string; size?: Poster
     `Clean, modern, trustworthy aesthetic in navy and teal tones. No cartoonish or low-quality look.`,
     input.prompt.trim(),
     `If the description mentions specific text (an offer, phone number, price), render it clearly and correctly spelled -- do not invent additional text or claims beyond what's described.`,
+    `Do not draw any logo, brand mark, or made-up company emblem anywhere in the image -- leave the bottom-right corner visually uncluttered, since the business's real logo is added there afterward, separately from this generation.`,
   ].join(" ");
 
   const res = await fetch("https://api.openai.com/v1/images/generations", {
@@ -43,14 +47,43 @@ export async function generatePosterImage(input: { prompt: string; size?: Poster
   }
 
   const buffer = Buffer.from(b64, "base64");
+  const withLogo = await stampRealLogo(buffer).catch((err) => {
+    // The AI model can never be trusted to render the real logo correctly -- it has no way to see
+    // it, so anything logo-shaped it drew was invented. This overlays the actual logo file
+    // instead, deterministically, every time. If this step itself fails for some reason, still
+    // return the real poster without a logo rather than losing the whole generation.
+    console.error("stampRealLogo failed, returning poster without a logo overlay:", err);
+    return buffer;
+  });
+
   try {
-    const { url } = await saveGeneratedFile(buffer, "image/png", MAX_POSTER_BYTES);
+    const { url } = await saveGeneratedFile(withLogo, "image/png", MAX_POSTER_BYTES);
     return { ok: true, url };
   } catch (err) {
     if (err instanceof UploadError) return { ok: false, error: err.message };
     console.error("saveGeneratedFile (poster) failed:", err);
     return { ok: false, error: `Couldn't save the generated image${err instanceof Error ? `: ${err.message}` : ""}.` };
   }
+}
+
+/** Composites the business's real logo onto a generated poster -- deterministic, not left to the
+ *  AI model (which has no way to see the actual logo and can only invent a lookalike). */
+async function stampRealLogo(posterBuffer: Buffer): Promise<Buffer> {
+  const logoPath = path.join(process.cwd(), "public", "images", "logo.png");
+  const logoBuffer = await fs.readFile(logoPath);
+
+  const poster = sharp(posterBuffer);
+  const { width: posterWidth, height: posterHeight } = await poster.metadata();
+  if (!posterWidth || !posterHeight) return posterBuffer;
+
+  const logoSize = Math.round(Math.min(posterWidth, posterHeight) * 0.16);
+  const margin = Math.round(Math.min(posterWidth, posterHeight) * 0.035);
+  const resizedLogo = await sharp(logoBuffer).resize(logoSize, logoSize, { fit: "inside" }).toBuffer();
+
+  return poster
+    .composite([{ input: resizedLogo, top: posterHeight - logoSize - margin, left: posterWidth - logoSize - margin }])
+    .png()
+    .toBuffer();
 }
 
 const MAX_VIDEO_BYTES = 10 * 1024 * 1024; // browser-assembled slideshow is kept short/low-bitrate specifically to stay well under this
