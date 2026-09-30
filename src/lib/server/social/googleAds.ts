@@ -12,7 +12,11 @@ import { getSiteUrl } from "../siteUrl";
 
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
-const ADS_API_VERSION = "v19";
+// Google sunsets old Ads API versions on a rolling schedule (v19-v21 confirmed dead -- 404, not an
+// auth error -- via a live unauthenticated probe on 2026-09-30; v22 confirmed current, 401 as
+// expected for a request with no token). If this 404s again in the future, check
+// https://developers.google.com/google-ads/api/docs/release-notes for the current version.
+const ADS_API_VERSION = "v22";
 
 export async function getGoogleAdsCredentials(): Promise<{ clientId?: string; clientSecret?: string; developerToken?: string; loginCustomerId?: string }> {
   const clientId = await getIntegrationValue("googleAdsClientId", "GOOGLE_ADS_CLIENT_ID");
