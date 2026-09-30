@@ -19,6 +19,11 @@ export const quoteRequestSchema = z.object({
     .trim()
     .regex(/^\d{5}(-\d{4})?$/, "Enter a valid 5-digit ZIP code"),
   propertyType: z.enum(["apartment", "house", "townhome", "commercial"]),
+  // Free text, not a fixed enum -- a commercial property can be almost anything (church, school,
+  // office, retail, warehouse...), and locking this to a preset list would mean the next real
+  // property type someone needs isn't representable at all. Only meaningful when propertyType is
+  // "commercial"; ignored otherwise.
+  commercialType: z.string().trim().max(100).optional().or(z.literal("")),
   squareFeet: z.coerce.number().int().min(100, "Enter an approximate square footage").max(20000),
   bedrooms: z.coerce.number().int().min(0).max(15),
   bathrooms: z.coerce.number().int().min(0).max(15),

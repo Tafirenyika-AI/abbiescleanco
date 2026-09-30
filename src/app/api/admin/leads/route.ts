@@ -15,6 +15,7 @@ const schema = z.object({
   service: z.enum(serviceIds),
   zip: z.string().trim().regex(/^\d{5}(-\d{4})?$/),
   propertyType: z.enum(["apartment", "house", "townhome", "commercial"]),
+  commercialType: z.string().trim().max(100).optional(),
   squareFeet: z.coerce.number().int().min(100).max(20000),
   bedrooms: z.coerce.number().int().min(0).max(15),
   bathrooms: z.coerce.number().int().min(0).max(15),

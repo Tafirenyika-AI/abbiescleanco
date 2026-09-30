@@ -202,8 +202,14 @@ export default function LeadDetailDrawer({
             <dl className="mt-2 space-y-1.5 text-sm">
               <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Service</dt><dd className="text-admin-text">{serviceName}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Property type</dt><dd className="text-admin-text capitalize">{lead.input.propertyType}</dd></div>
+              {lead.input.propertyType === "commercial" && lead.input.commercialType && (
+                <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">What kind</dt><dd className="text-admin-text">{lead.input.commercialType}</dd></div>
+              )}
               {lead.input.zip && <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">ZIP</dt><dd className="text-admin-text">{lead.input.zip}</dd></div>}
-              <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Bedrooms / bathrooms</dt><dd className="text-admin-text">{lead.input.bedrooms} / {lead.input.bathrooms}</dd></div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-admin-text-muted">{lead.input.propertyType === "commercial" ? "Restrooms" : "Bedrooms / bathrooms"}</dt>
+                <dd className="text-admin-text">{lead.input.propertyType === "commercial" ? lead.input.bathrooms : `${lead.input.bedrooms} / ${lead.input.bathrooms}`}</dd>
+              </div>
               <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Frequency</dt><dd className="text-admin-text capitalize">{lead.input.frequency.replace(/-/g, " ")}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-admin-text-muted">Pets</dt><dd className="text-admin-text">{lead.input.hasPets ? "Yes" : "No"}</dd></div>
               <div className="flex justify-between gap-3">

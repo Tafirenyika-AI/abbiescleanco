@@ -16,6 +16,7 @@ export default function NewLeadForm() {
   const [service, setService] = useState<string>(services[0]?.id ?? "");
   const [zip, setZip] = useState("");
   const [propertyType, setPropertyType] = useState<"house" | "apartment" | "townhome" | "commercial">("house");
+  const [commercialType, setCommercialType] = useState("");
   const [squareFeet, setSquareFeet] = useState("1500");
   const [bedrooms, setBedrooms] = useState("3");
   const [bathrooms, setBathrooms] = useState("2");
@@ -34,7 +35,8 @@ export default function NewLeadForm() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         firstName, lastName, email, phone, service, zip, propertyType,
-        squareFeet: Number(squareFeet), bedrooms: Number(bedrooms), bathrooms: Number(bathrooms),
+        commercialType: propertyType === "commercial" ? commercialType.trim() || undefined : undefined,
+        squareFeet: Number(squareFeet), bedrooms: propertyType === "commercial" ? 0 : Number(bedrooms), bathrooms: Number(bathrooms),
         condition, frequency, hasPets, additionalInstructions: additionalInstructions || undefined,
       }),
     });
@@ -94,16 +96,29 @@ export default function NewLeadForm() {
             <option value="commercial">Commercial</option>
           </select>
         </label>
+        {propertyType === "commercial" && (
+          <label className="block">
+            <span className="text-xs font-medium text-admin-text-muted">What kind of property?</span>
+            <input
+              value={commercialType}
+              onChange={(e) => setCommercialType(e.target.value)}
+              placeholder="e.g. Church, School, Office, Retail store…"
+              className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text"
+            />
+          </label>
+        )}
         <label className="block">
           <span className="text-xs font-medium text-admin-text-muted">Square feet</span>
           <input type="number" min="100" value={squareFeet} onChange={(e) => setSquareFeet(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
         </label>
+        {propertyType !== "commercial" && (
+          <label className="block">
+            <span className="text-xs font-medium text-admin-text-muted">Bedrooms</span>
+            <input type="number" min="0" value={bedrooms} onChange={(e) => setBedrooms(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+          </label>
+        )}
         <label className="block">
-          <span className="text-xs font-medium text-admin-text-muted">Bedrooms</span>
-          <input type="number" min="0" value={bedrooms} onChange={(e) => setBedrooms(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
-        </label>
-        <label className="block">
-          <span className="text-xs font-medium text-admin-text-muted">Bathrooms</span>
+          <span className="text-xs font-medium text-admin-text-muted">{propertyType === "commercial" ? "Restrooms" : "Bathrooms"}</span>
           <input type="number" min="0" value={bathrooms} onChange={(e) => setBathrooms(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
         </label>
         <label className="block">

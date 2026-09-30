@@ -137,6 +137,7 @@ export async function createLead(input: QuoteRequestInput, estimate: EstimateRes
         quoteRequest: {
           create: {
             propertyType: input.propertyType,
+            commercialType: input.propertyType === "commercial" ? input.commercialType || null : null,
             squareFeet: input.squareFeet,
             bedrooms: input.bedrooms,
             bathrooms: input.bathrooms,
@@ -208,6 +209,7 @@ function mapLead(
       service: l.service.slug as QuoteRequestInput["service"],
       zip: l.address?.zip ?? "",
       propertyType: (l.quoteRequest?.propertyType as QuoteRequestInput["propertyType"]) ?? "house",
+      commercialType: l.quoteRequest?.commercialType ?? undefined,
       squareFeet: l.quoteRequest?.squareFeet ?? 0,
       bedrooms: l.quoteRequest?.bedrooms ?? 0,
       bathrooms: l.quoteRequest?.bathrooms ?? 0,

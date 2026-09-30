@@ -292,6 +292,7 @@ model QuoteRequest {
   lead   Lead   @relation(fields: [leadId], references: [id])
 
   propertyType   String
+  commercialType String? // free text -- church, school, office, retail, warehouse, etc.; only set when propertyType is "commercial"
   squareFeet     Int
   bedrooms       Int
   bathrooms      Int

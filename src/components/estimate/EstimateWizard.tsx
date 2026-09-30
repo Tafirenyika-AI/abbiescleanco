@@ -289,6 +289,18 @@ export default function EstimateWizard({
               </select>
             </label>
 
+            {values.propertyType === "commercial" && (
+              <label className="block">
+                <span className="text-sm font-semibold text-navy-900">What kind of property is it?</span>
+                <input
+                  type="text"
+                  placeholder="e.g. Church, School, Office, Retail store, Warehouse…"
+                  className="mt-1.5 w-full rounded-xl border border-surface-200 px-3.5 py-2.5 text-sm"
+                  {...register("commercialType")}
+                />
+              </label>
+            )}
+
             <label className="block">
               <span className="text-sm font-semibold text-navy-900">Approximate square footage</span>
               <input
