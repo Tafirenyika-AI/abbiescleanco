@@ -126,16 +126,36 @@ export async function withdrawRequest(customerId: string, leadId: string, reason
 
 // ---------- Quotes ----------
 
+/**
+ * SECURITY: this selects exactly the fields a customer may see. `internalNotes` is deliberately
+ * NEVER selected here (unlike the admin-only getQuoteById in quoteStore.ts) -- there is no field in
+ * the object this function returns that could leak it, by construction, not just by convention.
+ * Also marks the quote viewed (first time only) so CRM can show real view activity.
+ */
 export async function getMyQuoteDetail(customerId: string, quoteId: string) {
   const q = await db().quote.findFirst({
     where: { id: quoteId, deletedAt: null, lead: { customerId } },
-    include: { items: true, lead: { include: { service: true } }, promoCode: true },
+    include: {
+      items: true,
+      lead: { include: { service: true, address: true } },
+      promoCode: true,
+      revisions: { select: { id: true, revisionNumber: true, createdAt: true }, orderBy: { revisionNumber: "asc" } },
+    },
   });
   if (!q || q.status === "DRAFT") return null; // drafts aren't visible to customers
+
+  if (!q.viewedAt) {
+    await db().quote.update({ where: { id: q.id }, data: { viewedAt: new Date() } }).catch(() => {});
+  }
+
+  const addr = q.lead.address;
   return {
     id: q.id, quoteNumber: q.quoteNumber, status: q.status, subtotal: q.subtotal, discount: q.discount, tax: q.tax, deposit: q.deposit, total: q.total,
     expiresAt: q.expiresAt?.toISOString() ?? null, notes: q.notes, serviceName: q.lead.service.name, leadId: q.leadId, promoCode: q.promoCode?.code ?? null,
-    items: q.items.map((i) => ({ id: i.id, label: i.label, quantity: i.quantity, unitPrice: i.unitPrice, total: i.total })),
+    scopeOfService: q.scopeOfService, exclusions: q.exclusions, customerMessage: q.customerMessage,
+    companyName: addr?.label ?? null, serviceAddress: addr ? `${addr.line1}${addr.line2 ? `, ${addr.line2}` : ""}, ${addr.city}, ${addr.state} ${addr.zip}` : null,
+    revisionNumber: q.revisionNumber, isLatestRevision: q.revisions.length === 0,
+    items: q.items.map((i) => ({ id: i.id, label: i.label, quantity: i.quantity, unitPrice: i.unitPrice, total: i.total, pricingUnit: i.pricingUnit, frequency: i.frequency, customFrequency: i.customFrequency })),
   };
 }
 
@@ -151,10 +171,12 @@ export async function respondToQuote(customerId: string, quoteId: string, action
   if (action === "ACCEPT") {
     await db().quote.update({ where: { id: quoteId }, data: { status: "ACCEPTED" } });
     await db().lead.update({ where: { id: q.leadId }, data: { status: "CONFIRMED" } });
+    await db().auditLog.create({ data: { action: "quote.accepted", entityType: "quote", entityId: quoteId, before: { status: q.status }, after: { status: "ACCEPTED" } } });
     await notifyAdmins("QUOTE_ACCEPTED", `Quote accepted: ${name}`, `${q.quoteNumber}, $${(q.total / 100).toFixed(2)}`, `/admin/quotes/${q.id}`);
     return { ok: true, status: "ACCEPTED" };
   }
   await db().quote.update({ where: { id: quoteId }, data: { status: "DECLINED" } });
+  await db().auditLog.create({ data: { action: "quote.declined", entityType: "quote", entityId: quoteId, before: { status: q.status }, after: { status: "DECLINED", reason: reason?.trim()?.slice(0, 500) } } });
   if (reason?.trim()) await db().clientNote.create({ data: { customerId, leadId: q.leadId, body: reason.trim().slice(0, 2000), kind: "QUOTE_DECLINE", authorName: name } });
   await notifyAdmins("QUOTE_DECLINED", `Quote declined: ${name}`, `${q.quoteNumber}${reason ? `, ${reason.slice(0, 120)}` : ""}`, `/admin/quotes/${q.id}`);
   return { ok: true, status: "DECLINED" };

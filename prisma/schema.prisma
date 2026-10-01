@@ -36,6 +36,7 @@ enum QuoteStatus {
   ACCEPTED
   DECLINED
   EXPIRED
+  CANCELLED // admin called off a SENT quote (e.g. customer withdrew verbally) -- distinct from DECLINED, which is the customer's own response
 }
 
 enum BookingStatus {
@@ -329,13 +330,50 @@ model Quote {
 
   status     QuoteStatus @default(DRAFT)
   subtotal   Int
-  discount   Int         @default(0)
+  discount   Int         @default(0) // final computed discount, cents -- see discountType/discountValue for what produced it
   tax        Int         @default(0)
-  deposit    Int         @default(0)
+  deposit    Int         @default(0) // final computed deposit due, cents -- see depositType/depositValue for what produced it
   total      Int
   currency   String      @default("USD")
   expiresAt  DateTime?
+  // Customer-facing (shown on the quote/email/portal) -- kept as `notes` for backward compatibility
+  // since it was ALREADY displayed to customers on their account portal before this upgrade (see
+  // AccountDetailSheet.tsx); relabeled "Customer Notes / Terms" in the UI, not renamed in the DB.
   notes      String?
+
+  // Mirrors PromoCode's own discountType/discountValue pattern for consistency. `discount` above
+  // stays the authoritative cents amount that actually affects `total`; these are only the raw
+  // input that produced it (so the UI can redisplay "10% off" instead of just a dollar figure).
+  discountType  String @default("FIXED") // FIXED | PERCENT
+  discountValue Int    @default(0)       // percent 1-100 when PERCENT, cents when FIXED
+
+  depositType  String @default("NONE") // NONE | FIXED | PERCENT
+  depositValue Int    @default(0)      // percent 1-100 when PERCENT, cents when FIXED
+
+  // Customer-facing additions for commercial cleaning quotes -- see docs/DECISIONS.md for why these
+  // live on the Quote (whole-engagement) rather than per QuoteItem (see QuoteItem.pricingUnit for
+  // what DOES live per-item). All optional/additive; a legacy quote with none of these set still
+  // renders exactly as it did before this upgrade.
+  scopeOfService  String? // "Scope of Service" -- customer-facing, appears on quote/email
+  exclusions      String? // "Exclusions / Special Conditions" -- customer-facing
+  customerMessage String? // "Message to Customer" -- customer-facing, appears near the end of the quote
+  // Staff-only. Enforced server-side: never selected by clientPortalStore.getMyQuoteDetail, never
+  // passed to quoteEmail(). See SECURITY note on getMyQuoteDetail.
+  internalNotes   String?
+
+  // Revisions: a quote a customer has already seen is never silently overwritten (see
+  // updateDraftQuote, still DRAFT-only). "Revise" instead creates a NEW Quote row with
+  // revisionNumber+1 and revisedFromId pointing at the one it was copied from; the original is left
+  // exactly as it was. Self-relation needs two sides -- `revisions` points the other way.
+  revisionNumber Int     @default(1)
+  revisedFromId  String?
+  revisedFrom    Quote?  @relation("QuoteRevisions", fields: [revisedFromId], references: [id])
+  revisions      Quote[] @relation("QuoteRevisions")
+
+  // Set the first time a customer actually opens this quote (getMyQuoteDetail), independent of
+  // status -- lets CRM show "viewed" without a separate VIEWED status complicating the simple
+  // SENT -> ACCEPTED/DECLINED/EXPIRED/CANCELLED flow.
+  viewedAt DateTime?
 
   promoCodeId String?
   promoCode   PromoCode? @relation(fields: [promoCodeId], references: [id])
@@ -422,6 +460,15 @@ model QuoteItem {
   quantity  Int    @default(1)
   unitPrice Int
   total     Int
+
+  // Recurring-commercial-cleaning fields, all optional/additive -- a row with pricingUnit unset is
+  // a plain generic line item (unchanged legacy behavior: qty x unitPrice, shown as-is). A row WITH
+  // pricingUnit set is a "service line": quantity is always 1 and unitPrice IS the rate, displayed
+  // through src/lib/quotePricing.ts's shared formatter ("$215.00 / visit") rather than qty math, so
+  // the builder/preview/email/PDF can never disagree about what the number means.
+  pricingUnit     String? // PER_VISIT | PER_HOUR | FLAT_PROJECT | MONTHLY | CUSTOM
+  frequency       String? // ONE_TIME | WEEKLY | TWICE_WEEKLY | THREE_WEEKLY | FIVE_WEEKLY | CUSTOM
+  customFrequency String? // short free-text description, only meaningful when frequency = CUSTOM
 
   createdAt DateTime @default(now())
 

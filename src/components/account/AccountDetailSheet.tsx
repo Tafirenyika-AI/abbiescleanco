@@ -6,6 +6,7 @@ import MediaThread from "@/components/account/MediaThread";
 import LiveTrackingMap from "@/components/account/LiveTrackingMap";
 import CleanerChat from "@/components/account/CleanerChat";
 import { labelForMethod } from "@/lib/paymentMethods";
+import CustomerQuoteView from "@/components/quotes/CustomerQuoteView";
 
 type Kind = "request" | "quote" | "booking";
 
@@ -74,7 +75,9 @@ function RequestDetail({ id, status, instructions, onChanged }: { id: string; st
 interface QuoteData {
   id: string; quoteNumber: string; status: string; subtotal: number; discount: number; tax: number; deposit: number; total: number;
   expiresAt: string | null; notes: string | null; serviceName: string; leadId: string; promoCode: string | null;
-  items: { id: string; label: string; quantity: number; unitPrice: number; total: number }[];
+  scopeOfService: string | null; exclusions: string | null; customerMessage: string | null;
+  companyName: string | null; serviceAddress: string | null; revisionNumber: number; isLatestRevision: boolean;
+  items: { id: string; label: string; quantity: number; unitPrice: number; total: number; pricingUnit: string | null; frequency: string | null; customFrequency: string | null }[];
 }
 function QuoteDetail({ id, onChanged }: { id: string; onChanged: () => void }) {
   const [quote, setQuote] = useState<QuoteData | null>(null);
@@ -103,21 +106,30 @@ function QuoteDetail({ id, onChanged }: { id: string; onChanged: () => void }) {
   if (!quote) return <p className="text-sm text-surface-700">Loading…</p>;
   return (
     <>
-      <Section heading={`${quote.serviceName}, ${quote.quoteNumber}`}>
-        <table className="w-full text-sm">
-          <tbody>
-            {quote.items.map((i) => (
-              <tr key={i.id}><td className="py-1 text-navy-950">{i.label}{i.quantity > 1 ? ` × ${i.quantity}` : ""}</td><td className="py-1 text-right">{money(i.total)}</td></tr>
-            ))}
-            {quote.discount > 0 && <tr><td className="py-1">Discount{quote.promoCode ? ` (${quote.promoCode})` : ""}</td><td className="py-1 text-right">-{money(quote.discount)}</td></tr>}
-            {quote.tax > 0 && <tr><td className="py-1">Tax</td><td className="py-1 text-right">{money(quote.tax)}</td></tr>}
-            <tr className="border-t border-surface-200 font-semibold"><td className="py-2">Total</td><td className="py-2 text-right">{money(quote.total)}</td></tr>
-            {quote.deposit > 0 && <tr><td className="py-1 text-surface-700">Deposit to confirm</td><td className="py-1 text-right text-surface-700">{money(quote.deposit)}</td></tr>}
-          </tbody>
-        </table>
-        {quote.notes && <p className="mt-2 whitespace-pre-wrap text-sm text-surface-700">{quote.notes}</p>}
-        {quote.expiresAt && <p className="mt-2 text-xs text-surface-700">Valid until {new Date(quote.expiresAt).toLocaleDateString("en-US")}</p>}
-      </Section>
+      {!quote.isLatestRevision && (
+        <p className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">A newer version of this quote has since been prepared -- contact us if you haven&apos;t received it yet.</p>
+      )}
+      <CustomerQuoteView
+        quote={{
+          quoteNumber: quote.quoteNumber,
+          revisionNumber: quote.revisionNumber,
+          status: quote.status,
+          expiresAt: quote.expiresAt,
+          companyName: quote.companyName,
+          serviceAddress: quote.serviceAddress,
+          serviceName: quote.serviceName,
+          items: quote.items,
+          discount: quote.discount,
+          tax: quote.tax,
+          deposit: quote.deposit,
+          total: quote.total,
+          scopeOfService: quote.scopeOfService,
+          exclusions: quote.exclusions,
+          notes: quote.notes,
+          customerMessage: quote.customerMessage,
+        }}
+      />
+      {quote.promoCode && <p className="mt-2 text-center text-xs text-surface-700">Promo code {quote.promoCode} applied</p>}
       {quote.status === "SENT" && (
         <Section heading="Your decision">
           {!declining ? (

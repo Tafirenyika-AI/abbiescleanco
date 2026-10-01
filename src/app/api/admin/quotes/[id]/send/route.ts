@@ -34,6 +34,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     total: quote.total,
     expiresAt: quote.expiresAt,
     message: parsed.data.message,
+    scopeOfService: quote.scopeOfService,
+    exclusions: quote.exclusions,
+    customerTerms: quote.notes,
+    customerMessage: quote.customerMessage,
   });
   const result = await sendEmail({ to: quote.customerEmail, subject, html });
   if (!result.ok) return NextResponse.json({ ok: false, error: result.error || "Email failed to send" }, { status: 502 });

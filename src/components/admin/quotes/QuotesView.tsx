@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Search, FileSignature } from "lucide-react";
 import type { QuoteListItem, QuoteStatusValue } from "@/lib/server/quoteStore";
 import { QUOTE_STATUSES } from "@/lib/server/quoteStore";
+import { formatQuotedRate } from "@/lib/quotePricing";
 import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";
@@ -20,6 +21,7 @@ const statusTone: Record<QuoteStatusValue, "neutral" | "info" | "success" | "err
   ACCEPTED: "success",
   DECLINED: "error",
   EXPIRED: "warning",
+  CANCELLED: "error",
 };
 
 export default function QuotesView({ quotes: initialQuotes }: { quotes: QuoteListItem[] }) {
@@ -135,7 +137,7 @@ export default function QuotesView({ quotes: initialQuotes }: { quotes: QuoteLis
                   <td className="p-3.5"><Link href={`/admin/quotes/${q.id}`} className="font-medium text-admin-text hover:text-admin-teal-hover hover:underline">{q.quoteNumber}</Link></td>
                   <td className="p-3.5 text-admin-text">{q.customerName}</td>
                   <td className="p-3.5 text-admin-text">{q.serviceName}</td>
-                  <td className="p-3.5 text-admin-text">${(q.total / 100).toFixed(2)}</td>
+                  <td className="p-3.5 text-admin-text">{q.primaryPricingUnit ? formatQuotedRate(q.total, q.primaryPricingUnit) : `$${(q.total / 100).toFixed(2)}`}</td>
                   <td className="p-3.5 text-admin-text-muted">{q.expiresAt ? formatCalendarDate(q.expiresAt) : "—"}</td>
                   <td className="p-3.5"><Badge tone={statusTone[q.status]}>{q.status}</Badge></td>
                 </tr>

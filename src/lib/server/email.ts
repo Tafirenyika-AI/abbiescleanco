@@ -2,6 +2,7 @@ import { Resend } from "resend";
 import { business } from "@/lib/data/business";
 import { getIntegrationValue } from "@/lib/server/integrationSettings";
 import { renderEmailTemplate, escapeHtml } from "@/lib/server/emailTemplates";
+import { formatQuotedRate, formatFrequency } from "@/lib/quotePricing";
 
 export interface SendEmailInput {
   to: string;
@@ -155,24 +156,38 @@ export async function adminPasswordResetEmail(params: { resetUrl: string }) {
 export async function quoteEmail(params: {
   firstName: string;
   quoteNumber: string;
-  items: { label: string; quantity: number; unitPrice: number; total: number }[];
+  items: { label: string; quantity: number; unitPrice: number; total: number; pricingUnit?: string | null; frequency?: string | null; customFrequency?: string | null }[];
   discount: number;
   tax: number;
   deposit: number;
   total: number;
   expiresAt: string | null;
   message?: string;
+  scopeOfService?: string | null;
+  exclusions?: string | null;
+  customerTerms?: string | null;
+  customerMessage?: string | null;
 }) {
   const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+  // A "service line" (pricingUnit set) is shown as "$215.00 / visit, Twice per Week" -- never
+  // qty x price, so this email can never disagree with the builder/preview about what the rate
+  // means. A plain legacy line item (no pricingUnit) keeps the original qty x price display.
   const itemRows = params.items
-    .map(
-      (i) =>
-        `<tr><td style="padding:6px 0">${escapeHtml(i.label)} ${i.quantity > 1 ? `× ${i.quantity}` : ""}</td><td style="padding:6px 0;text-align:right">${money(i.total)}</td></tr>`
-    )
+    .map((i) => {
+      if (i.pricingUnit) {
+        const freq = formatFrequency(i.frequency, i.customFrequency);
+        return `<tr><td style="padding:6px 0">${escapeHtml(i.label)}${freq ? `<br/><span style="color:#4a5a6a;font-size:13px">${escapeHtml(freq)}</span>` : ""}</td><td style="padding:6px 0;text-align:right;white-space:nowrap">${formatQuotedRate(i.unitPrice, i.pricingUnit)}</td></tr>`;
+      }
+      return `<tr><td style="padding:6px 0">${escapeHtml(i.label)} ${i.quantity > 1 ? `× ${i.quantity}` : ""}</td><td style="padding:6px 0;text-align:right">${money(i.total)}</td></tr>`;
+    })
     .join("");
-  const discountRow = params.discount ? `<tr><td style="padding:6px 0">Discount</td><td style="padding:6px 0;text-align:right">-${money(params.discount)}</td></tr>` : "";
-  const taxRow = params.tax ? `<tr><td style="padding:6px 0">Tax</td><td style="padding:6px 0;text-align:right">${money(params.tax)}</td></tr>` : "";
-  const totalRow = `<tr style="border-top:1px solid #e2e8f0;font-weight:bold"><td style="padding:8px 0">Total</td><td style="padding:8px 0;text-align:right">${money(params.total)}</td></tr>`;
+  // A real dollar total only makes sense to show when every line is plain (qty x price) math --
+  // once any line is a recurring per-visit/hour/month rate, summing it with other lines would
+  // read as a fabricated contract total, which this project's quoting rules explicitly forbid.
+  const hasServiceLine = params.items.some((i) => i.pricingUnit);
+  const discountRow = !hasServiceLine && params.discount ? `<tr><td style="padding:6px 0">Discount</td><td style="padding:6px 0;text-align:right">-${money(params.discount)}</td></tr>` : "";
+  const taxRow = !hasServiceLine && params.tax ? `<tr><td style="padding:6px 0">Tax</td><td style="padding:6px 0;text-align:right">${money(params.tax)}</td></tr>` : "";
+  const totalRow = !hasServiceLine ? `<tr style="border-top:1px solid #e2e8f0;font-weight:bold"><td style="padding:8px 0">Total</td><td style="padding:8px 0;text-align:right">${money(params.total)}</td></tr>` : "";
   const depositRow = params.deposit ? `<tr><td style="padding:6px 0">Deposit due to confirm</td><td style="padding:6px 0;text-align:right">${money(params.deposit)}</td></tr>` : "";
   return renderEmailTemplate("QUOTE_SENT", {
     firstName: escapeHtml(params.firstName),
@@ -180,6 +195,10 @@ export async function quoteEmail(params: {
     quoteNumber: escapeHtml(params.quoteNumber),
     itemsRowsHtml: itemRows + discountRow + taxRow + totalRow + depositRow,
     expiresBlockHtml: params.expiresAt ? `<p style="color:#4a5a6a;font-size:13px">This quote is valid until ${new Date(params.expiresAt).toLocaleDateString()}.</p>` : "",
+    scopeBlockHtml: params.scopeOfService?.trim() ? `<h3 style="color:#0b1f33;font-size:15px;margin-top:20px">Scope of Service</h3><p style="white-space:pre-wrap">${escapeHtml(params.scopeOfService.trim())}</p>` : "",
+    exclusionsBlockHtml: params.exclusions?.trim() ? `<h3 style="color:#0b1f33;font-size:15px;margin-top:20px">Exclusions / Special Conditions</h3><p style="white-space:pre-wrap">${escapeHtml(params.exclusions.trim())}</p>` : "",
+    termsBlockHtml: params.customerTerms?.trim() ? `<h3 style="color:#0b1f33;font-size:15px;margin-top:20px">Customer Notes / Terms</h3><p style="white-space:pre-wrap">${escapeHtml(params.customerTerms.trim())}</p>` : "",
+    customerMessageBlockHtml: params.customerMessage?.trim() ? `<p style="margin-top:20px">${escapeHtml(params.customerMessage.trim())}</p>` : "",
     ...bizVars,
   });
 }

@@ -99,8 +99,8 @@ export const EMAIL_TEMPLATE_DEFS: EmailTemplateDef[] = [
   {
     key: "QUOTE_SENT",
     name: "Quote sent",
-    description: "Sent when an admin sends a customer their quote. The line-item table itself isn't editable here, but everything around it is.",
-    variables: ["firstName", "messageBlockHtml", "quoteNumber", "itemsRowsHtml", "expiresBlockHtml", "businessPhone", "businessName", "businessCity", "businessRegion"],
+    description: "Sent when an admin sends a customer their quote. The pricing table itself isn't editable here, but everything around it is -- including the new scope/exclusions/message blocks, which only render when that quote actually has that content.",
+    variables: ["firstName", "messageBlockHtml", "quoteNumber", "itemsRowsHtml", "expiresBlockHtml", "scopeBlockHtml", "exclusionsBlockHtml", "termsBlockHtml", "customerMessageBlockHtml", "businessPhone", "businessName", "businessCity", "businessRegion"],
     defaultSubject: "Your quote from {{businessName}}, {{quoteNumber}}",
     defaultHtml: `${WRAP_OPEN}
       <h2 style="color:#0b1f33">Hi {{firstName}},</h2>
@@ -108,6 +108,10 @@ export const EMAIL_TEMPLATE_DEFS: EmailTemplateDef[] = [
       <p>Here's your quote <strong>{{quoteNumber}}</strong>:</p>
       <table style="width:100%;border-collapse:collapse">{{itemsRowsHtml}}</table>
       {{expiresBlockHtml}}
+      {{scopeBlockHtml}}
+      {{exclusionsBlockHtml}}
+      {{termsBlockHtml}}
+      {{customerMessageBlockHtml}}
       <p>Reply to this email or call/text us at {{businessPhone}} to accept or ask questions.</p>
       ${SIGNOFF}
     ${WRAP_CLOSE}`,
