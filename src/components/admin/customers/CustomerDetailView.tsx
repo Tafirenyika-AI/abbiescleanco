@@ -147,19 +147,183 @@ function OverviewTab({ customer }: { customer: CustomerDetail }) {
   );
 }
 
-function PropertiesTab({ customer }: { customer: CustomerDetail }) {
-  if (customer.addresses.length === 0) {
-    return <Card><EmptyState title="No properties on file" description="Addresses appear here once collected from a quote request or booking." /></Card>;
-  }
+interface AddressFormValues {
+  label: string;
+  line1: string;
+  line2: string;
+  city: string;
+  state: string;
+  zip: string;
+  propertyType: string;
+}
+
+function emptyAddressForm(): AddressFormValues {
+  return { label: "", line1: "", line2: "", city: "", state: "", zip: "", propertyType: "house" };
+}
+
+function AddressForm({
+  initial,
+  saving,
+  onSave,
+  onCancel,
+}: {
+  initial: AddressFormValues;
+  saving: boolean;
+  onSave: (values: AddressFormValues) => void;
+  onCancel: () => void;
+}) {
+  const [form, setForm] = useState(initial);
+  const canSave = form.line1.trim().length >= 3 && form.city.trim().length > 0 && form.state.trim().length > 0 && /^\d{5}(-\d{4})?$/.test(form.zip.trim());
+
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      {customer.addresses.map((a) => (
-        <Card key={a.id}>
-          <p className="font-medium text-admin-text">{a.line1}{a.line2 ? `, ${a.line2}` : ""}</p>
-          <p className="text-sm text-admin-text-muted">{a.city}, {a.state} {a.zip}</p>
-          <Badge tone="neutral" className="mt-2 capitalize">{a.propertyType}</Badge>
+    <div className="space-y-2.5">
+      <label className="block">
+        <span className="text-xs font-medium text-admin-text-muted">Company / nickname (optional)</span>
+        <input value={form.label} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+      </label>
+      <label className="block">
+        <span className="text-xs font-medium text-admin-text-muted">Address line 1</span>
+        <input value={form.line1} onChange={(e) => setForm((f) => ({ ...f, line1: e.target.value }))} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+      </label>
+      <label className="block">
+        <span className="text-xs font-medium text-admin-text-muted">Address line 2 (optional)</span>
+        <input value={form.line2} onChange={(e) => setForm((f) => ({ ...f, line2: e.target.value }))} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+      </label>
+      <div className="grid grid-cols-3 gap-2">
+        <label className="block">
+          <span className="text-xs font-medium text-admin-text-muted">City</span>
+          <input value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+        </label>
+        <label className="block">
+          <span className="text-xs font-medium text-admin-text-muted">State</span>
+          <input value={form.state} onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+        </label>
+        <label className="block">
+          <span className="text-xs font-medium text-admin-text-muted">ZIP</span>
+          <input value={form.zip} onChange={(e) => setForm((f) => ({ ...f, zip: e.target.value }))} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+        </label>
+      </div>
+      <label className="block">
+        <span className="text-xs font-medium text-admin-text-muted">Property type</span>
+        <select
+          value={form.propertyType}
+          onChange={(e) => setForm((f) => ({ ...f, propertyType: e.target.value }))}
+          className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text capitalize"
+        >
+          <option value="house">House</option>
+          <option value="apartment">Apartment</option>
+          <option value="townhome">Townhome</option>
+          <option value="commercial">Commercial</option>
+        </select>
+      </label>
+      <div className="flex gap-2 pt-1">
+        <button
+          type="button"
+          onClick={() => onSave(form)}
+          disabled={saving || !canSave}
+          className="ios-press flex items-center gap-1.5 rounded-lg bg-admin-teal px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
+        >
+          {saving ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : null} Save
+        </button>
+        <button type="button" onClick={onCancel} className="ios-press rounded-lg border border-admin-border px-3.5 py-1.5 text-sm font-semibold text-admin-text hover:bg-admin-bg">
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PropertiesTab({ customer }: { customer: CustomerDetail }) {
+  const router = useRouter();
+  const { showToast } = useToast();
+  const [addingNew, setAddingNew] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function createAddress(form: AddressFormValues) {
+    setSaving(true);
+    const res = await fetch(`/api/admin/customers/${customer.id}/addresses`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...form, label: form.label.trim() || null, line2: form.line2.trim() || null }),
+    });
+    const json = await res.json().catch(() => null);
+    setSaving(false);
+    if (!res.ok || !json?.ok) return showToast(json?.error || "Couldn't add property", "error");
+    showToast("Property added.", "success");
+    setAddingNew(false);
+    router.refresh();
+  }
+
+  async function saveAddress(addressId: string, form: AddressFormValues) {
+    setSaving(true);
+    const res = await fetch(`/api/admin/customers/${customer.id}/addresses/${addressId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...form, label: form.label.trim() || null, line2: form.line2.trim() || null }),
+    });
+    const json = await res.json().catch(() => null);
+    setSaving(false);
+    if (!res.ok || !json?.ok) return showToast(json?.error || "Couldn't save property", "error");
+    showToast("Property updated.", "success");
+    setEditingId(null);
+    router.refresh();
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        {!addingNew && (
+          <button type="button" onClick={() => setAddingNew(true)} className="ios-press rounded-lg border border-admin-border px-3.5 py-1.5 text-sm font-semibold text-admin-text hover:bg-admin-bg">
+            + Add property
+          </button>
+        )}
+      </div>
+
+      {addingNew && (
+        <Card>
+          <h2 className="font-semibold text-admin-text">New property</h2>
+          <div className="mt-3">
+            <AddressForm initial={emptyAddressForm()} saving={saving} onCancel={() => setAddingNew(false)} onSave={createAddress} />
+          </div>
         </Card>
-      ))}
+      )}
+
+      {customer.addresses.length === 0 && !addingNew ? (
+        <Card><EmptyState title="No properties on file" description="Addresses appear here once collected from a quote request or booking, or add one directly." /></Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {customer.addresses.map((a) =>
+            editingId === a.id ? (
+              <Card key={a.id}>
+                <h2 className="font-semibold text-admin-text">Edit property</h2>
+                <div className="mt-3">
+                  <AddressForm
+                    initial={{ label: a.label ?? "", line1: a.line1, line2: a.line2 ?? "", city: a.city, state: a.state, zip: a.zip, propertyType: a.propertyType }}
+                    saving={saving}
+                    onCancel={() => setEditingId(null)}
+                    onSave={(form) => saveAddress(a.id, form)}
+                  />
+                </div>
+              </Card>
+            ) : (
+              <Card key={a.id}>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    {a.label && <p className="text-sm font-semibold text-admin-text">{a.label}</p>}
+                    <p className="font-medium text-admin-text">{a.line1}{a.line2 ? `, ${a.line2}` : ""}</p>
+                    <p className="text-sm text-admin-text-muted">{a.city}, {a.state} {a.zip}</p>
+                    <Badge tone="neutral" className="mt-2 capitalize">{a.propertyType}</Badge>
+                  </div>
+                  <button type="button" onClick={() => setEditingId(a.id)} className="shrink-0 text-xs font-semibold text-admin-teal-hover hover:underline">
+                    Edit
+                  </button>
+                </div>
+              </Card>
+            )
+          )}
+        </div>
+      )}
     </div>
   );
 }

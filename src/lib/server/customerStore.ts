@@ -121,7 +121,7 @@ export interface CustomerDetail {
   petsNote: string | null;
   accessInstructions: string | null;
   createdAt: string;
-  addresses: { id: string; line1: string; line2: string | null; city: string; state: string; zip: string; propertyType: string }[];
+  addresses: { id: string; label: string | null; line1: string; line2: string | null; city: string; state: string; zip: string; propertyType: string }[];
   bookings: { id: string; reference: string; status: string; scheduledStart: string | null }[];
   payments: { id: string; status: string; amount: number; kind: string; createdAt: string }[];
   leads: { id: string; reference: string; status: string; createdAt: string }[];
@@ -134,7 +134,7 @@ export async function getCustomerById(id: string): Promise<CustomerDetail | null
   const c = await prisma.customer.findFirst({
     where: { id, deletedAt: null },
     include: {
-      addresses: { orderBy: { createdAt: "asc" } },
+      addresses: { where: { deletedAt: null }, orderBy: { createdAt: "asc" } },
       bookings: { orderBy: { createdAt: "desc" }, take: 50 },
       payments: { orderBy: { createdAt: "desc" }, take: 50 },
       leads: { orderBy: { createdAt: "desc" }, take: 50 },
@@ -153,7 +153,7 @@ export async function getCustomerById(id: string): Promise<CustomerDetail | null
     petsNote: c.petsNote,
     accessInstructions: c.accessInstructions,
     createdAt: c.createdAt.toISOString(),
-    addresses: c.addresses.map((a) => ({ id: a.id, line1: a.line1, line2: a.line2, city: a.city, state: a.state, zip: a.zip, propertyType: a.propertyType })),
+    addresses: c.addresses.map((a) => ({ id: a.id, label: a.label, line1: a.line1, line2: a.line2, city: a.city, state: a.state, zip: a.zip, propertyType: a.propertyType })),
     bookings: c.bookings.map((b) => ({ id: b.id, reference: b.reference, status: b.status, scheduledStart: b.scheduledStart?.toISOString() ?? null })),
     payments: c.payments.map((p) => ({ id: p.id, status: p.status, amount: p.amount, kind: p.kind, createdAt: p.createdAt.toISOString() })),
     leads: c.leads.map((l) => ({ id: l.id, reference: l.reference, status: l.status, createdAt: l.createdAt.toISOString() })),
@@ -183,6 +183,55 @@ export async function updateCustomer(
     patch.email = email;
   }
   await db().customer.update({ where: { id }, data: patch });
+  return { ok: true };
+}
+
+export interface CustomerAddressInput {
+  label: string | null;
+  line1: string;
+  line2: string | null;
+  city: string;
+  state: string;
+  zip: string;
+  propertyType: string;
+}
+
+export async function createCustomerAddress(
+  customerId: string,
+  input: CustomerAddressInput,
+  adminUserId: string
+): Promise<{ ok: boolean; error?: string; id?: string }> {
+  const customer = await db().customer.findFirst({ where: { id: customerId, deletedAt: null } });
+  if (!customer) return { ok: false, error: "Customer not found" };
+  const address = await db().address.create({
+    data: { customerId, label: input.label, line1: input.line1, line2: input.line2, city: input.city, state: input.state, zip: input.zip, propertyType: input.propertyType },
+  });
+  await db().auditLog.create({ data: { adminUserId, action: "customer.address_added", entityType: "Address", entityId: address.id, after: { customerId, label: input.label, line1: input.line1 } } });
+  return { ok: true, id: address.id };
+}
+
+export async function updateCustomerAddress(
+  customerId: string,
+  addressId: string,
+  input: CustomerAddressInput,
+  adminUserId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const existing = await db().address.findFirst({ where: { id: addressId, customerId, deletedAt: null } });
+  if (!existing) return { ok: false, error: "Address not found" };
+  await db().address.update({
+    where: { id: addressId },
+    data: { label: input.label, line1: input.line1, line2: input.line2, city: input.city, state: input.state, zip: input.zip, propertyType: input.propertyType },
+  });
+  await db().auditLog.create({
+    data: {
+      adminUserId,
+      action: "customer.address_updated",
+      entityType: "Address",
+      entityId: addressId,
+      before: { label: existing.label, line1: existing.line1, line2: existing.line2, city: existing.city, state: existing.state, zip: existing.zip, propertyType: existing.propertyType },
+      after: { label: input.label, line1: input.line1, line2: input.line2, city: input.city, state: input.state, zip: input.zip, propertyType: input.propertyType },
+    },
+  });
   return { ok: true };
 }
 
