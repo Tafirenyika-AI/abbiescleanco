@@ -6,7 +6,8 @@ import { formatQuotedRate, formatFrequency } from "@/lib/quotePricing";
  * the real customer account portal view. Pure/presentational, read-only, no fetching or mutation --
  * Accept/Decline stays owned by each caller (the account portal's existing accept/decline+reason
  * flow is untouched; the admin preview renders this with no actions at all). Never pass
- * internalNotes here -- there is no prop for it, by design.
+ * internalNotes here -- there is no prop for it, by design. No admin controls, internal IDs,
+ * profitability, or monthly/annual projections ever render here, by construction.
  */
 
 export interface CustomerQuoteItem {
@@ -48,6 +49,8 @@ export default function CustomerQuoteView({ quote }: { quote: CustomerQuoteData 
   const serviceItems = quote.items.filter((i) => i.pricingUnit);
   const plainItems = quote.items.filter((i) => !i.pricingUnit);
   const hasServiceLine = serviceItems.length > 0;
+  const primary = serviceItems[0];
+  const primaryFrequency = primary ? formatFrequency(primary.frequency, primary.customFrequency) : null;
 
   return (
     <div className="mx-auto max-w-xl text-navy-950">
@@ -64,23 +67,27 @@ export default function CustomerQuoteView({ quote }: { quote: CustomerQuoteData 
         </div>
       </header>
 
-      {(quote.customerName || quote.companyName || quote.serviceAddress) && (
-        <section className="mt-6 rounded-2xl border border-surface-200 bg-white p-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-700">Prepared For</h2>
-          {quote.customerName && <p className="mt-1.5 font-medium">{quote.customerName}</p>}
-          {quote.companyName && <p className="text-sm text-surface-700">{quote.companyName}</p>}
-          {quote.serviceAddress && <p className="text-sm text-surface-700">{quote.serviceAddress}</p>}
-        </section>
-      )}
+      {/* Company name leads here (a formal letterhead-style document addressed to the business),
+          unlike the admin's own internal header, which leads with the contact person's name. */}
+      <section className="mt-6 rounded-2xl border border-surface-200 bg-white p-4">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-700">Prepared For</h2>
+        {quote.companyName && <p className="mt-1.5 font-medium">{quote.companyName}</p>}
+        {quote.customerName && <p className={quote.companyName ? "text-sm text-surface-700" : "mt-1.5 font-medium"}>{quote.customerName}</p>}
+        <p className="text-sm text-surface-700">{quote.serviceAddress || "Service address not provided"}</p>
+      </section>
 
-      <section className="mt-4 rounded-2xl border border-surface-200 bg-white p-4">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-700">Service Details</h2>
-        <dl className="mt-1.5 space-y-1 text-sm">
-          <div><dt className="inline text-surface-700">Service: </dt><dd className="inline font-medium">{quote.serviceName}</dd></div>
-          {quote.approxSquareFeet ? (
-            <div><dt className="inline text-surface-700">Facility: </dt><dd className="inline font-medium">Approx. {quote.approxSquareFeet.toLocaleString("en-US")} sq. ft.</dd></div>
-          ) : null}
-        </dl>
+      <section className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="rounded-2xl border border-surface-200 bg-white p-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-700">Service</h2>
+          <p className="mt-1.5 font-medium">{quote.serviceName}</p>
+          {quote.approxSquareFeet ? <p className="text-sm text-surface-700">Approx. {quote.approxSquareFeet.toLocaleString("en-US")} sq. ft.</p> : null}
+        </div>
+        {primaryFrequency && (
+          <div className="rounded-2xl border border-surface-200 bg-white p-4">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-700">Frequency</h2>
+            <p className="mt-1.5 font-medium">{primaryFrequency}</p>
+          </div>
+        )}
       </section>
 
       <section className="mt-4 rounded-2xl border border-surface-200 bg-white p-4">
@@ -91,8 +98,8 @@ export default function CustomerQuoteView({ quote }: { quote: CustomerQuoteData 
               const freq = formatFrequency(i.frequency, i.customFrequency);
               return (
                 <li key={i.id}>
-                  <p className="font-medium">{i.label}</p>
-                  {freq && <p className="text-sm text-surface-700">{freq}</p>}
+                  {serviceItems.length > 1 && <p className="font-medium">{i.label}</p>}
+                  {serviceItems.length > 1 && freq && <p className="text-sm text-surface-700">{freq}</p>}
                   <p className="mt-0.5 text-2xl font-semibold tracking-tight text-teal-700">{formatQuotedRate(i.unitPrice, i.pricingUnit).toUpperCase()}</p>
                 </li>
               );
@@ -100,13 +107,16 @@ export default function CustomerQuoteView({ quote }: { quote: CustomerQuoteData 
           </ul>
         )}
         {plainItems.length > 0 && (
-          <table className="mt-3 w-full text-sm">
-            <tbody>
-              {plainItems.map((i) => (
-                <tr key={i.id}><td className="py-1">{i.label}{i.quantity > 1 ? ` × ${i.quantity}` : ""}</td><td className="py-1 text-right">{money(i.total)}</td></tr>
-              ))}
-            </tbody>
-          </table>
+          <>
+            {hasServiceLine && <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-surface-700">Additional Services</p>}
+            <table className="mt-2 w-full text-sm">
+              <tbody>
+                {plainItems.map((i) => (
+                  <tr key={i.id}><td className="py-1">{i.label}{i.quantity > 1 ? ` × ${i.quantity}` : ""}</td><td className="py-1 text-right">{money(i.total)}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </>
         )}
         {/* A combined dollar total/discount/tax is only shown when it means something real -- once
             any line is a recurring rate, summing it with other lines would misrepresent a contract
@@ -118,7 +128,7 @@ export default function CustomerQuoteView({ quote }: { quote: CustomerQuoteData 
             <div className="flex justify-between border-t border-surface-200 pt-1 font-semibold"><dt>Total</dt><dd>{money(quote.total)}</dd></div>
           </dl>
         )}
-        {quote.deposit > 0 && <p className="mt-2 text-sm text-surface-700">Deposit to confirm: {money(quote.deposit)}</p>}
+        <p className="mt-2 text-sm text-surface-700">Deposit: {quote.deposit > 0 ? money(quote.deposit) : "None"}</p>
       </section>
 
       {quote.scopeOfService?.trim() && (

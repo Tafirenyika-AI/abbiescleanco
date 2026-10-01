@@ -50,6 +50,66 @@ function computeTotals(items: QuoteItemInput[], discountType: string, discountVa
   return computeQuoteTotals({ items, discountType, discountValue, tax, depositType, depositValue });
 }
 
+// Every lead from the public estimate flow gets this literal placeholder written into its
+// Address.line1 at intake time (see leadStore.ts's createLead -- real street address is meant to
+// be collected later, "at booking confirmation", but the placeholder sentence itself got stored as
+// if it WERE the address). That's a separate, wider-blast-radius bug in the lead-creation pipeline
+// this change deliberately does not touch; here we just make sure a quote never presents that
+// placeholder text to anyone as if it were a real address.
+const PLACEHOLDER_ADDRESS_LINE1 = "Provided at booking confirmation";
+
+export interface AddressLike {
+  line1: string;
+  line2: string | null;
+  city: string;
+  state: string;
+  zip: string;
+  label?: string | null;
+}
+
+export function hasRealAddressLine(line1: string | null | undefined): boolean {
+  return !!line1 && line1.trim() !== "" && line1.trim() !== PLACEHOLDER_ADDRESS_LINE1;
+}
+
+export function formatAddressLine(addr: AddressLike | null | undefined): string | null {
+  if (!addr || !hasRealAddressLine(addr.line1)) return null;
+  return `${addr.line1}${addr.line2 ? `, ${addr.line2}` : ""}, ${addr.city}, ${addr.state} ${addr.zip}`;
+}
+
+/**
+ * Priority order (per the owner's own instruction): a real confirmed booking's address (the one
+ * actually used for service delivery, if this lead already has a booking) > the lead's own linked
+ * address, but only when it has real content (not the intake-time placeholder) > any other real
+ * address on the same customer (e.g. a property manager's other properties) > null, so the caller
+ * shows an honest "Service address not provided" instead of ever presenting the placeholder as if
+ * it were real.
+ */
+export function resolveServiceAddress(params: {
+  bookingAddresses: (AddressLike | null | undefined)[];
+  leadAddress: AddressLike | null | undefined;
+  customerAddresses: (AddressLike | null | undefined)[];
+}): string | null {
+  for (const addr of params.bookingAddresses) {
+    const formatted = formatAddressLine(addr);
+    if (formatted) return formatted;
+  }
+  const leadFormatted = formatAddressLine(params.leadAddress);
+  if (leadFormatted) return leadFormatted;
+  for (const addr of params.customerAddresses) {
+    const formatted = formatAddressLine(addr);
+    if (formatted) return formatted;
+  }
+  return null;
+}
+
+/** Company name is independent of which address tier supplied the street line -- Address.label is
+ *  just metadata about the business entity, so it's looked up on its own. */
+export function resolveCompanyName(leadAddress: AddressLike | null | undefined, customerAddresses: (AddressLike | null | undefined)[]): string | null {
+  if (leadAddress?.label) return leadAddress.label;
+  for (const addr of customerAddresses) if (addr?.label) return addr.label;
+  return null;
+}
+
 export interface LeadQuoteContext {
   leadId: string;
   leadReference: string;
@@ -72,18 +132,23 @@ export async function getLeadQuoteContext(leadId: string): Promise<LeadQuoteCont
   if (!isDatabaseConfigured || !prisma) return null;
   const lead = await prisma.lead.findFirst({
     where: { id: leadId, deletedAt: null },
-    include: { customer: true, address: true, service: true, quoteRequest: true },
+    include: {
+      customer: { include: { addresses: { where: { deletedAt: null } } } },
+      address: true, service: true, quoteRequest: true,
+      bookings: { where: { deletedAt: null }, orderBy: { createdAt: "desc" }, take: 3, select: { address: true } },
+    },
   });
   if (!lead) return null;
-  const addr = lead.address;
+  const bookingAddresses = lead.bookings.map((b) => b.address);
+  const customerAddresses = lead.customer?.addresses ?? [];
   return {
     leadId: lead.id,
     leadReference: lead.reference,
     customerName: lead.customer ? `${lead.customer.firstName} ${lead.customer.lastName}`.trim() : "",
     customerEmail: lead.customer?.email ?? "",
     customerPhone: lead.customer?.phone ?? "",
-    companyName: addr?.label ?? null,
-    serviceAddress: addr ? `${addr.line1}${addr.line2 ? `, ${addr.line2}` : ""}, ${addr.city}, ${addr.state} ${addr.zip}` : null,
+    companyName: resolveCompanyName(lead.address, customerAddresses),
+    serviceAddress: resolveServiceAddress({ bookingAddresses, leadAddress: lead.address, customerAddresses }),
     serviceName: lead.service.name,
     commercialType: lead.quoteRequest?.commercialType ?? null,
     approxSquareFeet: lead.quoteRequest?.squareFeet ?? null,
@@ -160,14 +225,21 @@ export async function getQuoteById(id: string): Promise<QuoteDetail | null> {
   const q = await prisma.quote.findFirst({
     where: { id, deletedAt: null },
     include: {
-      lead: { include: { customer: true, service: true, address: true, quoteRequest: true } },
+      lead: {
+        include: {
+          customer: { include: { addresses: { where: { deletedAt: null } } } },
+          service: true, address: true, quoteRequest: true,
+          bookings: { where: { deletedAt: null }, orderBy: { createdAt: "desc" }, take: 3, select: { address: true } },
+        },
+      },
       items: { orderBy: { createdAt: "asc" } },
       revisions: { orderBy: { revisionNumber: "asc" }, select: { id: true, quoteNumber: true, revisionNumber: true, status: true, createdAt: true } },
     },
   });
   if (!q) return null;
   const primaryItem = q.items.find((i) => i.pricingUnit) ?? q.items[0];
-  const addr = q.lead.address;
+  const bookingAddresses = q.lead.bookings.map((b) => b.address);
+  const customerAddresses = q.lead.customer?.addresses ?? [];
   return {
     id: q.id,
     quoteNumber: q.quoteNumber,
@@ -196,8 +268,8 @@ export async function getQuoteById(id: string): Promise<QuoteDetail | null> {
     customerName: q.lead.customer ? `${q.lead.customer.firstName} ${q.lead.customer.lastName}`.trim() : "—",
     customerEmail: q.lead.customer?.email ?? "",
     customerPhone: q.lead.customer?.phone ?? "",
-    companyName: addr?.label ?? null,
-    serviceAddress: addr ? `${addr.line1}${addr.line2 ? `, ${addr.line2}` : ""}, ${addr.city}, ${addr.state} ${addr.zip}` : null,
+    companyName: resolveCompanyName(q.lead.address, customerAddresses),
+    serviceAddress: resolveServiceAddress({ bookingAddresses, leadAddress: q.lead.address, customerAddresses }),
     leadReference: q.lead.reference,
     serviceName: q.lead.service.name,
     approxSquareFeet: q.lead.quoteRequest?.squareFeet ?? null,

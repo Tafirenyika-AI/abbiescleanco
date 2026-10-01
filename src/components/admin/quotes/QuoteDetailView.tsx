@@ -9,6 +9,7 @@ import type { PromoCodeItem } from "@/lib/server/promoCodeStore";
 import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
+import SegmentedControl from "@/components/admin/ui/SegmentedControl";
 import { useToast } from "@/components/admin/ui/Toast";
 import { formatDateTime } from "@/lib/adminDate";
 import CustomerQuoteView from "@/components/quotes/CustomerQuoteView";
@@ -16,6 +17,7 @@ import {
   PRICING_UNITS, pricingUnitLabels, FREQUENCIES, frequencyLabels,
   formatQuotedRate, formatFrequency, estimateInternalMonthlyValueCents, computeQuoteTotals,
 } from "@/lib/quotePricing";
+import { SCOPE_TEMPLATES } from "@/lib/quoteScopeTemplates";
 
 interface LineItem {
   label: string;
@@ -97,7 +99,7 @@ export default function QuoteDetailView({
   const [internalNotes, setInternalNotes] = useState(quote?.internalNotes ?? "");
   const [scopeOfService, setScopeOfService] = useState(quote?.scopeOfService ?? "");
   const [exclusions, setExclusions] = useState(quote?.exclusions ?? "");
-  const [customerMessage, setCustomerMessage] = useState(quote?.customerMessage ?? "Thank you for the opportunity to provide this quotation. Abbie's Clean Method LLC looks forward to providing consistent, dependable and professional cleaning services for your facility.");
+  const [customerMessage, setCustomerMessage] = useState(quote?.customerMessage ?? "Thank you for the opportunity to provide this quotation. Abbie's Clean Method LLC looks forward to providing consistent, dependable, and professional cleaning services for your facility.");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
@@ -172,10 +174,120 @@ export default function QuoteDetailView({
   function removeItem(index: number) {
     setItems((prev) => prev.filter((_, i) => i !== index));
   }
+  // Primary/secondary grouping is purely a RENDER-time split by index -- the underlying `items`
+  // array stays one flat list (unchanged save/load shape), so this never risks the index-based
+  // updateItem/removeItem calls drifting from what's actually stored.
+  const serviceRowIndices = items.map((_, idx) => idx).filter((idx) => items[idx].pricingUnit);
+  const plainRowIndices = items.map((_, idx) => idx).filter((idx) => !items[idx].pricingUnit);
+
+  function renderItemRow(i: number) {
+    const item = items[i];
+    return (
+      <div key={i} className="rounded-xl border border-admin-border p-3">
+        <div className="flex items-start gap-2">
+          <label className="min-w-[160px] flex-1 block">
+            <span className="text-xs font-medium text-admin-text-muted">Service</span>
+            <input
+              value={item.label}
+              onChange={(e) => updateItem(i, { label: e.target.value })}
+              disabled={!isDraft}
+              placeholder={item.pricingUnit ? "e.g. Commercial Cleaning" : "Description"}
+              className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text disabled:bg-admin-bg disabled:opacity-70"
+            />
+          </label>
+          {isDraft && (
+            <button type="button" onClick={() => removeItem(i)} aria-label="Remove item" className="mt-5 flex size-8 shrink-0 items-center justify-center rounded-lg text-admin-text-muted hover:bg-red-50 hover:text-admin-error">
+              <Trash2 className="size-4" aria-hidden />
+            </button>
+          )}
+        </div>
+
+        {item.pricingUnit ? (
+          <div className="mt-3 space-y-3">
+            <SegmentedControl
+              label="Pricing Unit"
+              value={item.pricingUnit}
+              disabled={!isDraft}
+              onChange={(v) => updateItem(i, { pricingUnit: v })}
+              options={PRICING_UNITS.map((u) => ({ value: u, label: pricingUnitLabels[u] }))}
+            />
+            <SegmentedControl
+              label="Frequency"
+              value={item.frequency}
+              disabled={!isDraft}
+              onChange={(v) => updateItem(i, { frequency: v })}
+              options={FREQUENCIES.map((f) => ({ value: f, label: frequencyLabels[f] }))}
+            />
+            {item.frequency === "CUSTOM" && (
+              <label className="block">
+                <span className="text-xs font-medium text-admin-text-muted">Describe the custom frequency</span>
+                <input value={item.customFrequency} disabled={!isDraft} onChange={(e) => updateItem(i, { customFrequency: e.target.value })} placeholder="e.g. Every other Tuesday" className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text disabled:bg-admin-bg" />
+              </label>
+            )}
+            <label className="block max-w-[160px]">
+              <span className="text-xs font-medium text-admin-text-muted">Rate</span>
+              <div className="mt-1 flex items-center gap-1">
+                <span className="text-sm text-admin-text-muted">$</span>
+                <input type="number" min={0} step="0.01" value={item.unitPrice} disabled={!isDraft} onChange={(e) => updateItem(i, { unitPrice: Number(e.target.value) || 0 })} className="w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text disabled:bg-admin-bg" />
+              </div>
+            </label>
+            {item.unitPrice > 0 && (
+              <p className="text-sm font-semibold text-admin-teal-hover">{formatQuotedRate(Math.round(item.unitPrice * 100), item.pricingUnit)}</p>
+            )}
+            {isDraft && (
+              <button type="button" onClick={() => updateItem(i, { pricingUnit: "", frequency: "", customFrequency: "" })} className="block text-left text-xs text-admin-text-muted hover:underline">
+                Switch to a simple line item (quantity × price) instead
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <input
+              type="number"
+              min={1}
+              value={item.quantity}
+              disabled={!isDraft}
+              onChange={(e) => updateItem(i, { quantity: Number(e.target.value) || 1 })}
+              className="w-16 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text disabled:bg-admin-bg disabled:opacity-70"
+              aria-label="Quantity"
+            />
+            <div className="flex items-center gap-1">
+              <span className="text-sm text-admin-text-muted">$</span>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={item.unitPrice}
+                disabled={!isDraft}
+                onChange={(e) => updateItem(i, { unitPrice: Number(e.target.value) || 0 })}
+                className="w-24 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text disabled:bg-admin-bg disabled:opacity-70"
+                aria-label="Unit price"
+              />
+            </div>
+            <span className="text-sm font-medium text-admin-text">${(item.quantity * item.unitPrice).toFixed(2)}</span>
+            {isDraft && (
+              <button type="button" onClick={() => updateItem(i, { pricingUnit: "PER_VISIT" })} className="text-xs text-admin-text-muted hover:underline">
+                Switch to service pricing (unit + frequency)
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
   function setExpiryPreset(days: number) {
     const d = new Date();
     d.setDate(d.getDate() + days);
     setExpiresAt(toDateInputValue(d));
+  }
+  function applyScopeTemplate(key: string) {
+    if (!key) return;
+    const template = SCOPE_TEMPLATES.find((t) => t.key === key);
+    if (!template) return;
+    if (scopeOfService.trim() && scopeOfService.trim() !== template.text.trim()) {
+      if (!window.confirm("Replace the current Scope of Service text with this template? This can be edited afterward.")) return;
+    }
+    setScopeOfService(template.text);
   }
 
   function payload() {
@@ -450,7 +562,7 @@ export default function QuoteDetailView({
           <div>
             <p className="font-semibold text-admin-text">{customerName || "—"}</p>
             {companyName && <p className="text-sm text-admin-text">{companyName}</p>}
-            {serviceAddress && <p className="text-sm text-admin-text-muted">{serviceAddress}</p>}
+            <p className={serviceAddress ? "text-sm text-admin-text-muted" : "text-sm italic text-admin-text-muted"}>{serviceAddress || "Service address not provided"}</p>
           </div>
           <div className="text-right text-sm text-admin-text-muted">
             <p className="font-medium text-admin-text">{serviceName}</p>
@@ -464,127 +576,55 @@ export default function QuoteDetailView({
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <Card>
-            <h2 className="font-semibold text-admin-text">Services</h2>
-            <p className="mt-1 text-xs text-admin-text-muted">What&apos;s being provided, how often, and the rate per visit/hour/month -- not a monthly or annual total.</p>
+            <h2 className="font-semibold text-admin-text">Primary Service</h2>
+            <p className="mt-1 text-xs text-admin-text-muted">Define the service, frequency, and rate.</p>
             <div className="mt-3 space-y-3">
-              {items.map((item, i) => (
-                <div key={i} className="rounded-xl border border-admin-border p-3">
-                  <div className="flex items-start gap-2">
-                    <input
-                      value={item.label}
-                      onChange={(e) => updateItem(i, { label: e.target.value })}
-                      disabled={!isDraft}
-                      placeholder={item.pricingUnit ? "Service, e.g. Recurring Commercial Cleaning" : "Description"}
-                      className="min-w-[160px] flex-1 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text disabled:bg-admin-bg disabled:opacity-70"
-                    />
-                    {isDraft && (
-                      <button type="button" onClick={() => removeItem(i)} aria-label="Remove item" className="flex size-8 shrink-0 items-center justify-center rounded-lg text-admin-text-muted hover:bg-red-50 hover:text-admin-error">
-                        <Trash2 className="size-4" aria-hidden />
-                      </button>
-                    )}
-                  </div>
-
-                  {item.pricingUnit ? (
-                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                      <label className="block">
-                        <span className="text-xs font-medium text-admin-text-muted">Pricing Unit</span>
-                        <select value={item.pricingUnit} disabled={!isDraft} onChange={(e) => updateItem(i, { pricingUnit: e.target.value })} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text disabled:bg-admin-bg">
-                          {PRICING_UNITS.map((u) => <option key={u} value={u}>{pricingUnitLabels[u]}</option>)}
-                        </select>
-                      </label>
-                      <label className="block">
-                        <span className="text-xs font-medium text-admin-text-muted">Frequency</span>
-                        <select value={item.frequency} disabled={!isDraft} onChange={(e) => updateItem(i, { frequency: e.target.value })} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text disabled:bg-admin-bg">
-                          <option value="">Not specified</option>
-                          {FREQUENCIES.map((f) => <option key={f} value={f}>{frequencyLabels[f]}</option>)}
-                        </select>
-                      </label>
-                      <label className="block">
-                        <span className="text-xs font-medium text-admin-text-muted">Rate</span>
-                        <div className="mt-1 flex items-center gap-1">
-                          <span className="text-sm text-admin-text-muted">$</span>
-                          <input type="number" min={0} step="0.01" value={item.unitPrice} disabled={!isDraft} onChange={(e) => updateItem(i, { unitPrice: Number(e.target.value) || 0 })} className="w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text disabled:bg-admin-bg" />
-                        </div>
-                      </label>
-                      {item.frequency === "CUSTOM" && (
-                        <label className="block sm:col-span-3">
-                          <span className="text-xs font-medium text-admin-text-muted">Describe the custom frequency</span>
-                          <input value={item.customFrequency} disabled={!isDraft} onChange={(e) => updateItem(i, { customFrequency: e.target.value })} placeholder="e.g. Every other Tuesday" className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text disabled:bg-admin-bg" />
-                        </label>
-                      )}
-                      {item.unitPrice > 0 && (
-                        <p className="sm:col-span-3 text-sm font-semibold text-admin-teal-hover">{formatQuotedRate(Math.round(item.unitPrice * 100), item.pricingUnit)}</p>
-                      )}
-                      {isDraft && (
-                        <button type="button" onClick={() => updateItem(i, { pricingUnit: "", frequency: "", customFrequency: "" })} className="sm:col-span-3 text-left text-xs text-admin-text-muted hover:underline">
-                          Switch to a simple line item (quantity × price) instead
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <input
-                        type="number"
-                        min={1}
-                        value={item.quantity}
-                        disabled={!isDraft}
-                        onChange={(e) => updateItem(i, { quantity: Number(e.target.value) || 1 })}
-                        className="w-16 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text disabled:bg-admin-bg disabled:opacity-70"
-                        aria-label="Quantity"
-                      />
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm text-admin-text-muted">$</span>
-                        <input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={item.unitPrice}
-                          disabled={!isDraft}
-                          onChange={(e) => updateItem(i, { unitPrice: Number(e.target.value) || 0 })}
-                          className="w-24 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text disabled:bg-admin-bg disabled:opacity-70"
-                          aria-label="Unit price"
-                        />
-                      </div>
-                      <span className="text-sm font-medium text-admin-text">${(item.quantity * item.unitPrice).toFixed(2)}</span>
-                      {isDraft && (
-                        <button type="button" onClick={() => updateItem(i, { pricingUnit: "PER_VISIT" })} className="text-xs text-admin-text-muted hover:underline">
-                          Switch to service pricing (unit + frequency)
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
+              {serviceRowIndices.length > 0 ? serviceRowIndices.map(renderItemRow) : (
+                <p className="rounded-xl border border-dashed border-admin-border p-3 text-sm text-admin-text-muted">No recurring service added yet.</p>
+              )}
             </div>
             {isDraft && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button type="button" onClick={addServiceItem} className="ios-press inline-flex items-center gap-1.5 rounded-full border border-admin-border px-3 py-1.5 text-xs font-semibold text-admin-text hover:bg-admin-bg">
-                  <Plus className="size-3.5" aria-hidden /> Add service
-                </button>
-                <button type="button" onClick={addPlainItem} className="ios-press inline-flex items-center gap-1.5 rounded-full border border-admin-border px-3 py-1.5 text-xs font-semibold text-admin-text hover:bg-admin-bg">
-                  <Plus className="size-3.5" aria-hidden /> Add simple line item
-                </button>
-              </div>
-            )}
-
-            {validPromo && !promoApplied && (
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-admin-teal/10 p-3">
-                <p className="flex items-center gap-2 text-sm text-admin-text">
-                  <Tag className="size-4 text-admin-teal" aria-hidden />
-                  Customer entered promo code <strong className="font-mono">{validPromo.code}</strong>,{" "}
-                  {validPromo.discountType === "PERCENT" ? `${validPromo.discountValue}% off` : `$${(validPromo.discountValue / 100).toFixed(2)} off`}
-                </p>
-                <button type="button" onClick={applyPromo} className="ios-press rounded-full bg-admin-teal px-3 py-1.5 text-xs font-semibold text-white hover:bg-admin-teal-hover">
-                  Apply to discount
-                </button>
-              </div>
-            )}
-            {promoApplied && validPromo && (
-              <p className="mt-4 flex items-center gap-1.5 text-sm text-admin-success">
-                <Tag className="size-4" aria-hidden /> Promo code {validPromo.code} applied
-              </p>
+              <button type="button" onClick={addServiceItem} className="ios-press mt-3 inline-flex items-center gap-1.5 rounded-full border border-admin-border px-3 py-1.5 text-xs font-semibold text-admin-text hover:bg-admin-bg">
+                <Plus className="size-3.5" aria-hidden /> Add service
+              </button>
             )}
           </Card>
+
+          <Card>
+            <h2 className="text-sm font-semibold text-admin-text-muted">Optional Additional Line Items</h2>
+            <p className="mt-1 text-xs text-admin-text-muted">For add-ons like carpet cleaning, interior windows, or a one-time deep clean -- billed by quantity × price, not a recurring rate.</p>
+            {plainRowIndices.length > 0 && (
+              <div className="mt-3 space-y-3">
+                {plainRowIndices.map(renderItemRow)}
+              </div>
+            )}
+            {isDraft && (
+              <button type="button" onClick={addPlainItem} className="ios-press mt-3 inline-flex items-center gap-1.5 rounded-full border border-admin-border px-3 py-1.5 text-xs font-medium text-admin-text-muted hover:bg-admin-bg">
+                <Plus className="size-3.5" aria-hidden /> Add simple line item
+              </button>
+            )}
+          </Card>
+
+          {validPromo && (
+            <Card>
+              {!promoApplied ? (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-admin-teal/10 p-3">
+                  <p className="flex items-center gap-2 text-sm text-admin-text">
+                    <Tag className="size-4 text-admin-teal" aria-hidden />
+                    Customer entered promo code <strong className="font-mono">{validPromo.code}</strong>,{" "}
+                    {validPromo.discountType === "PERCENT" ? `${validPromo.discountValue}% off` : `$${(validPromo.discountValue / 100).toFixed(2)} off`}
+                  </p>
+                  <button type="button" onClick={applyPromo} className="ios-press rounded-full bg-admin-teal px-3 py-1.5 text-xs font-semibold text-white hover:bg-admin-teal-hover">
+                    Apply to discount
+                  </button>
+                </div>
+              ) : (
+                <p className="flex items-center gap-1.5 text-sm text-admin-success">
+                  <Tag className="size-4" aria-hidden /> Promo code {validPromo.code} applied
+                </p>
+              )}
+            </Card>
+          )}
 
           <Card>
             <h2 className="font-semibold text-admin-text">Discount, tax & deposit</h2>
@@ -632,8 +672,25 @@ export default function QuoteDetailView({
           </Card>
 
           <Card>
-            <h2 className="font-semibold text-admin-text">Scope of Service</h2>
-            <p className="mt-1 text-xs text-admin-text-muted">Customer-facing -- appears on the quote and email. Shown exactly as typed, so use line breaks for a list.</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="font-semibold text-admin-text">Scope of Service</h2>
+                <p className="mt-1 text-xs text-admin-text-muted">Customer-facing -- appears on the quote and email. Shown exactly as typed, so use line breaks for a list.</p>
+              </div>
+              {isDraft && (
+                <label className="shrink-0">
+                  <span className="sr-only">Use template</span>
+                  <select
+                    value=""
+                    onChange={(e) => applyScopeTemplate(e.target.value)}
+                    className="rounded-full border border-admin-border px-3 py-1.5 text-xs font-semibold text-admin-text hover:bg-admin-bg"
+                  >
+                    <option value="">Use Template…</option>
+                    {SCOPE_TEMPLATES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+                  </select>
+                </label>
+              )}
+            </div>
             <textarea value={scopeOfService} disabled={!isDraft} onChange={(e) => setScopeOfService(e.target.value)} rows={5} placeholder={"e.g.\n- Dust and wipe accessible surfaces\n- Vacuum carpeted areas\n- Clean and disinfect restrooms"} className="mt-2 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text disabled:bg-admin-bg" />
           </Card>
 
@@ -662,7 +719,7 @@ export default function QuoteDetailView({
           </Card>
         </div>
 
-        <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+        <div className="order-first space-y-4 lg:order-none lg:sticky lg:top-4 lg:self-start">
           <Card>
             <h2 className="font-semibold text-admin-text">Quote Summary</h2>
 
@@ -674,7 +731,7 @@ export default function QuoteDetailView({
                     <div key={idx}>
                       <p className="text-sm font-medium text-admin-text">{i.label || "Service"}</p>
                       {freq && <p className="text-xs text-admin-text-muted">{freq}</p>}
-                      <p className="text-xl font-semibold text-admin-teal-hover">{formatQuotedRate(Math.round(i.unitPrice * 100), i.pricingUnit)}</p>
+                      <p className="text-2xl font-bold tracking-tight text-admin-teal-hover">{formatQuotedRate(Math.round(i.unitPrice * 100), i.pricingUnit)}</p>
                     </div>
                   );
                 })}
@@ -683,25 +740,23 @@ export default function QuoteDetailView({
               <p className="mt-3 text-sm text-admin-text-muted">Add a service above to see its quoted rate.</p>
             )}
 
-            <dl className="mt-4 space-y-1.5 border-t border-admin-border pt-3 text-sm">
-              {plainItems.length > 0 && <div className="flex justify-between"><dt className="text-admin-text-muted">Line items subtotal</dt><dd className="text-admin-text">${plainItems.reduce((s, i) => s + i.quantity * i.unitPrice, 0).toFixed(2)}</dd></div>}
-              <div className="flex justify-between"><dt className="text-admin-text-muted">Discount</dt><dd className="text-admin-text">{discount > 0 ? `-$${(discount / 100).toFixed(2)}` : "$0.00"}</dd></div>
-              <div className="flex justify-between"><dt className="text-admin-text-muted">Tax</dt><dd className="text-admin-text">${(tax).toFixed(2)}</dd></div>
-              <div className="flex justify-between"><dt className="text-admin-text-muted">Deposit</dt><dd className="text-admin-text">{depositType === "NONE" ? "None" : `$${(deposit / 100).toFixed(2)}`}</dd></div>
-            </dl>
+            {plainItems.length > 0 && (
+              <p className="mt-3 text-sm text-admin-text-muted">
+                + {plainItems.length} additional line item{plainItems.length > 1 ? "s" : ""}: ${plainItems.reduce((s, i) => s + i.quantity * i.unitPrice, 0).toFixed(2)}
+              </p>
+            )}
 
             {!hasServiceLine && (
-              <div className="mt-2 flex justify-between border-t border-admin-border pt-2 text-sm font-semibold">
+              <div className="mt-3 flex justify-between border-t border-admin-border pt-2 text-sm font-semibold">
                 <dt className="text-admin-text">Total</dt><dd className="text-admin-text">${total.toFixed(2)}</dd>
               </div>
             )}
 
-            {primaryServiceLine && (
-              <div className="mt-3 rounded-xl bg-admin-teal/10 p-3 text-center">
-                <p className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Quoted Rate</p>
-                <p className="text-lg font-bold text-admin-teal-hover">{formatQuotedRate(Math.round(primaryServiceLine.unitPrice * 100), primaryServiceLine.pricingUnit)}</p>
-              </div>
-            )}
+            <dl className="mt-3 space-y-1 border-t border-admin-border pt-2 text-sm">
+              {discount > 0 && <div className="flex justify-between"><dt className="text-admin-text-muted">Discount</dt><dd className="text-admin-text">-${(discount / 100).toFixed(2)}</dd></div>}
+              {tax > 0 && <div className="flex justify-between"><dt className="text-admin-text-muted">Tax</dt><dd className="text-admin-text">${tax.toFixed(2)}</dd></div>}
+              <div className="flex justify-between"><dt className="text-admin-text-muted">Deposit</dt><dd className="text-admin-text">{depositType === "NONE" ? "None" : `$${(deposit / 100).toFixed(2)}`}</dd></div>
+            </dl>
 
             {internalMonthlyEstimates.length > 0 && (
               <p className="mt-3 text-xs text-admin-text-muted">

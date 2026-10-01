@@ -5,6 +5,7 @@ import { findConflicts, withSlotLock, SlotConflictError } from "@/lib/server/boo
 import { notifyAdmins } from "@/lib/server/notificationStore";
 import { isTrustedMediaUrl } from "@/lib/server/mediaUpload";
 import { serviceIds } from "@/lib/validation/quote";
+import { resolveServiceAddress, resolveCompanyName } from "@/lib/server/quoteStore";
 
 function db() {
   if (!isDatabaseConfigured || !prisma) throw new Error("Database not configured");
@@ -137,7 +138,12 @@ export async function getMyQuoteDetail(customerId: string, quoteId: string) {
     where: { id: quoteId, deletedAt: null, lead: { customerId } },
     include: {
       items: true,
-      lead: { include: { service: true, address: true } },
+      lead: {
+        include: {
+          service: true, address: true,
+          bookings: { where: { deletedAt: null }, orderBy: { createdAt: "desc" }, take: 3, select: { address: true } },
+        },
+      },
       promoCode: true,
       revisions: { select: { id: true, revisionNumber: true, createdAt: true }, orderBy: { revisionNumber: "asc" } },
     },
@@ -148,12 +154,17 @@ export async function getMyQuoteDetail(customerId: string, quoteId: string) {
     await db().quote.update({ where: { id: q.id }, data: { viewedAt: new Date() } }).catch(() => {});
   }
 
-  const addr = q.lead.address;
+  // A customer's own account only ever has ONE address on file today (no property-manager
+  // multi-property concept customer-side), so the "other customer addresses" tier is just this
+  // lead's own address again -- resolveServiceAddress still only uses it once since it's the same
+  // object reference.
+  const bookingAddresses = q.lead.bookings.map((b) => b.address);
   return {
     id: q.id, quoteNumber: q.quoteNumber, status: q.status, subtotal: q.subtotal, discount: q.discount, tax: q.tax, deposit: q.deposit, total: q.total,
     expiresAt: q.expiresAt?.toISOString() ?? null, notes: q.notes, serviceName: q.lead.service.name, leadId: q.leadId, promoCode: q.promoCode?.code ?? null,
     scopeOfService: q.scopeOfService, exclusions: q.exclusions, customerMessage: q.customerMessage,
-    companyName: addr?.label ?? null, serviceAddress: addr ? `${addr.line1}${addr.line2 ? `, ${addr.line2}` : ""}, ${addr.city}, ${addr.state} ${addr.zip}` : null,
+    companyName: resolveCompanyName(q.lead.address, []),
+    serviceAddress: resolveServiceAddress({ bookingAddresses, leadAddress: q.lead.address, customerAddresses: [] }),
     revisionNumber: q.revisionNumber, isLatestRevision: q.revisions.length === 0,
     items: q.items.map((i) => ({ id: i.id, label: i.label, quantity: i.quantity, unitPrice: i.unitPrice, total: i.total, pricingUnit: i.pricingUnit, frequency: i.frequency, customFrequency: i.customFrequency })),
   };
