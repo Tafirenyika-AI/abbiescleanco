@@ -1,15 +1,19 @@
 import Link from "next/link";
 import { getLeadQuoteContext } from "@/lib/server/quoteStore";
 import { getLeadById } from "@/lib/server/leadStore";
+import { getContactInfo, getBranding } from "@/lib/server/siteSettings";
+import { business } from "@/lib/data/business";
 import QuoteDetailView from "@/components/admin/quotes/QuoteDetailView";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import { FileSignature } from "lucide-react";
 
 export default async function NewQuotePage({ searchParams }: { searchParams: Promise<{ leadId?: string }> }) {
   const { leadId } = await searchParams;
-  const [context, lead] = leadId ? await Promise.all([getLeadQuoteContext(leadId), getLeadById(leadId)]) : [null, null];
+  const [context, lead, contact, branding] = leadId
+    ? await Promise.all([getLeadQuoteContext(leadId), getLeadById(leadId), getContactInfo(), getBranding()])
+    : [null, null, null, null];
 
-  if (!context || !lead) {
+  if (!context || !lead || !contact || !branding) {
     return (
       <EmptyState
         icon={FileSignature}
@@ -27,6 +31,9 @@ export default async function NewQuotePage({ searchParams }: { searchParams: Pro
   return (
     <QuoteDetailView
       mode="create"
+      business={{ name: business.name, legalName: business.legalName, city: business.city, region: business.region }}
+      contact={contact}
+      logoUrl={branding.logoUrl ?? "/images/logo.png"}
       leadId={context.leadId}
       leadReference={context.leadReference}
       customerName={context.customerName}

@@ -7,6 +7,7 @@ import LiveTrackingMap from "@/components/account/LiveTrackingMap";
 import CleanerChat from "@/components/account/CleanerChat";
 import { labelForMethod } from "@/lib/paymentMethods";
 import CustomerQuoteView from "@/components/quotes/CustomerQuoteView";
+import type { ContactInfo } from "@/lib/server/siteSettings";
 
 type Kind = "request" | "quote" | "booking";
 
@@ -78,6 +79,9 @@ interface QuoteData {
   scopeOfService: string | null; exclusions: string | null; customerMessage: string | null;
   companyName: string | null; serviceAddress: string | null; revisionNumber: number; isLatestRevision: boolean;
   items: { id: string; label: string; quantity: number; unitPrice: number; total: number; pricingUnit: string | null; frequency: string | null; customFrequency: string | null }[];
+  business: { name: string; legalName: string; city: string; region: string };
+  contact: ContactInfo;
+  logoUrl: string;
 }
 function QuoteDetail({ id, onChanged }: { id: string; onChanged: () => void }) {
   const [quote, setQuote] = useState<QuoteData | null>(null);
@@ -128,6 +132,9 @@ function QuoteDetail({ id, onChanged }: { id: string; onChanged: () => void }) {
           notes: quote.notes,
           customerMessage: quote.customerMessage,
         }}
+        business={quote.business}
+        contact={quote.contact}
+        logoUrl={quote.logoUrl}
       />
       {quote.promoCode && <p className="mt-2 text-center text-xs text-surface-700">Promo code {quote.promoCode} applied</p>}
       {quote.status === "SENT" && (

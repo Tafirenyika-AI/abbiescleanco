@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Plus, Trash2, Loader2, Send, Copy, MessageCircle, CalendarPlus, Tag, Eye, GitBranch, Lock, Ban, X } from "lucide-react";
 import type { QuoteDetail, QuoteStatusValue } from "@/lib/server/quoteStore";
 import type { PromoCodeItem } from "@/lib/server/promoCodeStore";
+import type { ContactInfo } from "@/lib/server/siteSettings";
 import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
@@ -65,6 +66,9 @@ export default function QuoteDetailView({
   quote,
   suggestedUnitPrice,
   leadPromoCode,
+  business,
+  contact,
+  logoUrl,
 }: {
   mode: "create" | "edit";
   leadId: string;
@@ -79,6 +83,9 @@ export default function QuoteDetailView({
   quote: QuoteDetail | null;
   suggestedUnitPrice?: number; // cents
   leadPromoCode?: string | null;
+  business: { name: string; legalName: string; city: string; region: string };
+  contact: ContactInfo;
+  logoUrl: string;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -877,7 +884,7 @@ export default function QuoteDetailView({
               </button>
             </div>
             <div className="p-5">
-              <CustomerQuoteView quote={previewData} />
+              <CustomerQuoteView quote={previewData} business={business} contact={contact} logoUrl={logoUrl} />
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { formatQuotedRate, formatFrequency } from "@/lib/quotePricing";
+import type { ContactInfo } from "@/lib/server/siteSettings";
 
 /**
  * The ONE presentational surface for "what the customer sees," used both by the admin builder's
@@ -45,7 +46,17 @@ export interface CustomerQuoteData {
 
 const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
-export default function CustomerQuoteView({ quote }: { quote: CustomerQuoteData }) {
+export default function CustomerQuoteView({
+  quote,
+  business,
+  contact,
+  logoUrl,
+}: {
+  quote: CustomerQuoteData;
+  business: { name: string; legalName: string; city: string; region: string };
+  contact: ContactInfo;
+  logoUrl: string;
+}) {
   const serviceItems = quote.items.filter((i) => i.pricingUnit);
   const plainItems = quote.items.filter((i) => !i.pricingUnit);
   const hasServiceLine = serviceItems.length > 0;
@@ -55,8 +66,13 @@ export default function CustomerQuoteView({ quote }: { quote: CustomerQuoteData 
   return (
     <div className="mx-auto max-w-xl text-navy-950">
       <header className="text-center">
-        <p className="text-xs font-semibold uppercase tracking-wide text-surface-700">Abbie&apos;s Clean Method LLC</p>
-        <h1 className="mt-1 text-xl font-semibold">Commercial Cleaning Quotation</h1>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={logoUrl} alt={business.name} className="mx-auto h-12 w-12 rounded-lg object-contain" />
+        <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-surface-700">{business.legalName}</p>
+        <p className="text-xs text-surface-700">
+          {business.city}, {business.region} · {contact.phoneDisplay} · {contact.email}
+        </p>
+        <h1 className="mt-2 text-xl font-semibold">Commercial Cleaning Quotation</h1>
         <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-surface-700">
           <span>
             Quote {quote.quoteNumber}
