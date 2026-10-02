@@ -200,6 +200,7 @@ export interface QuoteDetail {
   customerMessage: string | null;
   createdAt: string;
   viewedAt: string | null;
+  sentAt: string | null;
   revisionNumber: number;
   revisedFromId: string | null;
   revisions: { id: string; quoteNumber: string; revisionNumber: number; status: QuoteStatusValue; createdAt: string }[];
@@ -261,6 +262,7 @@ export async function getQuoteById(id: string): Promise<QuoteDetail | null> {
     customerMessage: q.customerMessage,
     createdAt: q.createdAt.toISOString(),
     viewedAt: q.viewedAt?.toISOString() ?? null,
+    sentAt: q.sentAt?.toISOString() ?? null,
     revisionNumber: q.revisionNumber,
     revisedFromId: q.revisedFromId,
     revisions: q.revisions.map((r) => ({ id: r.id, quoteNumber: r.quoteNumber, revisionNumber: r.revisionNumber, status: r.status, createdAt: r.createdAt.toISOString() })),
@@ -385,7 +387,7 @@ export async function setQuoteStatus(id: string, status: QuoteStatusValue, admin
   const existing = await db().quote.findUnique({ where: { id } });
   if (!existing) return { ok: false, error: "Quote not found" };
 
-  await db().quote.update({ where: { id }, data: { status } });
+  await db().quote.update({ where: { id }, data: { status, ...(status === "SENT" && !existing.sentAt ? { sentAt: new Date() } : {}) } });
   await db().auditLog.create({
     data: { adminUserId, action: "quote.status_changed", entityType: "quote", entityId: id, before: { status: existing.status }, after: { status } },
   });

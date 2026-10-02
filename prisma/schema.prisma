@@ -374,6 +374,9 @@ model Quote {
   // status -- lets CRM show "viewed" without a separate VIEWED status complicating the simple
   // SENT -> ACCEPTED/DECLINED/EXPIRED/CANCELLED flow.
   viewedAt DateTime?
+  // Set the first time this quote's status transitions to SENT (setQuoteStatus) -- never
+  // overwritten by a later resend, so it always reflects when the customer first received it.
+  sentAt DateTime?
 
   promoCodeId String?
   promoCode   PromoCode? @relation(fields: [promoCodeId], references: [id])

@@ -222,6 +222,24 @@ maybeDescribe("quoteStore -- commercial quote upgrade", () => {
     expect(afterSecondView!.viewedAt).toBe(firstViewedAt);
   });
 
+  it("records sentAt the first time a quote is sent, and never overwrites it on a later resend", async () => {
+    const { id } = await createQuote(leadId, { items: [{ label: "x", quantity: 1, unitPrice: 10000 }] }, adminId);
+    createdQuoteIds.push(id);
+
+    const beforeSend = await getQuoteById(id);
+    expect(beforeSend!.sentAt).toBeNull();
+
+    await setQuoteStatus(id, "SENT", adminId);
+    const afterSend = await getQuoteById(id);
+    expect(afterSend!.sentAt).not.toBeNull();
+
+    const firstSentAt = afterSend!.sentAt;
+    await new Promise((r) => setTimeout(r, 10));
+    await setQuoteStatus(id, "SENT", adminId);
+    const afterResend = await getQuoteById(id);
+    expect(afterResend!.sentAt).toBe(firstSentAt);
+  });
+
   it("a DRAFT quote is never visible to the customer", async () => {
     const { id } = await createQuote(leadId, { items: [{ label: "x", quantity: 1, unitPrice: 10000 }] }, adminId);
     createdQuoteIds.push(id);

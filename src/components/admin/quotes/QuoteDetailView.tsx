@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, Loader2, Send, Copy, MessageCircle, CalendarPlus, Tag, Eye, GitBranch, Lock, Ban, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Loader2, Send, Copy, MessageCircle, CalendarPlus, Tag, Eye, GitBranch, Lock, Ban, X, Printer } from "lucide-react";
 import type { QuoteDetail, QuoteStatusValue } from "@/lib/server/quoteStore";
 import type { PromoCodeItem } from "@/lib/server/promoCodeStore";
 import type { ContactInfo } from "@/lib/server/siteSettings";
@@ -550,6 +550,19 @@ export default function QuoteDetailView({
         {quote && <Badge tone={statusTone[quote.status]}>{quote.status}</Badge>}
       </div>
 
+      {quote && quote.sentAt && (
+        <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-admin-text-muted">
+          <span>Sent {formatDateTime(quote.sentAt)}</span>
+          {quote.viewedAt ? (
+            <span className="inline-flex items-center gap-1 text-admin-teal-hover">
+              <Eye className="size-3.5" aria-hidden /> Viewed by customer {formatDateTime(quote.viewedAt)}
+            </span>
+          ) : (
+            <span>Not yet viewed by customer</span>
+          )}
+        </p>
+      )}
+
       {quote && quote.revisions.length > 0 && (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-admin-text-muted">
           <GitBranch className="size-3.5" aria-hidden /> Other revisions:{" "}
@@ -877,13 +890,22 @@ export default function QuoteDetailView({
       {previewOpen && (
         <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-slate-950/50 p-4">
           <div className="my-8 w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-surface-200 p-4">
+            <div className="flex items-center justify-between gap-3 border-b border-surface-200 p-4 print:hidden">
               <p className="text-sm font-semibold text-navy-950">Preview -- exactly what the customer will see. Nothing has been sent.</p>
-              <button type="button" onClick={() => setPreviewOpen(false)} aria-label="Close preview" className="flex size-8 items-center justify-center rounded-lg text-surface-700 hover:bg-surface-100">
-                <X className="size-4" aria-hidden />
-              </button>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="ios-press flex items-center gap-1.5 rounded-lg border border-surface-200 px-3 py-1.5 text-sm font-semibold text-navy-950 hover:bg-surface-50"
+                >
+                  <Printer className="size-4" aria-hidden /> Download PDF
+                </button>
+                <button type="button" onClick={() => setPreviewOpen(false)} aria-label="Close preview" className="flex size-8 items-center justify-center rounded-lg text-surface-700 hover:bg-surface-100">
+                  <X className="size-4" aria-hidden />
+                </button>
+              </div>
             </div>
-            <div className="p-5">
+            <div id="printable-area" className="p-5 print:p-0">
               <CustomerQuoteView quote={previewData} business={business} contact={contact} logoUrl={logoUrl} />
             </div>
           </div>
