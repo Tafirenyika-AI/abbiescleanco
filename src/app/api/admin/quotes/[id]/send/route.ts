@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/server/requireAdmin";
 import { getQuoteById, setQuoteStatus } from "@/lib/server/quoteStore";
 import { sendEmail, quoteEmail } from "@/lib/server/email";
+import { getContactInfo } from "@/lib/server/siteSettings";
 
 const schema = z.object({ message: z.string().trim().max(1000).optional() });
 
@@ -39,7 +40,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     customerTerms: quote.notes,
     customerMessage: quote.customerMessage,
   });
-  const result = await sendEmail({ to: quote.customerEmail, subject, html });
+  // BCC the business's own real inbox so a verifiable copy exists even though a plain SMTP send
+  // (unlike webmail "Sent") doesn't automatically file a copy anywhere the admin can see later.
+  const contact = await getContactInfo();
+  const result = await sendEmail({ to: quote.customerEmail, subject, html, bcc: contact.email || undefined });
   if (!result.ok) return NextResponse.json({ ok: false, error: result.error || "Email failed to send" }, { status: 502 });
 
   await setQuoteStatus(id, "SENT", admin.id);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Plus, Trash2, Loader2, Send, Copy, MessageCircle, CalendarPlus, Tag, Eye, GitBranch, Lock, Ban, X, Printer } from "lucide-react";
@@ -112,6 +113,16 @@ export default function QuoteDetailView({
   const [sending, setSending] = useState(false);
   const [confirmSend, setConfirmSend] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+
+  // The preview is portaled to document.body (see below) so it can print cleanly without the admin
+  // page's own layout height generating trailing blank PDF pages -- this class, scoped to while the
+  // modal is actually open, is what lets the print stylesheet collapse the admin shell out of the
+  // way (see globals.css's "printing-portal-only" rule).
+  useEffect(() => {
+    if (!previewOpen) return;
+    document.body.classList.add("printing-portal-only");
+    return () => document.body.classList.remove("printing-portal-only");
+  }, [previewOpen]);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -887,30 +898,32 @@ export default function QuoteDetailView({
         onCancel={() => setConfirmSend(false)}
       />
 
-      {previewOpen && (
-        <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-slate-950/50 p-4">
-          <div className="my-8 w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between gap-3 border-b border-surface-200 p-4 print:hidden">
-              <p className="text-sm font-semibold text-navy-950">Preview -- exactly what the customer will see. Nothing has been sent.</p>
-              <div className="flex shrink-0 items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="ios-press flex items-center gap-1.5 rounded-lg border border-surface-200 px-3 py-1.5 text-sm font-semibold text-navy-950 hover:bg-surface-50"
-                >
-                  <Printer className="size-4" aria-hidden /> Download PDF
-                </button>
-                <button type="button" onClick={() => setPreviewOpen(false)} aria-label="Close preview" className="flex size-8 items-center justify-center rounded-lg text-surface-700 hover:bg-surface-100">
-                  <X className="size-4" aria-hidden />
-                </button>
+      {previewOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-slate-950/50 p-4 print:static print:block print:h-auto print:overflow-visible print:bg-white print:p-0">
+            <div className="my-8 w-full max-w-2xl rounded-2xl bg-white shadow-2xl print:my-0 print:max-w-none print:rounded-none print:shadow-none">
+              <div className="flex items-center justify-between gap-3 border-b border-surface-200 p-4 print:hidden">
+                <p className="text-sm font-semibold text-navy-950">Preview -- exactly what the customer will see. Nothing has been sent.</p>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="ios-press flex items-center gap-1.5 rounded-lg border border-surface-200 px-3 py-1.5 text-sm font-semibold text-navy-950 hover:bg-surface-50"
+                  >
+                    <Printer className="size-4" aria-hidden /> Download PDF
+                  </button>
+                  <button type="button" onClick={() => setPreviewOpen(false)} aria-label="Close preview" className="flex size-8 items-center justify-center rounded-lg text-surface-700 hover:bg-surface-100">
+                    <X className="size-4" aria-hidden />
+                  </button>
+                </div>
+              </div>
+              <div id="printable-area" className="p-5 print:p-0">
+                <CustomerQuoteView quote={previewData} business={business} contact={contact} logoUrl={logoUrl} />
               </div>
             </div>
-            <div id="printable-area" className="p-5 print:p-0">
-              <CustomerQuoteView quote={previewData} business={business} contact={contact} logoUrl={logoUrl} />
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {bookingDialog && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4">

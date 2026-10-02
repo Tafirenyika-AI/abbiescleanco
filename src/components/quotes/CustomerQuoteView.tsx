@@ -85,14 +85,14 @@ export default function CustomerQuoteView({
 
       {/* Company name leads here (a formal letterhead-style document addressed to the business),
           unlike the admin's own internal header, which leads with the contact person's name. */}
-      <section className="mt-6 rounded-2xl border border-surface-200 bg-white p-4">
+      <section className="mt-6 break-inside-avoid rounded-2xl border border-surface-200 bg-white p-4">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-700">Prepared For</h2>
         {quote.companyName && <p className="mt-1.5 font-medium">{quote.companyName}</p>}
         {quote.customerName && <p className={quote.companyName ? "text-sm text-surface-700" : "mt-1.5 font-medium"}>{quote.customerName}</p>}
         <p className="text-sm text-surface-700">{quote.serviceAddress || "Service address not provided"}</p>
       </section>
 
-      <section className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <section className="mt-4 grid grid-cols-1 gap-4 break-inside-avoid sm:grid-cols-2">
         <div className="rounded-2xl border border-surface-200 bg-white p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-700">Service</h2>
           <p className="mt-1.5 font-medium">{quote.serviceName}</p>
@@ -106,7 +106,7 @@ export default function CustomerQuoteView({
         )}
       </section>
 
-      <section className="mt-4 rounded-2xl border border-surface-200 bg-white p-4">
+      <section className="mt-4 break-inside-avoid rounded-2xl border border-surface-200 bg-white p-4">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-700">Service Pricing</h2>
         {serviceItems.length > 0 && (
           <ul className="mt-2 space-y-3">
@@ -148,21 +148,21 @@ export default function CustomerQuoteView({
       </section>
 
       {quote.scopeOfService?.trim() && (
-        <section className="mt-4 rounded-2xl border border-surface-200 bg-white p-4">
+        <section className="mt-4 break-inside-avoid rounded-2xl border border-surface-200 bg-white p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-700">Scope of Service</h2>
           <p className="mt-1.5 whitespace-pre-wrap text-sm">{quote.scopeOfService.trim()}</p>
         </section>
       )}
 
       {quote.exclusions?.trim() && (
-        <section className="mt-4 rounded-2xl border border-surface-200 bg-white p-4">
+        <section className="mt-4 break-inside-avoid rounded-2xl border border-surface-200 bg-white p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-700">Exclusions / Special Conditions</h2>
           <p className="mt-1.5 whitespace-pre-wrap text-sm">{quote.exclusions.trim()}</p>
         </section>
       )}
 
       {quote.notes?.trim() && (
-        <section className="mt-4 rounded-2xl border border-surface-200 bg-white p-4">
+        <section className="mt-4 break-inside-avoid rounded-2xl border border-surface-200 bg-white p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-surface-700">Customer Notes / Terms</h2>
           <p className="mt-1.5 whitespace-pre-wrap text-sm">{quote.notes.trim()}</p>
         </section>

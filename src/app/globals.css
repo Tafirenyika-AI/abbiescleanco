@@ -238,4 +238,12 @@ h1, h2, h3, .font-display {
     left: 0;
     width: 100%;
   }
+  /* A #printable-area that's portaled OUT of the admin shell (e.g. the quote preview modal,
+     appended to document.body) still has the whole admin layout as an invisible-but-present DOM
+     sibling, and visibility:hidden alone doesn't remove it from the page's layout height -- Chrome
+     still paginates for it, producing trailing blank pages. The body class below (toggled only
+     while that modal is open) collapses it from layout entirely instead of just hiding it. */
+  body.printing-portal-only .admin-workspace {
+    display: none !important;
+  }
 }

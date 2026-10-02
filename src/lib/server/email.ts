@@ -9,6 +9,7 @@ export interface SendEmailInput {
   subject: string;
   html: string;
   replyTo?: string;
+  bcc?: string;
 }
 
 export interface SendEmailResult {
@@ -52,6 +53,7 @@ async function sendViaResend(resendApiKey: string, input: SendEmailInput): Promi
       subject: input.subject,
       html: input.html,
       replyTo: input.replyTo,
+      bcc: input.bcc,
     });
     if (error) return { ok: false, mode: "live", error: error.message };
     return { ok: true, mode: "live", id: data?.id };
@@ -87,6 +89,7 @@ async function sendViaSmtp(host: string, input: SendEmailInput): Promise<SendEma
       subject: input.subject,
       html: input.html,
       replyTo: input.replyTo,
+      bcc: input.bcc,
     });
     return { ok: true, mode: "live", id: info.messageId };
   } catch (err) {
