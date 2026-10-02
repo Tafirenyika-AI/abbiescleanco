@@ -67,7 +67,7 @@ export default function CustomerQuoteView({
     <div className="mx-auto max-w-xl text-navy-950">
       <header className="text-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={logoUrl} alt={business.name} className="mx-auto h-12 w-12 rounded-lg object-contain" />
+        <img src={logoUrl} alt={business.name} className="mx-auto h-24 w-24 object-contain" />
         <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-surface-700">{business.legalName}</p>
         <p className="text-xs text-surface-700">
           {business.city}, {business.region} · {contact.phoneDisplay} · {contact.email}
