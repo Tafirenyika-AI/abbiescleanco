@@ -27,6 +27,10 @@ export interface IntegrationSettings {
   twilioAccountSid?: string;
   twilioAuthToken?: string;
   twilioFromNumber?: string;
+  // Alternative to twilioFromNumber -- the Twilio-recommended way to send under an approved A2P
+  // 10DLC campaign: Twilio picks the right number from the service automatically. Preferred over
+  // twilioFromNumber when both are set (see sendSms() in sms.ts).
+  twilioMessagingServiceSid?: string;
   stripeSecretKey?: string;
   stripeWebhookSecret?: string;
   googleMapsApiKey?: string;
@@ -95,6 +99,7 @@ export async function getIntegrationStatus(): Promise<Record<keyof IntegrationSe
     twilioAccountSid: "TWILIO_ACCOUNT_SID",
     twilioAuthToken: "TWILIO_AUTH_TOKEN",
     twilioFromNumber: "TWILIO_FROM_NUMBER",
+    twilioMessagingServiceSid: "TWILIO_MESSAGING_SERVICE_SID",
     stripeSecretKey: "STRIPE_SECRET_KEY",
     stripeWebhookSecret: "STRIPE_WEBHOOK_SECRET",
     googleMapsApiKey: "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY",
