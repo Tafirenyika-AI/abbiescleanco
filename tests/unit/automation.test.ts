@@ -84,3 +84,40 @@ describe("REAL BUG FIX: booking confirmation email includes the full booking (ti
     expect(html).not.toContain("<strong>Price:</strong>");
   });
 });
+
+describe("cancellation-policy notice on booking/reminder emails only", () => {
+  const exactWording =
+    "Cancellations made within 24 hours of your scheduled service are subject to a $50 fee. Same-day cancellations are subject to a fee equal to 80% of the scheduled service total.";
+
+  it("appears on the booking confirmation email with the exact specified wording", async () => {
+    const { html } = await renderEmailTemplate("BOOKING_CONFIRMATION", {
+      name: "Jane Doe", serviceName: "Standard Cleaning", dateLabel: "Thursday, October 15", timeLabel: "8:00 AM",
+      arrivalWindowBlockHtml: "", reference: "B-26-ABC123", cancellationUrl: "https://abbiescleanco.com/policies/cancellation",
+      addressBlockHtml: "", amountBlockHtml: "",
+    });
+    expect(html).toContain("Cancellation Policy:");
+    expect(html).toContain(exactWording);
+  });
+
+  it("appears on the appointment reminder email with the exact specified wording", async () => {
+    const { html } = await renderEmailTemplate("APPOINTMENT_REMINDER", {
+      name: "Jane Doe", serviceName: "Standard Cleaning", dateLabel: "Thursday, October 15 at 8:00 AM", addressBlockHtml: "",
+    });
+    expect(html).toContain("Cancellation Policy:");
+    expect(html).toContain(exactWording);
+  });
+
+  it("never appears in any SMS body built in automation.ts (do not add this to every SMS for now)", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const source = fs.readFileSync(path.join(process.cwd(), "src/lib/server/automation.ts"), "utf8");
+    // Every real SMS body in this file is a sendCustomerSms({ ... body: `...` }) call -- confirm
+    // none of those literal strings contain the policy wording.
+    const smsBodies = [...source.matchAll(/sendCustomerSms\(\{[^}]*body:\s*`([^`]*)`/g)].map((m) => m[1]);
+    expect(smsBodies.length).toBeGreaterThan(0); // sanity check the regex actually found real calls
+    for (const body of smsBodies) {
+      expect(body).not.toContain("Cancellation Policy");
+      expect(body).not.toContain("80%");
+    }
+  });
+});

@@ -27,6 +27,11 @@ export interface EmailTemplateDef {
 const WRAP_OPEN = `<div style="font-family:sans-serif;color:#0f2438;max-width:520px;margin:0 auto">`;
 const WRAP_CLOSE = `</div>`;
 const SIGNOFF = `<p style="margin-top:24px;color:#4a5a6a;font-size:14px">{{businessName}} · {{businessCity}}, {{businessRegion}}</p>`;
+// Small, muted, near-the-bottom notice for booking/reminder emails only -- deliberately not part of
+// any SMS template (would add length/segments/cost) and not sent on every email, just the two where
+// a customer needs to know before their appointment. Exact wording as specified by the business
+// owner; same-day's 80% fee always replaces (never stacks with) the $50 within-24h fee.
+const CANCELLATION_NOTICE = `<p style="margin-top:20px;color:#6b7280;font-size:12px"><strong>Cancellation Policy:</strong> Cancellations made within 24 hours of your scheduled service are subject to a $50 fee. Same-day cancellations are subject to a fee equal to 80% of the scheduled service total.</p>`;
 
 export const EMAIL_TEMPLATE_DEFS: EmailTemplateDef[] = [
   {
@@ -192,6 +197,7 @@ export const EMAIL_TEMPLATE_DEFS: EmailTemplateDef[] = [
       {{addressBlockHtml}}
       {{amountBlockHtml}}
       <p>Reference: {{reference}}. Need to reschedule? See our <a href="{{cancellationUrl}}">Cancellation &amp; Rescheduling Policy</a>.</p>
+      ${CANCELLATION_NOTICE}
     `,
   },
   {
@@ -203,6 +209,7 @@ export const EMAIL_TEMPLATE_DEFS: EmailTemplateDef[] = [
     defaultHtml: `
       <p>Hi {{name}}, this is a reminder about your upcoming {{serviceName}} visit on {{dateLabel}}.</p>
       {{addressBlockHtml}}
+      ${CANCELLATION_NOTICE}
     `,
   },
   {
