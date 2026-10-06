@@ -36,6 +36,25 @@ export default function TermsPage() {
         any known hazards.
       </p>
 
+      <h2>SMS / text messaging program</h2>
+      <p>
+        By providing your mobile phone number and opting in, you agree to receive text messages
+        from {business.name} (program: &ldquo;{business.name} SMS Notifications&rdquo;) related
+        to your estimate requests and bookings, including appointment confirmations and
+        reminders, &ldquo;your cleaner is on the way&rdquo; alerts, live-tracking links, and
+        two-way messages with our team.
+      </p>
+      <ul>
+        <li>Message frequency varies based on your bookings and conversations with us -- there is no fixed number of messages per month.</li>
+        <li>Message and data rates may apply.</li>
+        <li>Reply <strong>STOP</strong> at any time to opt out, or <strong>HELP</strong> for help.</li>
+        <li>For customer care, contact us at {business.email} or {business.phoneDisplay}.</li>
+      </ul>
+      <p>
+        Consent to receive text messages is not a condition of purchasing any service. See our{" "}
+        <a href="/policies/privacy">Privacy Policy</a> for how your mobile information is handled.
+      </p>
+
       <h2>Payment [pending confirmation]</h2>
       <p>
         Payment terms, accepted methods, and any deposit requirements will be confirmed by

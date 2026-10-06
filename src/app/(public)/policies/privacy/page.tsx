@@ -41,6 +41,17 @@ export default function PrivacyPolicyPage() {
         a payment processor. We do not sell your information.
       </p>
 
+      <h2>SMS / text messaging information</h2>
+      <p>
+        No mobile information, including phone numbers and SMS opt-in consent, will be shared
+        with third parties or affiliates for marketing or promotional purposes. We may share this
+        information with the service providers who deliver these messages on our behalf (e.g.
+        our SMS/WhatsApp provider), solely to send you the messages you&apos;ve requested -- never
+        for their own marketing. All other categories of information sharing described in this
+        policy exclude text messaging originator opt-in data and consent; this information is
+        never shared with any third parties.
+      </p>
+
       <h2>Your choices</h2>
       <p>
         You can opt out of SMS or marketing email at any time. To request access to, correction
