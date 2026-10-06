@@ -29,8 +29,15 @@ export interface IntegrationSettings {
   twilioFromNumber?: string;
   // Alternative to twilioFromNumber -- the Twilio-recommended way to send under an approved A2P
   // 10DLC campaign: Twilio picks the right number from the service automatically. Preferred over
-  // twilioFromNumber when both are set (see sendSms() in sms.ts).
+  // twilioFromNumber when both are set (see src/lib/server/sms/twilioProvider.ts).
   twilioMessagingServiceSid?: string;
+  // Telnyx -- the SMS provider actually used depends on smsProvider below (or SMS_PROVIDER env),
+  // not on which of these two sets of fields happens to be filled in.
+  telnyxApiKey?: string;
+  telnyxMessagingProfileId?: string;
+  telnyxFromNumber?: string;
+  telnyxPublicKey?: string; // Ed25519 public key from the Telnyx portal, used to verify inbound webhooks
+  smsProvider?: string; // "telnyx" | "twilio" | "mock" -- see src/lib/server/sms/index.ts
   stripeSecretKey?: string;
   stripeWebhookSecret?: string;
   googleMapsApiKey?: string;
@@ -60,6 +67,7 @@ const SECRET_FIELDS: (keyof IntegrationSettings)[] = [
   "smtpPassword",
   "twilioAccountSid",
   "twilioAuthToken",
+  "telnyxApiKey",
   "stripeSecretKey",
   "stripeWebhookSecret",
   "googleMapsApiKey",
@@ -100,6 +108,11 @@ export async function getIntegrationStatus(): Promise<Record<keyof IntegrationSe
     twilioAuthToken: "TWILIO_AUTH_TOKEN",
     twilioFromNumber: "TWILIO_FROM_NUMBER",
     twilioMessagingServiceSid: "TWILIO_MESSAGING_SERVICE_SID",
+    telnyxApiKey: "TELNYX_API_KEY",
+    telnyxMessagingProfileId: "TELNYX_MESSAGING_PROFILE_ID",
+    telnyxFromNumber: "TELNYX_FROM_NUMBER",
+    telnyxPublicKey: "TELNYX_PUBLIC_KEY",
+    smsProvider: "SMS_PROVIDER",
     stripeSecretKey: "STRIPE_SECRET_KEY",
     stripeWebhookSecret: "STRIPE_WEBHOOK_SECRET",
     googleMapsApiKey: "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY",

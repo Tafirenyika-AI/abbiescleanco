@@ -31,7 +31,7 @@
  */
 
 import { sendEmail, type SendEmailResult } from "./email";
-import { sendSms } from "./sms";
+import { sendCustomerSms } from "./sms";
 import { renderEmailTemplate, escapeHtml } from "./emailTemplates";
 import { business } from "@/lib/data/business";
 
@@ -40,6 +40,7 @@ interface RecipientInfo {
   email: string | null; // a real client with no email (not tech-savvy) has nothing to send here -- see the skipped() guard below
   phone: string;
   smsConsent: boolean;
+  customerId?: string | null;
 }
 
 /** Honest no-op for a recipient with no email -- same {ok:true} shape as a real send, so callers
@@ -117,7 +118,12 @@ export async function sendAppointmentReminder(
     : [];
   if (recipient.smsConsent) {
     results.push(
-      await sendSms(recipient.phone, `Reminder: your ${details.serviceName} visit is ${dateLabel}. Reply STOP to opt out.`)
+      await sendCustomerSms({
+        to: recipient.phone,
+        body: `${business.name}: Reminder: your ${details.serviceName} visit is ${dateLabel}. Reply STOP to opt out.`,
+        category: "reminder",
+        customerId: recipient.customerId,
+      })
     );
   }
   return results;
@@ -138,7 +144,14 @@ export async function sendOnTheWayNotice(recipient: RecipientInfo, details: { se
       ]
     : [];
   if (recipient.smsConsent) {
-    results.push(await sendSms(recipient.phone, `Good news -- your ${details.serviceName} cleaner is on the way!`));
+    results.push(
+      await sendCustomerSms({
+        to: recipient.phone,
+        body: `${business.name}: Good news -- your ${details.serviceName} cleaner is on the way!`,
+        category: "arrival_update",
+        customerId: recipient.customerId,
+      })
+    );
   }
   return results;
 }

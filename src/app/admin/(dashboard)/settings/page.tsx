@@ -4,10 +4,12 @@ import { verifyAdminSessionToken, ADMIN_SESSION_COOKIE } from "@/lib/server/admi
 import { getAdminProfile, hasPermission } from "@/lib/server/adminUsers";
 import { getBusinessHours, getSocialLinks, getBranding, getContactInfo } from "@/lib/server/siteSettings";
 import { getIntegrationStatus } from "@/lib/server/integrationSettings";
+import { getTelnyxComplianceChecklist } from "@/lib/server/smsCompliance";
 import HoursAndSocialManager from "@/components/admin/settings/HoursAndSocialManager";
 import IntegrationsManager from "@/components/admin/settings/IntegrationsManager";
 import BrandingManager from "@/components/admin/settings/BrandingManager";
 import ContactInfoManager from "@/components/admin/settings/ContactInfoManager";
+import TelnyxComplianceChecklist from "@/components/admin/settings/TelnyxComplianceChecklist";
 
 export default async function AdminSettingsPage() {
   const cookieStore = await cookies();
@@ -21,12 +23,13 @@ export default async function AdminSettingsPage() {
     redirect("/admin");
   }
 
-  const [hours, social, branding, contact, integrationStatus] = await Promise.all([
+  const [hours, social, branding, contact, integrationStatus, telnyxChecklist] = await Promise.all([
     canManageContent ? getBusinessHours() : Promise.resolve(null),
     canManageContent ? getSocialLinks() : Promise.resolve(null),
     canManageContent ? getBranding() : Promise.resolve(null),
     canManageContent ? getContactInfo() : Promise.resolve(null),
     canManageIntegrations ? getIntegrationStatus() : Promise.resolve(null),
+    canManageIntegrations ? getTelnyxComplianceChecklist() : Promise.resolve(null),
   ]);
 
   return (
@@ -50,6 +53,12 @@ export default async function AdminSettingsPage() {
             <div className="mt-4">
               <IntegrationsManager initialStatus={integrationStatus} />
             </div>
+          </section>
+        )}
+
+        {canManageIntegrations && telnyxChecklist && (
+          <section>
+            <TelnyxComplianceChecklist items={telnyxChecklist} />
           </section>
         )}
       </div>

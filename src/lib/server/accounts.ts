@@ -31,6 +31,7 @@ export interface PublicProfile {
     lastName: string;
     phone: string;
     avatarUrl: string | null;
+    smsConsent: boolean;
   } | null;
 }
 
@@ -38,12 +39,19 @@ function toPublicProfile(user: {
   id: string;
   email: string;
   name: string | null;
-  customer: { id: string; firstName: string; lastName: string; phone: string; avatarUrl: string | null } | null;
+  customer: { id: string; firstName: string; lastName: string; phone: string; avatarUrl: string | null; communicationPreference: { smsConsent: boolean } | null } | null;
 }): PublicProfile {
-  return { id: user.id, email: user.email, name: user.name, customer: user.customer };
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    customer: user.customer
+      ? { id: user.customer.id, firstName: user.customer.firstName, lastName: user.customer.lastName, phone: user.customer.phone, avatarUrl: user.customer.avatarUrl, smsConsent: user.customer.communicationPreference?.smsConsent ?? false }
+      : null,
+  };
 }
 
-export async function signUp(input: { email: string; password: string; firstName: string; lastName: string; phone?: string }) {
+export async function signUp(input: { email: string; password: string; firstName: string; lastName: string; phone?: string; smsConsent?: boolean }) {
   const existing = await db().user.findUnique({ where: { email: input.email.toLowerCase() } });
   if (existing?.passwordHash) {
     return { ok: false as const, error: "An account with that email already exists." };
@@ -63,8 +71,9 @@ export async function signUp(input: { email: string; password: string; firstName
         include: { customer: true },
       });
 
+  let customerId = user.customer?.id;
   if (!user.customer) {
-    await db().customer.create({
+    const customer = await db().customer.create({
       data: {
         userId: user.id,
         firstName: input.firstName,
@@ -73,13 +82,22 @@ export async function signUp(input: { email: string; password: string; firstName
         phone: input.phone || "",
       },
     });
+    customerId = customer.id;
   }
 
-  return { ok: true as const, userId: user.id };
+  if (customerId && input.phone) {
+    await db().communicationPreference.upsert({
+      where: { customerId },
+      update: { smsConsent: input.smsConsent ?? false },
+      create: { customerId, smsConsent: input.smsConsent ?? false, emailConsent: true },
+    });
+  }
+
+  return { ok: true as const, userId: user.id, customerId };
 }
 
 export async function verifyLogin(email: string, password: string): Promise<PublicProfile | null> {
-  const user = await db().user.findUnique({ where: { email: email.toLowerCase() }, include: { customer: true } });
+  const user = await db().user.findUnique({ where: { email: email.toLowerCase() }, include: { customer: { include: { communicationPreference: true } } } });
   if (!user || !user.passwordHash) return null;
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) return null;
@@ -87,7 +105,7 @@ export async function verifyLogin(email: string, password: string): Promise<Publ
 }
 
 export async function getProfile(userId: string): Promise<PublicProfile | null> {
-  const user = await db().user.findUnique({ where: { id: userId }, include: { customer: true } });
+  const user = await db().user.findUnique({ where: { id: userId }, include: { customer: { include: { communicationPreference: true } } } });
   if (!user) return null;
   return toPublicProfile(user);
 }

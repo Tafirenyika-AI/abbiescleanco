@@ -4,6 +4,7 @@ import { sendEmail } from "@/lib/server/email";
 import { checkRateLimit } from "@/lib/server/rateLimit";
 import { createContactMessage } from "@/lib/server/contactMessageStore";
 import { notifyAdmins } from "@/lib/server/notificationStore";
+import { recordSmsConsentEvent } from "@/lib/server/sms";
 import { business } from "@/lib/data/business";
 
 export async function POST(req: NextRequest) {
@@ -37,6 +38,18 @@ export async function POST(req: NextRequest) {
     message: input.message,
     isUrgent: input.isUrgent,
   });
+
+  if (input.phone) {
+    await recordSmsConsentEvent({
+      phone: input.phone,
+      purpose: "customer_care",
+      status: input.smsConsent ? "opted_in" : "opted_out",
+      method: "website_form",
+      source: "contact",
+      ipAddress: ip,
+      userAgent: req.headers.get("user-agent"),
+    });
+  }
 
   await notifyAdmins(
     "NEW_MESSAGE",

@@ -19,6 +19,7 @@ import {
   Settings,
   ScrollText,
   Mail,
+  MessageSquareText,
   HardHat,
   Building2,
   FileStack,
@@ -61,6 +62,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { href: "/admin/leads", label: "Leads", description: "Estimate & contact requests", icon: Users, permission: "MANAGE_LEADS", built: true },
       { href: "/admin/messages", label: "Messages", description: "Client notes & conversations", icon: Mail, permission: "MANAGE_LEADS", built: true },
+      { href: "/admin/sms", label: "SMS log", description: "Sent & received text messages", icon: MessageSquareText, permission: "MANAGE_LEADS", built: true },
       { href: "/admin/quotes", label: "Quotes", description: "Build, send, track pricing", icon: FileSignature, permission: "MANAGE_LEADS", built: true },
       { href: "/admin/customers", label: "Customers", description: "Contacts & history", icon: UserSquare2, permission: "MANAGE_LEADS", built: true },
     ],

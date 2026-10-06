@@ -10,6 +10,7 @@ import { calculateEstimate, conditionLabels, frequencyLabels, defaultPricingConf
 import { services as defaultServices, type ServiceId } from "@/lib/data/services";
 import Button from "@/components/ui/Button";
 import ClaimAccountPrompt from "@/components/account/ClaimAccountPrompt";
+import SmsConsentDisclosure from "@/components/shared/SmsConsentDisclosure";
 import BookNowPicker from "@/components/estimate/BookNowPicker";
 
 const steps = ["Property & Service", "Cleaning Details", "Your Info", "Review & Submit"] as const;
@@ -469,9 +470,11 @@ export default function EstimateWizard({
                 {...register("promoCode")}
               />
             </label>
-            <label className="flex items-center gap-2.5 sm:col-span-2">
-              <input type="checkbox" className="size-4" {...register("smsConsent")} />
-              <span className="text-sm text-navy-900">I consent to receive SMS updates about this request</span>
+            <label className="flex items-start gap-2.5 sm:col-span-2">
+              <input type="checkbox" className="mt-0.5 size-4" {...register("smsConsent")} />
+              <span className="text-sm text-navy-900">
+                <SmsConsentDisclosure />
+              </span>
             </label>
             <label className="flex items-center gap-2.5 sm:col-span-2">
               <input type="checkbox" className="size-4" {...register("emailConsent")} />

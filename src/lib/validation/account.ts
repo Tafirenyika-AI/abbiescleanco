@@ -13,6 +13,7 @@ export const signUpSchema = z.object({
     .optional()
     .or(z.literal("")),
   password,
+  smsConsent: z.boolean().default(false),
 });
 
 export const loginSchema = z.object({

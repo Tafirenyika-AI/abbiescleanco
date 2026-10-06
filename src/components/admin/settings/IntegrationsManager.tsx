@@ -23,6 +23,11 @@ const fields: FieldMeta[] = [
   { key: "twilioAuthToken", label: "Twilio Auth Token", isSecret: true, wired: true, help: "" },
   { key: "twilioFromNumber", label: "Twilio From Number", isSecret: false, wired: true, help: "e.g. +16505551234. Not needed if you set a Messaging Service SID below -- that takes priority." },
   { key: "twilioMessagingServiceSid", label: "Twilio Messaging Service SID", isSecret: false, wired: true, help: "The Twilio-recommended way to send under an approved A2P 10DLC campaign (starts with MG...) -- Twilio picks the right number automatically. Takes priority over Twilio From Number when both are set." },
+  { key: "smsProvider", label: "SMS provider", isSecret: false, wired: true, help: "\"telnyx\" or \"twilio\" (defaults to telnyx). Also requires SMS_ENABLED=true as a Vercel environment variable -- sends stay mocked/logged-only otherwise, in every environment." },
+  { key: "telnyxApiKey", label: "Telnyx API Key", isSecret: true, wired: true, help: "From the Telnyx portal -- Account -> API Keys." },
+  { key: "telnyxMessagingProfileId", label: "Telnyx Messaging Profile ID", isSecret: false, wired: true, help: "The Telnyx-recommended way to send under an approved 10DLC campaign -- Telnyx picks the right number automatically. Takes priority over Telnyx From Number when both are set." },
+  { key: "telnyxFromNumber", label: "Telnyx From Number", isSecret: false, wired: true, help: "e.g. +16505551234. Not needed if you set a Messaging Profile ID above -- that takes priority." },
+  { key: "telnyxPublicKey", label: "Telnyx Public Key", isSecret: false, wired: true, help: "From the Telnyx portal -- used to verify inbound webhook signatures. This is a public key, safe to display." },
   { key: "stripeSecretKey", label: "Stripe Secret Key", isSecret: true, wired: true, help: "Powers admin-generated payment links (Checkout), Apple Pay/Google Pay are offered automatically, no extra setup." },
   { key: "stripeWebhookSecret", label: "Stripe Webhook Signing Secret", isSecret: true, wired: true, help: "From the webhook endpoint in your Stripe dashboard, confirms payments were really completed." },
   { key: "anthropicApiKey", label: "Anthropic API key (photo estimates)", isSecret: true, wired: true, help: "Powers the AI photo estimate: customers upload room photos and get a condition-based estimate, and your team sees what needs cleaning and what to bring." },
@@ -57,6 +62,29 @@ export default function IntegrationsManager({ initialStatus }: { initialStatus: 
   const [testEmailTo, setTestEmailTo] = useState("");
   const [testingEmail, setTestingEmail] = useState(false);
   const [testEmailResult, setTestEmailResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [testSmsTo, setTestSmsTo] = useState("");
+  const [testingSms, setTestingSms] = useState(false);
+  const [testSmsResult, setTestSmsResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  const smsConfigured = Boolean(
+    (status.telnyxApiKey?.configured && (status.telnyxMessagingProfileId?.configured || status.telnyxFromNumber?.configured)) ||
+      (status.twilioAccountSid?.configured && status.twilioAuthToken?.configured && (status.twilioMessagingServiceSid?.configured || status.twilioFromNumber?.configured))
+  );
+
+  async function sendTestSms() {
+    if (!testSmsTo.trim()) return;
+    setTestingSms(true);
+    setTestSmsResult(null);
+    const res = await fetch("/api/admin/settings/integrations/test-sms", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to: testSmsTo.trim() }),
+    });
+    const data = await res.json().catch(() => null);
+    setTestingSms(false);
+    if (!data?.ok) return setTestSmsResult({ ok: false, message: data?.error || data?.reason || "Couldn't send" });
+    setTestSmsResult({ ok: true, message: data.mode === "mock" ? "SMS_ENABLED isn't set to \"true\" -- this was only logged, not actually sent." : `Sent via ${data.mode}.` });
+  }
 
   async function sendTestEmail() {
     if (!testEmailTo.trim()) return;
@@ -135,6 +163,33 @@ export default function IntegrationsManager({ initialStatus }: { initialStatus: 
           <p className={`mt-2 text-xs ${testEmailResult.ok ? "text-admin-teal-hover" : "text-red-600"}`}>{testEmailResult.message}</p>
         )}
       </div>
+
+      {smsConfigured && (
+        <div className="mt-4 rounded-2xl border border-admin-border bg-admin-card p-4">
+          <p className="text-sm font-semibold text-admin-text">Send a test SMS</p>
+          <p className="text-xs text-admin-text-muted">Confirms your SMS provider setup actually works. Still respects SMS_ENABLED -- set it to &quot;true&quot; as a Vercel environment variable to send for real.</p>
+          <div className="mt-2.5 flex items-center gap-2">
+            <input
+              type="tel"
+              placeholder="+16505551234"
+              value={testSmsTo}
+              onChange={(e) => setTestSmsTo(e.target.value)}
+              className="flex-1 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm"
+            />
+            <button
+              type="button"
+              onClick={sendTestSms}
+              disabled={testingSms || !testSmsTo.trim()}
+              className="inline-flex items-center gap-1.5 rounded-full bg-admin-navy px-3.5 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {testingSms ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : "Send test"}
+            </button>
+          </div>
+          {testSmsResult && (
+            <p className={`mt-2 text-xs ${testSmsResult.ok ? "text-admin-teal-hover" : "text-red-600"}`}>{testSmsResult.message}</p>
+          )}
+        </div>
+      )}
 
       <div className="mt-5 space-y-3">
         {fields.map((field) => {

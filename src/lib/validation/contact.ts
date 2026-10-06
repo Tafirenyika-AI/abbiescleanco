@@ -12,6 +12,7 @@ export const contactSchema = z.object({
   message: z.string().trim().min(5, "Tell us a little more").max(2000),
   isUrgent: z.boolean().default(false),
   emailConsent: z.boolean().default(true),
+  smsConsent: z.boolean().default(false),
   // See quote.ts for why this isn't constrained to empty at the schema level.
   _gotcha: z.string().max(200).optional().or(z.literal("")),
 });

@@ -130,6 +130,7 @@ async function getBookingWithRecipient(bookingId: string) {
       email: booking.customer.email,
       phone: booking.customer.phone,
       smsConsent: booking.customer.communicationPreference?.smsConsent ?? false,
+      customerId: booking.customer.id,
     },
   };
 }
@@ -152,6 +153,7 @@ async function dispatchEvent(event: EventRow): Promise<"SENT" | "SKIPPED" | "FAI
         email: lead.customer.email,
         phone: lead.customer.phone,
         smsConsent: false,
+        customerId: lead.customer.id,
       };
       const result =
         event.type === "QUOTE_FOLLOW_UP_1"

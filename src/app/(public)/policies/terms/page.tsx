@@ -36,23 +36,27 @@ export default function TermsPage() {
         any known hazards.
       </p>
 
-      <h2>SMS / text messaging program</h2>
+      <h2>SMS Messaging Terms</h2>
       <p>
-        By providing your mobile phone number and opting in, you agree to receive text messages
-        from {business.name} (program: &ldquo;{business.name} SMS Notifications&rdquo;) related
-        to your estimate requests and bookings, including appointment confirmations and
-        reminders, &ldquo;your cleaner is on the way&rdquo; alerts, live-tracking links, and
-        two-way messages with our team.
+        <strong>Program:</strong> {business.name} Customer Care Messaging
+      </p>
+      <p>
+        <strong>Purpose:</strong> Transactional/customer-care communications relating to quotes,
+        bookings, cleaning appointments, scheduling, service updates, invoices/payments, and
+        support -- never unsolicited SMS marketing.
       </p>
       <ul>
-        <li>Message frequency varies based on your bookings and conversations with us -- there is no fixed number of messages per month.</li>
-        <li>Message and data rates may apply.</li>
-        <li>Reply <strong>STOP</strong> at any time to opt out, or <strong>HELP</strong> for help.</li>
-        <li>For customer care, contact us at {business.email} or {business.phoneDisplay}.</li>
+        <li><strong>Message frequency:</strong> May vary based on your bookings and activity with us -- there is no fixed number of messages per month.</li>
+        <li><strong>Charges:</strong> Message and data rates may apply.</li>
+        <li><strong>Opt-out:</strong> Reply <strong>STOP</strong> at any time to unsubscribe from SMS communications.</li>
+        <li><strong>Help:</strong> Reply <strong>HELP</strong>, or contact us at {business.email} or {business.phoneDisplay}.</li>
+        <li><strong>Consent:</strong> Consent to receive SMS messages is not a condition of purchase.</li>
       </ul>
       <p>
-        Consent to receive text messages is not a condition of purchasing any service. See our{" "}
-        <a href="/policies/privacy">Privacy Policy</a> for how your mobile information is handled.
+        After opting out, you should no longer receive non-required SMS communications from us
+        unless you subsequently opt in again. We do not guarantee message delivery by your mobile
+        carrier. See our <a href="/policies/privacy">Privacy Policy</a> for how your mobile
+        information is handled.
       </p>
 
       <h2>Payment [pending confirmation]</h2>

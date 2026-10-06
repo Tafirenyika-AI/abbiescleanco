@@ -4,6 +4,7 @@ import { signUp, AccountsUnavailableError } from "@/lib/server/accounts";
 import { createCustomerSessionToken, CUSTOMER_SESSION_COOKIE } from "@/lib/server/customerAuth";
 import { checkRateLimit } from "@/lib/server/rateLimit";
 import { sendEmail, welcomeEmail } from "@/lib/server/email";
+import { recordSmsConsentEvent } from "@/lib/server/sms";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -32,6 +33,19 @@ export async function POST(req: NextRequest) {
 
     const { subject, html } = await welcomeEmail({ firstName: parsed.data.firstName });
     await sendEmail({ to: parsed.data.email, subject, html });
+
+    if (parsed.data.phone && result.customerId) {
+      await recordSmsConsentEvent({
+        customerId: result.customerId,
+        phone: parsed.data.phone,
+        purpose: "customer_care",
+        status: parsed.data.smsConsent ? "opted_in" : "opted_out",
+        method: "website_form",
+        source: "signup",
+        ipAddress: ip,
+        userAgent: req.headers.get("user-agent"),
+      });
+    }
 
     const token = createCustomerSessionToken(result.userId);
     const res = NextResponse.json({ ok: true });

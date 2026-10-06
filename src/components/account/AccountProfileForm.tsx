@@ -2,14 +2,14 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Loader2, Upload, X } from "lucide-react";
+import { CheckCircle2, Loader2, Upload, X, MessageSquare } from "lucide-react";
 import Button from "@/components/ui/Button";
 
 interface Profile {
   id: string;
   email: string;
   name: string | null;
-  customer: { firstName: string; lastName: string; phone: string; avatarUrl: string | null } | null;
+  customer: { firstName: string; lastName: string; phone: string; avatarUrl: string | null; smsConsent: boolean } | null;
 }
 
 export default function AccountProfileForm({ profile }: { profile: Profile }) {
@@ -59,6 +59,25 @@ export default function AccountProfileForm({ profile }: { profile: Profile }) {
   const [newPassword, setNewPassword] = useState("");
   const [passwordState, setPasswordState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [passwordError, setPasswordError] = useState("");
+
+  const [smsConsent, setSmsConsent] = useState(profile.customer?.smsConsent ?? false);
+  const [smsState, setSmsState] = useState<"idle" | "saving" | "error">("idle");
+
+  async function toggleSmsConsent(next: boolean) {
+    setSmsConsent(next); // optimistic -- this is a simple on/off toggle, not a form with its own submit
+    setSmsState("saving");
+    const res = await fetch("/api/account/sms-preference", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ smsConsent: next }),
+    });
+    if (!res.ok) {
+      setSmsConsent(!next); // revert
+      setSmsState("error");
+      return;
+    }
+    setSmsState("idle");
+  }
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
@@ -183,6 +202,33 @@ export default function AccountProfileForm({ profile }: { profile: Profile }) {
           {profileState === "error" && <span className="text-sm text-red-600">{profileError}</span>}
         </div>
       </form>
+
+      <div className="rounded-2xl border border-surface-200 bg-white p-6">
+        <h2 className="flex items-center gap-2 font-semibold text-navy-950">
+          <MessageSquare className="size-4" aria-hidden /> SMS service notifications
+        </h2>
+        <p className="mt-1.5 text-sm text-surface-700">
+          Appointment reminders, scheduling updates, and other service-related texts. Message frequency may vary, message and data rates may apply, and this is never a condition of using our service.
+        </p>
+        <label className="mt-4 flex items-center gap-3">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={smsConsent}
+            onClick={() => toggleSmsConsent(!smsConsent)}
+            disabled={smsState === "saving"}
+            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-60 ${smsConsent ? "bg-teal-600" : "bg-surface-300"}`}
+          >
+            <span className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform ${smsConsent ? "translate-x-5" : "translate-x-0.5"}`} />
+          </button>
+          <span className="text-sm font-medium text-navy-950">{smsConsent ? "On" : "Off"}</span>
+        </label>
+        {smsState === "error" && <p className="mt-2 text-sm text-red-600">Couldn&apos;t save, please try again.</p>}
+        <p className="mt-3 text-xs text-surface-600">
+          Reply STOP to any text to opt out at any time. Your mobile information is never sold or shared with third parties for promotional or marketing purposes. See our{" "}
+          <a href="/policies/privacy" className="underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+        </p>
+      </div>
 
       <form onSubmit={savePassword} className="rounded-2xl border border-surface-200 bg-white p-6">
         <h2 className="font-semibold text-navy-950">Change password</h2>

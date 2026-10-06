@@ -5,7 +5,7 @@ import { getService } from "@/lib/data/services";
 import { createLead, findRecentDuplicate } from "@/lib/server/leadStore";
 import { getPricingConfig } from "@/lib/server/pricingStore";
 import { sendEmail, customerConfirmationEmail, businessNotificationEmail } from "@/lib/server/email";
-import { sendSms } from "@/lib/server/sms";
+import { sendCustomerSms, recordSmsConsentEvent } from "@/lib/server/sms";
 import { checkRateLimit } from "@/lib/server/rateLimit";
 import { notifyAdmins } from "@/lib/server/notificationStore";
 import { scheduleQuoteFollowUps } from "@/lib/server/automationStore";
@@ -94,11 +94,23 @@ export async function POST(req: NextRequest) {
   );
 
   const { id: leadId, reference } = await createLead(input, estimate, loggedInCustomerId);
+  const createdCustomerId = await getLeadCustomerId(leadId);
 
-  if (input.photoEstimateId) {
-    const created = await getLeadCustomerId(leadId);
-    if (created) await linkPhotoEstimateToLead(input.photoEstimateId, leadId, created);
+  if (input.photoEstimateId && createdCustomerId) {
+    await linkPhotoEstimateToLead(input.photoEstimateId, leadId, createdCustomerId);
   }
+
+  await recordSmsConsentEvent({
+    customerId: createdCustomerId,
+    leadId,
+    phone: input.phone,
+    purpose: "customer_care",
+    status: input.smsConsent ? "opted_in" : "opted_out",
+    method: "website_form",
+    source: "quote",
+    ipAddress: ip,
+    userAgent: req.headers.get("user-agent"),
+  });
 
   await scheduleQuoteFollowUps(leadId);
 
@@ -127,10 +139,13 @@ export async function POST(req: NextRequest) {
   await sendEmail({ to: business.email, replyTo: input.email, ...businessEmailContent });
 
   if (input.smsConsent) {
-    await sendSms(
-      input.phone,
-      `Abbie's Clean Method: We received your ${service.name} request (${reference}). We'll follow up shortly to confirm details. Reply STOP to opt out.`
-    );
+    await sendCustomerSms({
+      to: input.phone,
+      body: `${business.name}: We received your ${service.name} request (${reference}). We'll follow up shortly to confirm details. Reply STOP to opt out.`,
+      category: "quote_received",
+      leadId,
+      customerId: loggedInCustomerId,
+    });
   }
 
   await notifyAdmins(

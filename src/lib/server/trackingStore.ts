@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import { prisma, isDatabaseConfigured } from "@/lib/db";
-import { sendSms } from "@/lib/server/sms";
+import { sendCustomerSms } from "@/lib/server/sms";
 import { sendEmail } from "@/lib/server/email";
 import { initiateCall } from "@/lib/server/voice";
 import { business } from "@/lib/data/business";
@@ -48,7 +48,14 @@ export async function createLocationShare(bookingId: string, phone: string, admi
 
   const url = `${siteUrl()}/track/${id}`;
   const serviceName = booking.lead?.service.name ?? "cleaning";
-  const sms = await sendSms(phone, `${business.name}: tap to share your live location for the ${serviceName} job -- ${url}`);
+  // Goes to the CLEANER's phone, not a customer -- an internal operational message, not "customer
+  // care" SMS under the 10DLC campaign, so it isn't gated on customer consent.
+  const sms = await sendCustomerSms({
+    to: phone,
+    body: `${business.name}: tap to share your live location for the ${serviceName} job -- ${url}`,
+    category: "staff_tracking_link",
+    bypassConsentCheck: true,
+  });
   return { ok: true, url, smsSent: sms.ok };
 }
 
@@ -149,7 +156,7 @@ async function getCleanerPhone(bookingId: string): Promise<string | null> {
 async function getCustomerContact(bookingId: string) {
   const booking = await db().booking.findUnique({ where: { id: bookingId }, include: { customer: true } });
   if (!booking) return null;
-  return { name: `${booking.customer.firstName} ${booking.customer.lastName}`.trim(), phone: booking.customer.phone, email: booking.customer.email };
+  return { id: booking.customer.id, name: `${booking.customer.firstName} ${booking.customer.lastName}`.trim(), phone: booking.customer.phone, email: booking.customer.email };
 }
 
 export interface CleanerMessageItem {
@@ -172,10 +179,14 @@ export async function sendMessage(bookingId: string, sender: "CUSTOMER" | "CLEAN
 
   if (sender === "CUSTOMER") {
     const phone = await getCleanerPhone(bookingId);
-    if (phone) await sendSms(phone, `New message from your client: ${trimmed}`);
+    // Staff-facing (the cleaner's phone), not customer-care SMS -- bypasses consent, same reason as
+    // the tracking-link send above.
+    if (phone) await sendCustomerSms({ to: phone, body: `New message from your client: ${trimmed}`, category: "staff_chat_relay", bypassConsentCheck: true });
   } else {
     const customer = await getCustomerContact(bookingId);
-    if (customer?.phone) await sendSms(customer.phone, `New message from ${business.name}: ${trimmed}`);
+    if (customer?.phone) {
+      await sendCustomerSms({ to: customer.phone, body: `New message from ${business.name}: ${trimmed}`, category: "chat_reply", customerId: customer.id });
+    }
     if (customer?.email) await sendEmail({ to: customer.email, subject: "New message about your cleaning visit", html: `<p>${trimmed.replace(/</g, "&lt;")}</p>` });
   }
   return { ok: true };

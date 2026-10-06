@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Section from "@/components/ui/Section";
 import Button from "@/components/ui/Button";
+import SmsConsentDisclosure from "@/components/shared/SmsConsentDisclosure";
 
 export default function AccountSignupPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", password: "" });
+  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", password: "", smsConsent: false });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -64,6 +65,12 @@ export default function AccountSignupPage() {
           <label className="block">
             <span className="text-sm font-semibold text-navy-900">Password</span>
             <input type="password" required minLength={8} value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} className="mt-1.5 w-full rounded-xl border border-surface-200 px-3.5 py-2.5 text-sm" />
+          </label>
+          <label className="flex items-start gap-2.5">
+            <input type="checkbox" checked={form.smsConsent} onChange={(e) => setForm((f) => ({ ...f, smsConsent: e.target.checked }))} className="mt-0.5 size-4" />
+            <span className="text-sm text-navy-900">
+              <SmsConsentDisclosure />
+            </span>
           </label>
           {error && (
             <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>

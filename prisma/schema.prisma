@@ -204,6 +204,7 @@ model Customer {
   payments                Payment[]
   invoices                Invoice[]
   communicationPreference CommunicationPreference?
+  smsConsentEvents        SmsConsentEvent[]
   messages                Message[]
   reviews                 Review[]
   attachments             Attachment[]
@@ -280,6 +281,8 @@ model Lead {
   photoEstimates PhotoEstimate[]
   automationEvents AutomationEvent[]
   convertedFromProspect Prospect?
+  smsConsentEvents SmsConsentEvent[]
+  messages         Message[]
 
   @@index([status])
   @@index([createdAt])
@@ -752,7 +755,12 @@ model CommunicationPreference {
   customerId String   @unique
   customer   Customer @relation(fields: [customerId], references: [id])
 
+  // "Customer care" transactional SMS (quotes, bookings, reminders, arrival/completion,
+  // invoice/payment notices, support replies) -- the ONLY thing the Telnyx/Twilio 10DLC
+  // customer-care campaign is allowed to send to. Deliberately separate from
+  // smsMarketingConsent below; opting into one never implies the other.
   smsConsent      Boolean @default(false)
+  smsMarketingConsent Boolean @default(false)
   emailConsent    Boolean @default(false)
   marketingConsent Boolean @default(false)
   unsubscribedAt  DateTime?
@@ -763,25 +771,72 @@ model CommunicationPreference {
   @@map("communication_preferences")
 }
 
+// Defensible, append-only record of every SMS consent change -- who, when, how, and under what
+// disclosure. CommunicationPreference.smsConsent above stays the simple "current state" flag every
+// send-gate checks at runtime; this table is the audit trail proving how that flag got there,
+// required for 10DLC campaign review and preserved even after a later opt-out (never overwritten).
+model SmsConsentEvent {
+  id         String    @id @default(cuid())
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  leadId     String?
+  lead       Lead?     @relation(fields: [leadId], references: [id])
+
+  phone   String
+  channel String @default("sms") // sms | sms_marketing
+  purpose String // customer_care | marketing
+  status  String // opted_in | opted_out
+  method  String // website_form | keyword | inbound | admin_documented
+  source  String // booking | quote | contact | signup | account_settings | sms_keyword
+
+  disclosureVersion String // which exact consent-language version was shown, e.g. "2026-10-05"
+  ipAddress         String?
+  userAgent         String?
+
+  createdAt DateTime @default(now())
+
+  @@index([customerId])
+  @@index([leadId])
+  @@index([phone])
+  @@index([createdAt])
+  @@map("sms_consent_events")
+}
+
 model Message {
   id         String  @id @default(cuid())
   customerId String?
   customer   Customer? @relation(fields: [customerId], references: [id])
+  leadId     String?
+  lead       Lead?     @relation(fields: [leadId], references: [id])
 
   channel   MessageChannel
   templateKey String?
   subject   String?
   body      String
   toAddress String
+  // SMS-specific -- null for EMAIL. direction/category/provider let one table serve as the full
+  // outbound+inbound SMS log the compliance campaign needs, without a parallel table.
+  direction         String? // "OUT" | "IN"
+  fromAddress       String?
+  category          String? // booking_confirmation | reminder | schedule_update | service_completed | support_ack | help | stop | start | customer_reply | ...
+  provider          String? // telnyx | twilio | mock
+  providerMessageId String? @unique
+  status            String? // queued | sent | delivered | failed | received
 
   sentAt    DateTime?
+  deliveredAt DateTime?
   failedAt  DateTime?
+  errorCode String?
   errorMessage String?
 
   createdAt DateTime @default(now())
 
   @@index([channel])
   @@index([customerId])
+  @@index([leadId])
+  @@index([toAddress])
+  @@index([status])
+  @@index([createdAt])
   @@map("messages")
 }
 
@@ -943,6 +998,22 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@map("audit_logs")
+}
+
+// Idempotency guard for provider webhooks (Telnyx inbound messages + delivery-status events today;
+// generic enough to cover a future provider). A delivery-status event and an inbound-message event
+// are each real, distinct events for the same provider message id -- deduping on that id alone
+// would drop legitimate status transitions, so this dedupes on the webhook's OWN event id instead.
+model WebhookEvent {
+  id        String   @id @default(cuid())
+  provider  String // telnyx | stripe | ...
+  eventId   String
+  eventType String
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+  @@map("webhook_events")
 }
 
 /**

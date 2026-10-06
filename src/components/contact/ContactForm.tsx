@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { contactSchema, type ContactInput, type ContactFormValues } from "@/lib/validation/contact";
 import Button from "@/components/ui/Button";
+import SmsConsentDisclosure from "@/components/shared/SmsConsentDisclosure";
 
 export default function ContactForm() {
   const [state, setState] = useState<"idle" | "submitting" | "success" | "error">("idle");
@@ -15,7 +16,7 @@ export default function ContactForm() {
     formState: { errors },
   } = useForm<ContactFormValues>({
     resolver: zodResolver(contactSchema),
-    defaultValues: { name: "", email: "", phone: "", message: "", isUrgent: false, emailConsent: true, _gotcha: "" },
+    defaultValues: { name: "", email: "", phone: "", message: "", isUrgent: false, emailConsent: true, smsConsent: false, _gotcha: "" },
   });
 
   async function onSubmit(data: ContactFormValues) {
@@ -78,6 +79,13 @@ export default function ContactForm() {
       <label className="flex items-center gap-2.5">
         <input type="checkbox" className="size-4" {...register("emailConsent")} />
         <span className="text-sm text-navy-900">I consent to receive an email reply</span>
+      </label>
+
+      <label className="flex items-start gap-2.5">
+        <input type="checkbox" className="mt-0.5 size-4" {...register("smsConsent")} />
+        <span className="text-sm text-navy-900">
+          <SmsConsentDisclosure />
+        </span>
       </label>
 
       {state === "error" && (

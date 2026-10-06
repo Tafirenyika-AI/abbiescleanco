@@ -41,16 +41,30 @@ export default function PrivacyPolicyPage() {
         a payment processor. We do not sell your information.
       </p>
 
-      <h2>SMS / text messaging information</h2>
+      <h2>SMS / Text Messaging Privacy</h2>
       <p>
-        No mobile information, including phone numbers and SMS opt-in consent, will be shared
-        with third parties or affiliates for marketing or promotional purposes. We may share this
-        information with the service providers who deliver these messages on our behalf (e.g.
-        our SMS/WhatsApp provider), solely to send you the messages you&apos;ve requested -- never
-        for their own marketing. All other categories of information sharing described in this
-        policy exclude text messaging originator opt-in data and consent; this information is
-        never shared with any third parties.
+        You may voluntarily provide your mobile phone number and opt in to receive service-related
+        SMS text messages from {business.name}. Messages may include quote communications, booking
+        confirmations, appointment reminders, scheduling updates, service updates, invoice and
+        payment notifications, and responses to customer support inquiries.
       </p>
+      <p>
+        <strong>
+          Mobile information, including phone numbers and SMS opt-in consent data, will not be
+          sold or shared with third parties for promotional or marketing purposes.
+        </strong>{" "}
+        Service providers we use solely to deliver these communications on our behalf (e.g. our
+        SMS messaging provider) may process this information as needed to send you the messages
+        you&apos;ve requested, subject to their own contractual and privacy safeguards -- never
+        for their own marketing or resale.
+      </p>
+      <ul>
+        <li>Message frequency may vary based on your bookings and conversations with us.</li>
+        <li>Message and data rates may apply.</li>
+        <li>Reply <strong>STOP</strong> at any time to opt out, or <strong>HELP</strong> for assistance.</li>
+        <li>Consent to receive text messages is never a condition of purchasing any service.</li>
+        <li>For assistance, contact us at {business.email} or {business.phoneDisplay}.</li>
+      </ul>
 
       <h2>Your choices</h2>
       <p>

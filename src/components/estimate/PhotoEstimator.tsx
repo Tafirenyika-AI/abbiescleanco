@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Camera, Loader2, Sparkles, X, CheckCircle2 } from "lucide-react";
+import SmsConsentDisclosure from "@/components/shared/SmsConsentDisclosure";
 
 interface Finding { photo: number; area: string; condition: string; issues: string[] }
 interface Result {
@@ -48,7 +49,7 @@ export default function PhotoEstimator({ addOnLabels, serviceNames, isLoggedIn }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<Result | null>(null);
-  const [contact, setContact] = useState({ firstName: "", lastName: "", email: "", phone: "", accept: false });
+  const [contact, setContact] = useState({ firstName: "", lastName: "", email: "", phone: "", accept: false, smsConsent: false });
   const [sent, setSent] = useState<{ reference: string } | null>(null);
   const [gotcha, setGotcha] = useState("");
   const [shareWithTeam, setShareWithTeam] = useState(true);
@@ -100,7 +101,7 @@ export default function PhotoEstimator({ addOnLabels, serviceNames, isLoggedIn }
         zip: d.zip, propertyType: d.propertyType, squareFeet: Number(d.squareFeet), bedrooms: Number(d.bedrooms), bathrooms: Number(d.bathrooms),
         service: result.service, frequency: "one-time", condition: result.condition, hasPets: d.hasPets, addOns: result.addOns,
         firstName: contact.firstName, lastName: contact.lastName, email: contact.email, phone: contact.phone, preferredContactMethod: "EMAIL",
-        additionalInstructions: `Requested via photo estimate (${d.areaType}).`, smsConsent: false, emailConsent: true, policiesAccepted: true,
+        additionalInstructions: `Requested via photo estimate (${d.areaType}).`, smsConsent: contact.smsConsent, emailConsent: true, policiesAccepted: true,
         source: "photo-estimate", photoEstimateId: result.photoEstimateId ?? undefined, _gotcha: "",
       }),
     });
@@ -179,6 +180,10 @@ export default function PhotoEstimator({ addOnLabels, serviceNames, isLoggedIn }
           <label className="mt-3 flex items-start gap-2 text-sm text-navy-950">
             <input type="checkbox" checked={contact.accept} onChange={(e) => setContact({ ...contact, accept: e.target.checked })} className="mt-0.5" />
             <span>I&apos;ve read and accept the <a href="/policies" target="_blank" className="font-semibold text-teal-700 underline">service policies</a>.</span>
+          </label>
+          <label className="mt-3 flex items-start gap-2 text-sm text-navy-950">
+            <input type="checkbox" checked={contact.smsConsent} onChange={(e) => setContact({ ...contact, smsConsent: e.target.checked })} className="mt-0.5" />
+            <span><SmsConsentDisclosure /></span>
           </label>
           {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
           <div className="mt-4 flex flex-wrap gap-2">
