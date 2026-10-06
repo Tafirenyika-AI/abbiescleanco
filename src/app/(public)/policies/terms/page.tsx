@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <PolicyLayout title="Terms of Service" updated="Draft, pending client confirmation">
+    <PolicyLayout title="Terms of Service" updated="October 6, 2026">
       <p>
         These terms cover your use of this website and any estimate or booking request you submit
         to {business.name}.

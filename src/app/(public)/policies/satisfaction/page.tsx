@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function SatisfactionPolicyPage() {
   return (
-    <PolicyLayout title="Satisfaction & Re-clean Policy" updated="Draft, pending client confirmation">
+    <PolicyLayout title="Satisfaction & Re-clean Policy" updated="October 6, 2026">
       <p>
         We want you to be happy with your cleaning. If something was missed, here&apos;s what to
         do.

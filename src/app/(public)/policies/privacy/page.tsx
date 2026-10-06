@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <PolicyLayout title="Privacy Policy" updated="Draft, pending client confirmation">
+    <PolicyLayout title="Privacy Policy" updated="October 6, 2026">
       <p>
         {business.name} (&ldquo;we,&rdquo; &ldquo;us&rdquo;) respects your privacy. This policy
         explains what information we collect through {business.name.replace(" LLC", "")}&apos;s
