@@ -4,6 +4,13 @@ name: Process due automations
 # which is too infrequent for time-sensitive sends (a "3 hours before" appointment reminder can't
 # wait up to 24h). This runs independently of Vercel's plan limits, every 15 minutes, hitting the
 # same /api/automation/process route the Vercel cron and the admin "Run now" button also use.
+#
+# Requires the SAME CRON_SECRET value set in TWO places, or every run 401s silently (found and
+# fixed 2026-10-06, after a real week-long outage -- see project notes): this repo's own Actions
+# secret (Settings -> Secrets and variables -> Actions) AND a Vercel Production environment
+# variable of the same name. Vercel only applies a newly-added/changed env var to deployments
+# created AFTER the change -- adding or rotating it there requires a fresh deploy (push a commit,
+# or use Vercel's own "Redeploy") before it actually takes effect.
 on:
   schedule:
     - cron: "*/15 * * * *"
