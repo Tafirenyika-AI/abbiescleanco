@@ -185,10 +185,12 @@ export const EMAIL_TEMPLATE_DEFS: EmailTemplateDef[] = [
     key: "BOOKING_CONFIRMATION",
     name: "Booking confirmed",
     description: "Sent the moment an admin confirms a booking.",
-    variables: ["name", "serviceName", "dateLabel", "arrivalWindowBlockHtml", "reference", "cancellationUrl"],
+    variables: ["name", "serviceName", "dateLabel", "timeLabel", "arrivalWindowBlockHtml", "reference", "cancellationUrl", "addressBlockHtml", "amountBlockHtml"],
     defaultSubject: "Your {{serviceName}} visit is confirmed, {{dateLabel}}",
     defaultHtml: `
-      <p>Hi {{name}}, your {{serviceName}} visit is confirmed for {{dateLabel}}{{arrivalWindowBlockHtml}}.</p>
+      <p>Hi {{name}}, your {{serviceName}} visit is confirmed for {{dateLabel}} at {{timeLabel}}{{arrivalWindowBlockHtml}}.</p>
+      {{addressBlockHtml}}
+      {{amountBlockHtml}}
       <p>Reference: {{reference}}. Need to reschedule? See our <a href="{{cancellationUrl}}">Cancellation &amp; Rescheduling Policy</a>.</p>
     `,
   },
@@ -196,9 +198,12 @@ export const EMAIL_TEMPLATE_DEFS: EmailTemplateDef[] = [
     key: "APPOINTMENT_REMINDER",
     name: "Appointment reminder",
     description: "Sent 48 hours, 24 hours, and the day of an upcoming booking -- same wording every time.",
-    variables: ["name", "serviceName", "dateLabel"],
+    variables: ["name", "serviceName", "dateLabel", "addressBlockHtml"],
     defaultSubject: "Reminder: {{serviceName}} on {{dateLabel}}",
-    defaultHtml: `<p>Hi {{name}}, this is a reminder about your upcoming {{serviceName}} visit on {{dateLabel}}.</p>`,
+    defaultHtml: `
+      <p>Hi {{name}}, this is a reminder about your upcoming {{serviceName}} visit on {{dateLabel}}.</p>
+      {{addressBlockHtml}}
+    `,
   },
   {
     key: "ON_THE_WAY",

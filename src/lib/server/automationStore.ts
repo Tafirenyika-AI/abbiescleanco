@@ -11,6 +11,7 @@ import {
   sendWinBackMessage,
 } from "./automation";
 import { CONFIGURABLE_AUTOMATION_TYPES, automationRuleLabels, type ConfigurableAutomationType, type AutomationRuleConfig, type AutomationRules } from "@/lib/automations";
+import { formatAddressLine } from "./quoteStore";
 
 // Re-exported for existing server-side callers that import these from this file -- the real
 // definitions live in the client-safe lib/automations.ts (see its own comment for why).
@@ -116,7 +117,7 @@ export async function schedulePostServiceThankYou(bookingId: string): Promise<vo
 async function getBookingWithRecipient(bookingId: string) {
   const booking = await db().booking.findUnique({
     where: { id: bookingId },
-    include: { customer: { include: { communicationPreference: true } }, lead: { include: { service: true } } },
+    include: { customer: { include: { communicationPreference: true } }, lead: { include: { service: true } }, address: true, quote: { select: { total: true } } },
   });
   if (!booking || !booking.customer) return null;
   return {
@@ -125,6 +126,8 @@ async function getBookingWithRecipient(bookingId: string) {
     scheduledStart: booking.scheduledStart,
     arrivalWindow: booking.arrivalWindow,
     serviceName: booking.lead?.service.name ?? "cleaning",
+    address: formatAddressLine(booking.address),
+    amount: booking.quote?.total ?? null,
     recipient: {
       name: `${booking.customer.firstName} ${booking.customer.lastName}`.trim(),
       email: booking.customer.email,
@@ -175,6 +178,8 @@ async function dispatchEvent(event: EventRow): Promise<"SENT" | "SKIPPED" | "FAI
         scheduledStart: booking.scheduledStart,
         arrivalWindow: booking.arrivalWindow ?? undefined,
         reference: booking.reference,
+        address: booking.address,
+        amount: booking.amount,
       });
       return result.ok ? "SENT" : "FAILED";
     }
@@ -186,7 +191,7 @@ async function dispatchEvent(event: EventRow): Promise<"SENT" | "SKIPPED" | "FAI
       if (!booking || !booking.scheduledStart) return "FAILED";
       if (booking.status === "CANCELLED" || booking.status === "COMPLETED") return "SKIPPED";
       const stage = event.type === "REMINDER_48H" ? "48h" : event.type === "REMINDER_24H" ? "24h" : "day-of";
-      const results = await sendAppointmentReminder(booking.recipient, { serviceName: booking.serviceName, scheduledStart: booking.scheduledStart, stage });
+      const results = await sendAppointmentReminder(booking.recipient, { serviceName: booking.serviceName, scheduledStart: booking.scheduledStart, stage, address: booking.address });
       // Neither email nor SMS-consented -- genuinely nothing to send, not a failed delivery.
       if (results.length === 0) return "SKIPPED";
       return results.every((r) => r.ok) ? "SENT" : "FAILED";

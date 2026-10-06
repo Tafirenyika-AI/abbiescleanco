@@ -43,6 +43,24 @@ interface RecipientInfo {
   customerId?: string | null;
 }
 
+// Every date shown to a customer must be computed in the business's own Pacific timezone, not
+// whichever timezone the server happens to run in (Vercel = UTC) -- same reasoning as
+// adminDate.ts/BUSINESS_TZ, duplicated here rather than imported since that file's formats are
+// tuned for the terser admin UI, not a customer-facing sentence.
+const BUSINESS_TZ = "America/Los_Angeles";
+
+function dateOnlyLabel(date: Date): string {
+  return new Intl.DateTimeFormat("en-US", { timeZone: BUSINESS_TZ, weekday: "long", month: "long", day: "numeric" }).format(date);
+}
+
+function timeOnlyLabel(date: Date): string {
+  return new Intl.DateTimeFormat("en-US", { timeZone: BUSINESS_TZ, hour: "numeric", minute: "2-digit" }).format(date);
+}
+
+function money(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
 /** Honest no-op for a recipient with no email -- same {ok:true} shape as a real send, so callers
  *  checking .ok keep working correctly instead of treating "nothing to send to" as a failure. */
 function skipped(): SendEmailResult {
@@ -73,21 +91,19 @@ export async function sendFinalQuoteFollowUp(recipient: RecipientInfo, reference
 /** Sent when an administrator confirms a booking. */
 export async function sendBookingConfirmation(
   recipient: RecipientInfo,
-  details: { serviceName: string; scheduledStart: Date; arrivalWindow?: string; reference: string }
+  details: { serviceName: string; scheduledStart: Date; arrivalWindow?: string; reference: string; address?: string | null; amount?: number | null }
 ) {
   if (!recipient.email) return skipped();
-  const dateLabel = details.scheduledStart.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
   const { subject, html } = await renderEmailTemplate("BOOKING_CONFIRMATION", {
     name: escapeHtml(recipient.name),
     serviceName: escapeHtml(details.serviceName),
-    dateLabel,
+    dateLabel: dateOnlyLabel(details.scheduledStart),
+    timeLabel: timeOnlyLabel(details.scheduledStart),
     arrivalWindowBlockHtml: details.arrivalWindow ? ` (${escapeHtml(details.arrivalWindow)})` : "",
     reference: escapeHtml(details.reference),
     cancellationUrl: `${siteUrl()}/policies/cancellation`,
+    addressBlockHtml: details.address ? `<p><strong>Address:</strong> ${escapeHtml(details.address)}</p>` : "",
+    amountBlockHtml: details.amount ? `<p><strong>Price:</strong> ${money(details.amount)}</p>` : "",
   });
   return sendEmail({ to: recipient.email, subject, html });
 }
@@ -95,13 +111,9 @@ export async function sendBookingConfirmation(
 /** 48h / 24h / day-of reminder -- same content, different offset (offset is a scheduling concern, not this function's). */
 export async function sendAppointmentReminder(
   recipient: RecipientInfo,
-  details: { serviceName: string; scheduledStart: Date; stage: "48h" | "24h" | "day-of" }
+  details: { serviceName: string; scheduledStart: Date; stage: "48h" | "24h" | "day-of"; address?: string | null }
 ) {
-  const dateLabel = details.scheduledStart.toLocaleString("en-US", {
-    weekday: "long",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  const dateLabel = `${dateOnlyLabel(details.scheduledStart)} at ${timeOnlyLabel(details.scheduledStart)}`;
   // Unlike the other, email-only functions here, a reminder can still go out over SMS alone for a
   // customer with no email on file -- only skip the email channel itself, not the whole reminder.
   const results = recipient.email
@@ -111,6 +123,7 @@ export async function sendAppointmentReminder(
             name: escapeHtml(recipient.name),
             serviceName: escapeHtml(details.serviceName),
             dateLabel,
+            addressBlockHtml: details.address ? `<p><strong>Address:</strong> ${escapeHtml(details.address)}</p>` : "",
           });
           return sendEmail({ to: recipient.email!, subject, html });
         })(),
