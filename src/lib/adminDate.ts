@@ -54,3 +54,19 @@ export function pacificWallTimeToUtc(year: number, month: number, day: number, h
   const diff = guess.getTime() - shownAsUtc;
   return new Date(guess.getTime() + diff);
 }
+
+/**
+ * Convenience wrapper for the common case: an admin form has a `<input type="date">` (e.g.
+ * "2026-10-15") and `<input type="time">` (e.g. "08:00") pair meant as the business's own Pacific
+ * wall-clock time, and needs a correct UTC ISO string to send to the API. Several admin
+ * scheduling forms previously built this with plain string concatenation
+ * (`` `${date}T${time}:00` `` with no timezone offset) -- harmless-looking, but a server running in
+ * UTC (Vercel's default) parses an offset-less ISO string as UTC, not Pacific, silently shifting
+ * every booking by the Pacific/UTC difference (7-8 hours depending on DST; e.g. an intended 8:00 AM
+ * booking was stored as 8:00 AM UTC and then correctly re-displayed in Pacific as 1:00 AM).
+ */
+export function pacificDateTimeToUtcIso(dateStr: string, timeStr: string): string {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const [hour, minute] = timeStr.split(":").map(Number);
+  return pacificWallTimeToUtc(year, month, day, hour, minute).toISOString();
+}

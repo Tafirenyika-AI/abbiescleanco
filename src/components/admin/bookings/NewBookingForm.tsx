@@ -7,6 +7,7 @@ import { Loader2, Sparkles } from "lucide-react";
 import Card from "@/components/admin/ui/Card";
 import { services } from "@/lib/data/services";
 import type { CustomerOption } from "@/lib/server/customerStore";
+import { pacificDateTimeToUtcIso } from "@/lib/adminDate";
 
 interface SuggestedSlot {
   startISO: string;
@@ -95,8 +96,8 @@ export default function NewBookingForm() {
         addressLine2: addressLine2 || undefined,
         city: city.trim() || undefined,
         zip,
-        scheduledStart: `${date}T${start}:00`,
-        scheduledEnd: `${date}T${end}:00`,
+        scheduledStart: pacificDateTimeToUtcIso(date, start),
+        scheduledEnd: pacificDateTimeToUtcIso(date, end),
       }),
     });
     const json = await res.json();

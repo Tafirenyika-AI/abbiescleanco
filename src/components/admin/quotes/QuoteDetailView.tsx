@@ -13,7 +13,7 @@ import Badge from "@/components/admin/ui/Badge";
 import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
 import SegmentedControl from "@/components/admin/ui/SegmentedControl";
 import { useToast } from "@/components/admin/ui/Toast";
-import { formatDateTime } from "@/lib/adminDate";
+import { formatDateTime, pacificDateTimeToUtcIso } from "@/lib/adminDate";
 import CustomerQuoteView from "@/components/quotes/CustomerQuoteView";
 import {
   PRICING_UNITS, pricingUnitLabels, FREQUENCIES, frequencyLabels,
@@ -468,8 +468,8 @@ export default function QuoteDetailView({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           quoteId: quote.id,
-          scheduledStart: `${bookingDate}T${bookingStart}:00`,
-          scheduledEnd: `${bookingDate}T${bookingEnd}:00`,
+          scheduledStart: pacificDateTimeToUtcIso(bookingDate, bookingStart),
+          scheduledEnd: pacificDateTimeToUtcIso(bookingDate, bookingEnd),
           arrivalWindow: bookingArrivalWindow || undefined,
           staffAssignee: bookingStaff || undefined,
           confirmDespiteConflict,

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { X, Phone, Mail, MessageCircle, Loader2, FileSignature, CalendarPlus } from "lucide-react";
 import { LEAD_STATUSES, leadStatusLabels, type StoredLead, type LeadStatusValue, type LeadActivityEntry } from "@/lib/leads";
-import { formatDateTime } from "@/lib/adminDate";
+import { formatDateTime, pacificDateTimeToUtcIso } from "@/lib/adminDate";
 import { services } from "@/lib/data/services";
 import Badge from "@/components/admin/ui/Badge";
 import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
@@ -63,8 +63,8 @@ export default function LeadDetailDrawer({
           addressLine1: scheduleAddress,
           addressLine2: scheduleAddress2 || undefined,
           amount: Math.round(Number(scheduleAmount) * 100),
-          scheduledStart: `${scheduleDate}T${scheduleStart}:00`,
-          scheduledEnd: `${scheduleDate}T${scheduleEnd}:00`,
+          scheduledStart: pacificDateTimeToUtcIso(scheduleDate, scheduleStart),
+          scheduledEnd: pacificDateTimeToUtcIso(scheduleDate, scheduleEnd),
         }),
       });
       const json = await res.json();

@@ -12,7 +12,7 @@ import Card from "@/components/admin/ui/Card";
 import Badge from "@/components/admin/ui/Badge";
 import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
 import { useToast } from "@/components/admin/ui/Toast";
-import { formatDateTime } from "@/lib/adminDate";
+import { formatDateTime, pacificDateTimeToUtcIso } from "@/lib/adminDate";
 
 const statusTone: Record<BookingStatusValue, "neutral" | "info" | "success" | "error" | "warning" | "teal"> = {
   REQUESTED: "warning",
@@ -202,8 +202,8 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          scheduledStart: `${date}T${start}:00`,
-          scheduledEnd: `${date}T${end}:00`,
+          scheduledStart: pacificDateTimeToUtcIso(date, start),
+          scheduledEnd: pacificDateTimeToUtcIso(date, end),
           arrivalWindow: arrivalWindow || undefined,
           confirmDespiteConflict,
         }),

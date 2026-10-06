@@ -7,7 +7,7 @@ import Card from "@/components/admin/ui/Card";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import Badge from "@/components/admin/ui/Badge";
 import { useToast } from "@/components/admin/ui/Toast";
-import { formatDate } from "@/lib/adminDate";
+import { formatDate, pacificDateTimeToUtcIso } from "@/lib/adminDate";
 import { services } from "@/lib/data/services";
 import type { PropertyManagerListItem, PropertyManagerDetail } from "@/lib/server/propertyManagerStore";
 import type { CustomerOption } from "@/lib/server/customerStore";
@@ -127,7 +127,7 @@ export default function PropertyManagersManager({ initialPropertyManagers }: { i
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({
         addressId: scheduleFor, service: sService, amount: Math.round(Number(sAmount) * 100),
-        scheduledStart: `${sDate}T${sStart}:00`, scheduledEnd: `${sDate}T${sEnd}:00`,
+        scheduledStart: pacificDateTimeToUtcIso(sDate, sStart), scheduledEnd: pacificDateTimeToUtcIso(sDate, sEnd),
       }),
     });
     const data = await res.json().catch(() => null);
