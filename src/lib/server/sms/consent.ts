@@ -1,5 +1,23 @@
+import { Prisma } from "@prisma/client";
 import { prisma, isDatabaseConfigured } from "@/lib/db";
 import { normalizePhone } from "./phone";
+
+/**
+ * Real production data has Customer.phone stored in whatever format it was typed in at each entry
+ * point (raw digits, "(650) 555-1234", etc. -- confirmed by sampling real rows) rather than
+ * normalized E.164. Telnyx always sends E.164 for an inbound sender's number, so an exact-string
+ * match would silently fail to find the right customer for a STOP/START/HELP keyword (or any
+ * consent check) whenever their phone wasn't stored in plain-digit form -- a real compliance risk,
+ * since a missed match means CommunicationPreference never gets updated. Matches on the last 10
+ * digits (the US national number) regardless of how either side is formatted.
+ */
+async function findCustomerIdByPhoneLoose(phone: string): Promise<string | null> {
+  if (!isDatabaseConfigured || !prisma) return null;
+  const rows = await prisma.$queryRaw<{ id: string }[]>(
+    Prisma.sql`SELECT id FROM customers WHERE "deletedAt" IS NULL AND right(regexp_replace(phone, '[^0-9]', '', 'g'), 10) = right(regexp_replace(${phone}, '[^0-9]', '', 'g'), 10) ORDER BY "createdAt" DESC LIMIT 1`
+  );
+  return rows[0]?.id ?? null;
+}
 
 function db() {
   if (!isDatabaseConfigured || !prisma) throw new Error("SMS consent requires DATABASE_URL to be configured.");
@@ -83,9 +101,11 @@ export async function hasSmsConsent(opts: { customerId?: string | null; phone?: 
   }
 
   if (opts.phone) {
-    const phone = normalizePhone(opts.phone) ?? opts.phone;
-    const customer = await db().customer.findFirst({ where: { phone, deletedAt: null }, include: { communicationPreference: true } });
-    if (customer?.communicationPreference) return customer.communicationPreference[field];
+    const customerId = await findCustomerIdByPhoneLoose(opts.phone);
+    if (customerId) {
+      const pref = await db().communicationPreference.findUnique({ where: { customerId } });
+      if (pref) return pref[field];
+    }
   }
 
   return false;
@@ -95,7 +115,6 @@ export async function hasSmsConsent(opts: { customerId?: string | null; phone?: 
  *  ordinary reply to the right conversation) -- phone numbers aren't unique in the schema, so this
  *  takes the most recently created match. */
 export async function findCustomerByPhone(phone: string): Promise<{ id: string } | null> {
-  if (!isDatabaseConfigured || !prisma) return null;
-  const normalized = normalizePhone(phone) ?? phone;
-  return db().customer.findFirst({ where: { phone: normalized, deletedAt: null }, orderBy: { createdAt: "desc" }, select: { id: true } });
+  const id = await findCustomerIdByPhoneLoose(phone);
+  return id ? { id } : null;
 }

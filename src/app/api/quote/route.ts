@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
       body: `${business.name}: We received your ${service.name} request (${reference}). We'll follow up shortly to confirm details. Reply STOP to opt out.`,
       category: "quote_received",
       leadId,
-      customerId: loggedInCustomerId,
+      customerId: createdCustomerId,
     });
   }
 

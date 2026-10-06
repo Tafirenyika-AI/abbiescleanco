@@ -80,6 +80,21 @@ maybeDescribe("SMS consent -- the defensible audit trail", () => {
     expect(found?.id).toBe(customerId);
   });
 
+  it("REAL BUG FOUND IN LIVE VERIFICATION: matches regardless of how the stored phone is formatted -- real production rows are stored as raw digits, \"(555) 555-1234\", etc., not consistently normalized, so an exact-string match silently failed to find the customer, meaning a STOP never actually reached CommunicationPreference", async () => {
+    const digitsOnly = phone.replace(/\D/g, "").slice(-10); // what's stored on `customerId`'s row is +1XXXXXXXXXX
+    const differentlyFormattedCustomer = await prisma!.customer.create({
+      data: { firstName: "Format", lastName: `Mismatch${run}`, phone: `(${digitsOnly.slice(0, 3)}) ${digitsOnly.slice(3, 6)}-${digitsOnly.slice(6)}`, email: `format-mismatch-${run}@test.internal` },
+    });
+    try {
+      // Telnyx always sends E.164 for an inbound sender -- confirm that still resolves even though
+      // the stored row looks nothing like it.
+      const found = await findCustomerByPhone(`+1${digitsOnly}`);
+      expect(found?.id).toBe(differentlyFormattedCustomer.id);
+    } finally {
+      await prisma!.customer.delete({ where: { id: differentlyFormattedCustomer.id } }).catch(() => {});
+    }
+  });
+
   it("sendCustomerSms refuses to send to a number with no consent on file, and still logs the attempt", async () => {
     const noConsentPhone = `+1509555${String(run + 1).slice(-4)}`;
     const result = await sendCustomerSms({ to: noConsentPhone, body: "test", category: "test" });
