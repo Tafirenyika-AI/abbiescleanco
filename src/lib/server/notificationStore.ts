@@ -14,6 +14,7 @@ export const ADMIN_NOTIFICATION_TYPES = [
   "NEW_MESSAGE",
   "GENERAL",
   "TIME_TRACKING",
+  "PROSPECTING_DIGEST",
 ] as const;
 export type AdminNotificationTypeValue = (typeof ADMIN_NOTIFICATION_TYPES)[number];
 
@@ -31,6 +32,7 @@ export const adminNotificationTypeLabels: Record<AdminNotificationTypeValue, str
   NEW_MESSAGE: "New message",
   GENERAL: "General",
   TIME_TRACKING: "Time tracking",
+  PROSPECTING_DIGEST: "Prospecting",
 };
 
 export interface AdminNotificationItem {

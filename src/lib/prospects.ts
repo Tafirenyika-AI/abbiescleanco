@@ -41,6 +41,7 @@ export interface ProspectRow {
   status: ProspectStatus;
   draftSubject: string | null;
   draftBody: string | null;
+  draftSmsBody: string | null;
   notes: string | null;
   assignedToId: string | null;
   assignedToName: string | null;

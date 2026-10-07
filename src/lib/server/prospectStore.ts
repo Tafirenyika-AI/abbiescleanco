@@ -4,6 +4,7 @@ import { getContactInfo } from "@/lib/server/siteSettings";
 import { business } from "@/lib/data/business";
 import { PROSPECT_CATEGORIES, PROSPECT_STATUSES, prospectCategoryLabels, type ProspectCategory, type ProspectStatus, type ProspectRow } from "@/lib/prospects";
 import { HOUSE_WRITING_STYLE } from "@/lib/aiStyle";
+import { notifyAdmins } from "@/lib/server/notificationStore";
 
 export { PROSPECT_CATEGORIES, prospectCategoryLabels, PROSPECT_STATUSES, prospectStatusLabels, type ProspectCategory, type ProspectStatus, type ProspectRow } from "@/lib/prospects";
 
@@ -89,7 +90,7 @@ function mapRow(p: {
   id: string; category: string; businessName: string | null; contactName: string | null;
   phone: string | null; email: string | null; address: string | null; website: string | null;
   source: string; sourceQuery: string | null; status: string; draftSubject: string | null;
-  draftBody: string | null; notes: string | null; discoveredAt: Date; contactedAt: Date | null;
+  draftBody: string | null; draftSmsBody: string | null; notes: string | null; discoveredAt: Date; contactedAt: Date | null;
   assignedToId: string | null; assignedTo?: { name: string } | null;
   researchNotes: string | null; researchSources: unknown; researchedAt: Date | null;
   convertedLeadId: string | null; convertedLead?: { reference: string } | null;
@@ -108,6 +109,7 @@ function mapRow(p: {
     status: (PROSPECT_STATUSES as readonly string[]).includes(p.status) ? (p.status as ProspectStatus) : "NEW",
     draftSubject: p.draftSubject,
     draftBody: p.draftBody,
+    draftSmsBody: p.draftSmsBody,
     notes: p.notes,
     assignedToId: p.assignedToId,
     assignedToName: p.assignedTo?.name ?? null,
@@ -488,9 +490,27 @@ export async function draftOutreachForProspect(id: string): Promise<ProspectRow 
     `If you'd rather not hear from us again, just reply and let us know and we won't reach out further.`,
   ].join("\n");
 
+  // Short SMS-length version, drafted whenever a phone is on file -- even if an email draft also
+  // exists, since the two channels aren't exclusive. There's no automated send for this (unlike
+  // the real customer SMS system, this has no consent on file to send against), it's text for an
+  // admin to copy and send themselves if they choose to reach out that way.
+  const smsOpeners: Record<ProspectCategory, string> = {
+    PROPERTY_MANAGER: `Hi, I help property managers in ${areas} with fast, reliable turnover cleaning between tenants.`,
+    REALTOR: `Hi, I handle move-in/move-out cleaning for local realtors so listings show well and closings aren't held up.`,
+    LOCAL_BUSINESS: `Hi, I provide recurring commercial cleaning for local businesses in ${areas} on a schedule that fits your hours.`,
+    HOMEOWNER: `Hi, welcome to the neighborhood! I run a local residential cleaning service in ${areas}, happy to help if useful.`,
+    OTHER: `Hi, I run a local cleaning service in ${areas} and wanted to introduce myself.`,
+  };
+  const smsBody = `${smsOpeners[(p.category as ProspectCategory) ?? "OTHER"]} This is ${business.name} -- reply STOP to opt out, or call ${contact.phoneDisplay} with any questions.`;
+
   const updated = await db().prospect.update({
     where: { id },
-    data: { draftSubject: subject, draftBody: body, status: p.status === "NEW" ? "DRAFTED" : p.status },
+    data: {
+      draftSubject: subject,
+      draftBody: body,
+      ...(p.phone ? { draftSmsBody: smsBody } : {}),
+      status: p.status === "NEW" ? "DRAFTED" : p.status,
+    },
     include: PROSPECT_INCLUDE,
   });
   return mapRow(updated);
@@ -499,7 +519,7 @@ export async function draftOutreachForProspect(id: string): Promise<ProspectRow 
 export async function updateProspect(
   id: string,
   data: {
-    status?: ProspectStatus; notes?: string; draftSubject?: string; draftBody?: string; assignedToId?: string | null;
+    status?: ProspectStatus; notes?: string; draftSubject?: string; draftBody?: string; draftSmsBody?: string; assignedToId?: string | null;
     contactName?: string; email?: string; phone?: string; address?: string;
   }
 ): Promise<ProspectRow | null> {
@@ -516,6 +536,7 @@ export async function updateProspect(
       ...(data.notes !== undefined ? { notes: data.notes || null } : {}),
       ...(data.draftSubject !== undefined ? { draftSubject: data.draftSubject || null } : {}),
       ...(data.draftBody !== undefined ? { draftBody: data.draftBody || null } : {}),
+      ...(data.draftSmsBody !== undefined ? { draftSmsBody: data.draftSmsBody || null } : {}),
       ...(data.assignedToId !== undefined ? { assignedToId: data.assignedToId || null } : {}),
       ...(data.contactName !== undefined ? { contactName: data.contactName || null } : {}),
       ...(data.email !== undefined ? { email: data.email || null } : {}),
@@ -720,4 +741,169 @@ export async function convertProspectToLead(id: string): Promise<ConvertToLeadRe
   });
 
   return { ok: true, leadId, leadReference: reference };
+}
+
+/**
+ * Best-effort contact enrichment: fetches a prospect's own real business website (homepage, then
+ * a couple of common contact-page paths) and looks for a real published email address, either a
+ * mailto: link or a bare address in the page text. Never invents one -- silently gives up if the
+ * site is unreachable, isn't real HTML, or just doesn't publish an address anywhere checked.
+ */
+async function tryExtractEmailFromWebsite(url: string): Promise<string | null> {
+  let base: string;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    base = parsed.toString().replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+
+  const candidates = [base, `${base}/contact`, `${base}/contact-us`];
+  for (const candidate of candidates) {
+    try {
+      const res = await fetch(candidate, {
+        signal: AbortSignal.timeout(8_000),
+        headers: { "user-agent": "Mozilla/5.0 (compatible; AbbiesCleanMethodBot/1.0; +https://abbiescleanco.com)" },
+      });
+      if (!res.ok) continue;
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("text/html")) continue;
+      const html = (await res.text()).slice(0, 500_000);
+
+      const mailto = html.match(/mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+      if (mailto) return mailto[1];
+
+      const bareMatches = html.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) ?? [];
+      const realMatch = bareMatches.find(
+        (m) => !/\.(png|jpg|jpeg|gif|svg|webp|css|js)$/i.test(m) && !/sentry\.io|wixpress\.com|example\.com|godaddy\.com/i.test(m)
+      );
+      if (realMatch) return realMatch;
+    } catch {
+      // try the next candidate path; give up silently if none work -- best-effort only
+    }
+  }
+  return null;
+}
+
+const DAILY_PROSPECTING_SETTING_KEY = "prospecting_daily_run";
+const DAILY_DISCOVERY_CAP = 20;
+
+function todayPacificDateString(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" }).format(new Date());
+}
+
+// Default discovery run when no admin-queued intent exists -- mirrors the same categories an
+// admin already searches for manually (see planPlacesQueries), scoped to the real service area.
+const DEFAULT_DAILY_INTENTS: { intent: string; category: ProspectCategory }[] = [
+  { intent: "property management companies that might need recurring turnover cleaning", category: "PROPERTY_MANAGER" },
+  { intent: "local small businesses and offices that could use a recurring commercial cleaning service", category: "LOCAL_BUSINESS" },
+];
+
+export interface DailyProspectingResult {
+  ok: boolean;
+  error?: string;
+  skipped?: boolean;
+  webLeadsFound?: number;
+  placesFound?: number;
+  totalNew?: number;
+  drafted?: number;
+  enriched?: number;
+}
+
+/**
+ * The once-a-day automated prospecting run. Discovers new real prospects (across both channels
+ * combined, capped at DAILY_DISCOVERY_CAP/day so this can't run away), drafts outreach for every
+ * prospect still missing one, and best-effort fills in a missing email from a prospect's own
+ * website. Wired into the already-proven /api/automation/process endpoint (hit every 15 minutes
+ * by the GitHub Actions cron -- see that route's own comment) rather than a new, separate cron;
+ * made idempotent via a BusinessSetting marker keyed to the real Pacific calendar date, so being
+ * hit every 15 minutes still only actually runs this once per day. Never sends or contacts anyone
+ * -- see this file's top-of-file note, outreach is drafted only and an admin still has to review
+ * and explicitly click Send (or, for the SMS draft, copy and send it themselves).
+ */
+export async function runDailyProspecting(): Promise<DailyProspectingResult> {
+  if (!isDatabaseConfigured || !prisma) return { ok: false, error: "Database not configured" };
+
+  const today = todayPacificDateString();
+  const marker = await prisma.businessSetting.findUnique({ where: { key: DAILY_PROSPECTING_SETTING_KEY } });
+  const markerValue = marker?.value as { lastRunDate?: string } | null;
+  if (markerValue?.lastRunDate === today) {
+    return { ok: true, skipped: true };
+  }
+
+  let webLeadsFound = 0;
+  let placesFound = 0;
+
+  if (await isWebLeadSearchConfigured()) {
+    const webResult = await searchWebForCleaningLeads();
+    if (webResult.ok) webLeadsFound = webResult.new ?? 0;
+  }
+
+  let remainingQuota = DAILY_DISCOVERY_CAP - webLeadsFound;
+  if (remainingQuota > 0 && (await isPlacesSearchConfigured())) {
+    for (const { intent, category } of DEFAULT_DAILY_INTENTS) {
+      if (remainingQuota <= 0) break;
+      const placesResult = await searchAndSaveProspects(intent, category);
+      if (placesResult.ok) {
+        const found = placesResult.new ?? 0;
+        placesFound += found;
+        remainingQuota -= found;
+      }
+    }
+  }
+
+  const totalNew = webLeadsFound + placesFound;
+
+  // Draft outreach for every prospect still missing one -- covers both today's new finds and any
+  // earlier ones nobody got to yet.
+  const undrafted = await prisma.prospect.findMany({
+    where: { status: "NEW", draftBody: null },
+    select: { id: true },
+    take: 100,
+  });
+  let drafted = 0;
+  for (const { id } of undrafted) {
+    const result = await draftOutreachForProspect(id);
+    if (result) drafted++;
+  }
+
+  // Best-effort contact enrichment: fill a missing email from the prospect's own published website.
+  const missingEmail = await prisma.prospect.findMany({
+    where: { email: null, website: { not: null } },
+    select: { id: true, website: true },
+    take: 30,
+  });
+  let enriched = 0;
+  for (const p of missingEmail) {
+    if (!p.website) continue;
+    const found = await tryExtractEmailFromWebsite(p.website);
+    if (found) {
+      await prisma.prospect.update({ where: { id: p.id }, data: { email: found } });
+      enriched++;
+    }
+  }
+
+  await prisma.businessSetting.upsert({
+    where: { key: DAILY_PROSPECTING_SETTING_KEY },
+    create: { key: DAILY_PROSPECTING_SETTING_KEY, value: { lastRunDate: today } },
+    update: { value: { lastRunDate: today } },
+  });
+
+  if (totalNew > 0 || drafted > 0) {
+    const parts = [
+      webLeadsFound > 0 ? `${webLeadsFound} from people publicly looking for a cleaner right now.` : null,
+      placesFound > 0 ? `${placesFound} new local business${placesFound === 1 ? "" : "es"} discovered.` : null,
+      drafted > 0 ? `${drafted} outreach draft${drafted === 1 ? "" : "s"} ready for your review.` : null,
+      enriched > 0 ? `Found a contact email for ${enriched} prospect${enriched === 1 ? "" : "s"} that was missing one.` : null,
+    ].filter((p): p is string => !!p);
+    await notifyAdmins(
+      "PROSPECTING_DIGEST",
+      `Daily prospecting: ${totalNew} new prospect${totalNew === 1 ? "" : "s"}`,
+      parts.join(" "),
+      "/admin/prospecting"
+    );
+  }
+
+  return { ok: true, webLeadsFound, placesFound, totalNew, drafted, enriched };
 }

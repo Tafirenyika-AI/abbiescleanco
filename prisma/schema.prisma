@@ -1319,6 +1319,7 @@ enum AdminNotificationType {
   NEW_MESSAGE
   GENERAL
   TIME_TRACKING
+  PROSPECTING_DIGEST
 }
 
 model AdminNotification {
@@ -1457,6 +1458,10 @@ model Prospect {
   status       String   @default("NEW")
   draftSubject String?
   draftBody    String?
+  // Short SMS-length draft, prepared alongside the email draft whenever a phone number is on
+  // file. Never auto-sent -- there's no SMS-send path for prospects at all (unlike the real
+  // customer messaging system's consent-gated one), an admin copies and sends this themselves.
+  draftSmsBody String?
   notes        String?
 
   assignedToId String?

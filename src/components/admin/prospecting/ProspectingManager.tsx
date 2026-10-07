@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, Loader2, X, Mail, Send, Ban, Sparkles, UserCog, Globe, Trash2, Radar } from "lucide-react";
+import { Search, Loader2, X, Mail, Send, Ban, Sparkles, UserCog, Globe, Trash2, Radar, MessageSquare, Copy } from "lucide-react";
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
@@ -132,6 +132,9 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
         <h1 className="text-xl font-semibold text-admin-text">Prospecting</h1>
         <p className="mt-1 text-sm text-admin-text-muted">
           Find potential customers, property managers, realtors, local businesses, and reach out. Every message is drafted for your review; nothing sends without you clicking Send.
+        </p>
+        <p className="mt-1 text-xs text-admin-text-muted">
+          Both searches below also run automatically once a day (up to 20 new prospects/day combined), draft outreach for anything new, and notify you with a daily summary, you don&apos;t have to run them yourself.
         </p>
       </div>
 
@@ -285,6 +288,7 @@ function ProspectDrawer({ prospect, onClose, onUpdated, onDeleted }: { prospect:
   const { showToast } = useToast();
   const [subject, setSubject] = useState(prospect.draftSubject || "");
   const [body, setBody] = useState(prospect.draftBody || "");
+  const [smsBody, setSmsBody] = useState(prospect.draftSmsBody || "");
   const [notes, setNotes] = useState(prospect.notes || "");
   const [contactName, setContactName] = useState(prospect.contactName || "");
   const [phone, setPhone] = useState(prospect.phone || "");
@@ -356,6 +360,7 @@ function ProspectDrawer({ prospect, onClose, onUpdated, onDeleted }: { prospect:
     if (!data?.ok) return showToast(data?.error || "Couldn't draft a message", "error");
     setSubject(data.prospect.draftSubject || "");
     setBody(data.prospect.draftBody || "");
+    setSmsBody(data.prospect.draftSmsBody || "");
     onUpdated(data.prospect);
     showToast("Draft ready, review before sending.", "success");
   }
@@ -365,7 +370,7 @@ function ProspectDrawer({ prospect, onClose, onUpdated, onDeleted }: { prospect:
     const res = await fetch(`/api/admin/prospecting/${prospect.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ draftSubject: subject, draftBody: body, notes }),
+      body: JSON.stringify({ draftSubject: subject, draftBody: body, draftSmsBody: smsBody, notes }),
     });
     const data = await res.json().catch(() => null);
     setBusy(null);
@@ -384,6 +389,15 @@ function ProspectDrawer({ prospect, onClose, onUpdated, onDeleted }: { prospect:
     showToast(`Sent to ${prospect.email}.`, "success");
     const refreshed = await fetch(`/api/admin/prospecting/${prospect.id}`).then((r) => r.json());
     if (refreshed?.ok) onUpdated(refreshed.prospect);
+  }
+
+  async function copySms() {
+    try {
+      await navigator.clipboard.writeText(smsBody);
+      showToast("Copied, paste it into your phone's messages.", "success");
+    } catch {
+      showToast("Couldn't copy, select and copy the text manually.", "error");
+    }
   }
 
   async function deleteProspect() {
@@ -531,6 +545,17 @@ function ProspectDrawer({ prospect, onClose, onUpdated, onDeleted }: { prospect:
           <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject" className="mt-2 w-full rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text" />
           <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={8} placeholder="Message body" className="mt-2 w-full rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text" />
         </div>
+
+        {prospect.phone && (
+          <div className="mt-5">
+            <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-admin-text-muted"><MessageSquare className="size-3.5" aria-hidden /> Text draft</h3>
+            <p className="mt-1 text-xs text-admin-text-muted">There&apos;s no automated send for this, copy it and text it from your own phone if you&apos;d like to reach out that way.</p>
+            <textarea value={smsBody} onChange={(e) => setSmsBody(e.target.value)} rows={3} placeholder="Text message" className="mt-2 w-full rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text" />
+            <button type="button" onClick={copySms} disabled={!smsBody} className="ios-press mt-2 inline-flex items-center gap-1.5 rounded-full bg-admin-bg px-3 py-1.5 text-xs font-semibold text-admin-text disabled:opacity-50">
+              <Copy className="size-3.5" aria-hidden /> Copy text
+            </button>
+          </div>
+        )}
 
         <div className="mt-4">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Notes</h3>

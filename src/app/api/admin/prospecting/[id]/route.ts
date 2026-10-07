@@ -17,6 +17,7 @@ const schema = z.object({
   notes: z.string().trim().max(2000).optional(),
   draftSubject: z.string().trim().max(200).optional(),
   draftBody: z.string().trim().max(5000).optional(),
+  draftSmsBody: z.string().trim().max(500).optional(),
   assignedToId: z.string().trim().max(50).nullable().optional(),
   contactName: z.string().trim().max(120).optional(),
   email: z.string().trim().max(200).optional().refine((v) => !v || z.string().email().safeParse(v).success, "Invalid email"),

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processDueAutomationEvents } from "@/lib/server/automationStore";
 import { processTimeTrackingReminders } from "@/lib/server/timeTrackingReminders";
+import { runDailyProspecting } from "@/lib/server/prospectStore";
 import { requireAdmin } from "@/lib/server/requireAdmin";
 
 /**
@@ -25,7 +26,10 @@ export async function POST(req: NextRequest) {
   if (!(await isAuthorized(req))) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   const result = await processDueAutomationEvents();
   const timeTracking = await processTimeTrackingReminders();
-  return NextResponse.json({ ok: true, ...result, timeTracking });
+  // Runs at most once per real Pacific calendar day regardless of how often this endpoint is hit
+  // -- see runDailyProspecting's own idempotency marker.
+  const prospecting = await runDailyProspecting();
+  return NextResponse.json({ ok: true, ...result, timeTracking, prospecting });
 }
 
 export async function GET(req: NextRequest) {
