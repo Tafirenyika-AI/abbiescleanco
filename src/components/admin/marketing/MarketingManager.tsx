@@ -180,6 +180,20 @@ export default function MarketingManager({
     await refreshCampaigns();
   }
 
+  async function changeCampaignStatus(id: string, status: CampaignListItem["status"]) {
+    setBusyId(id);
+    const res = await fetch(`/api/admin/marketing/campaigns/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    const data = await res.json().catch(() => null);
+    setBusyId(null);
+    if (!data?.ok) return showToast(data?.error || "Couldn't update campaign", "error");
+    showToast(`Campaign marked ${status.toLowerCase()}.`, "success");
+    await refreshCampaigns();
+  }
+
   async function uploadMedia(file: File) {
     setPUploading(true);
     const form = new FormData();
@@ -354,7 +368,37 @@ export default function MarketingManager({
                     </div>
                   )}
 
-                  <div className="mt-3 flex justify-end">
+                  <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+                    {c.status === "DRAFT" && (
+                      <button type="button" disabled={busyId === c.id} onClick={() => changeCampaignStatus(c.id, "ACTIVE")} className="ios-press rounded-full bg-admin-teal px-3 py-1 text-xs font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-50">
+                        Activate
+                      </button>
+                    )}
+                    {c.status === "ACTIVE" && (
+                      <>
+                        <button type="button" disabled={busyId === c.id} onClick={() => changeCampaignStatus(c.id, "PAUSED")} className="ios-press rounded-full border border-admin-border px-3 py-1 text-xs font-semibold text-admin-text hover:bg-admin-bg disabled:opacity-50">
+                          Pause
+                        </button>
+                        <button type="button" disabled={busyId === c.id} onClick={() => changeCampaignStatus(c.id, "COMPLETED")} className="ios-press rounded-full border border-admin-border px-3 py-1 text-xs font-semibold text-admin-text hover:bg-admin-bg disabled:opacity-50">
+                          Mark completed
+                        </button>
+                      </>
+                    )}
+                    {c.status === "PAUSED" && (
+                      <>
+                        <button type="button" disabled={busyId === c.id} onClick={() => changeCampaignStatus(c.id, "ACTIVE")} className="ios-press rounded-full bg-admin-teal px-3 py-1 text-xs font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-50">
+                          Resume
+                        </button>
+                        <button type="button" disabled={busyId === c.id} onClick={() => changeCampaignStatus(c.id, "COMPLETED")} className="ios-press rounded-full border border-admin-border px-3 py-1 text-xs font-semibold text-admin-text hover:bg-admin-bg disabled:opacity-50">
+                          Mark completed
+                        </button>
+                      </>
+                    )}
+                    {c.status === "COMPLETED" && (
+                      <button type="button" disabled={busyId === c.id} onClick={() => changeCampaignStatus(c.id, "ACTIVE")} className="ios-press rounded-full border border-admin-border px-3 py-1 text-xs font-semibold text-admin-text hover:bg-admin-bg disabled:opacity-50">
+                        Reactivate
+                      </button>
+                    )}
                     <button type="button" disabled={busyId === c.id} onClick={() => deleteCampaign(c.id)} className="ios-press inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold text-admin-text-muted hover:bg-admin-bg disabled:opacity-50">
                       <Trash2 className="size-3.5" aria-hidden /> Delete
                     </button>
