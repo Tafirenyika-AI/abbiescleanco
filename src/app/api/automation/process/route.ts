@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processDueAutomationEvents } from "@/lib/server/automationStore";
 import { processTimeTrackingReminders } from "@/lib/server/timeTrackingReminders";
-import { runDailyProspecting } from "@/lib/server/prospectStore";
+import { runDailyProspecting, processQueuedOutreach } from "@/lib/server/prospectStore";
 import { requireAdmin } from "@/lib/server/requireAdmin";
 
 /**
@@ -29,7 +29,11 @@ export async function POST(req: NextRequest) {
   // Runs at most once per real Pacific calendar day regardless of how often this endpoint is hit
   // -- see runDailyProspecting's own idempotency marker.
   const prospecting = await runDailyProspecting();
-  return NextResponse.json({ ok: true, ...result, timeTracking, prospecting });
+  // Drains the admin's send queue a few at a time on every tick, independent of the once-a-day
+  // discovery gate above -- this is what makes queued outreach go out one by one over time rather
+  // than all at once.
+  const outreachQueue = await processQueuedOutreach();
+  return NextResponse.json({ ok: true, ...result, timeTracking, prospecting, outreachQueue });
 }
 
 export async function GET(req: NextRequest) {

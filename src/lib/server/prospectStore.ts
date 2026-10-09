@@ -2,7 +2,7 @@ import { prisma, isDatabaseConfigured } from "@/lib/db";
 import { getIntegrationValue } from "@/lib/server/integrationSettings";
 import { getContactInfo } from "@/lib/server/siteSettings";
 import { business } from "@/lib/data/business";
-import { PROSPECT_CATEGORIES, PROSPECT_STATUSES, prospectCategoryLabels, type ProspectCategory, type ProspectStatus, type ProspectRow } from "@/lib/prospects";
+import { PROSPECT_CATEGORIES, PROSPECT_STATUSES, prospectCategoryLabels, computeFitScore, type ProspectCategory, type ProspectStatus, type ProspectRow } from "@/lib/prospects";
 import { HOUSE_WRITING_STYLE } from "@/lib/aiStyle";
 import { notifyAdmins } from "@/lib/server/notificationStore";
 
@@ -454,17 +454,26 @@ export async function listAssignableAdmins(): Promise<AssignableAdmin[]> {
   return admins.filter((a) => a.isActive).map((a) => ({ id: a.id, name: a.name }));
 }
 
+interface MinimalProspect {
+  category: string | null;
+  businessName: string | null;
+  contactName: string | null;
+}
+interface ContactInfo {
+  phoneDisplay: string;
+  email: string;
+}
+
 /**
- * Deterministic, template-based outreach draft -- no model call. Personalizes on real data only
+ * The deterministic, no-model-call fallback draft, used whenever the admin hasn't written their
+ * own default message (see getDefaultOutreachTemplate below). Personalizes on real data only
  * (the prospect's own name/category, our real service area and contact info); never invents a
- * relationship or claim that hasn't happened. An admin always reviews/edits before anything sends.
+ * relationship or claim that hasn't happened.
  */
-export async function draftOutreachForProspect(id: string): Promise<ProspectRow | null> {
-  const p = await db().prospect.findUnique({ where: { id } });
-  if (!p) return null;
-  const contact = await getContactInfo();
+function buildCategoryDraft(p: MinimalProspect, contact: ContactInfo): { subject: string; body: string; smsBody: string } {
   const areas = business.areaServed.slice(0, 3).join(", ");
   const who = p.businessName || p.contactName || "there";
+  const category = (PROSPECT_CATEGORIES as readonly string[]).includes(p.category ?? "") ? (p.category as ProspectCategory) : "OTHER";
 
   const openers: Record<ProspectCategory, string> = {
     PROPERTY_MANAGER: `I help property managers in ${areas} keep turnover cleaning fast and reliable between tenants, so units are guest-ready without you having to chase it.`,
@@ -478,7 +487,7 @@ export async function draftOutreachForProspect(id: string): Promise<ProspectRow 
   const body = [
     `Hi ${who},`,
     "",
-    openers[(p.category as ProspectCategory) ?? "OTHER"],
+    openers[category],
     "",
     `We're ${business.name}, based in ${business.city}, ${business.region}. Happy to send over pricing or answer any questions, no pressure at all.`,
     "",
@@ -490,10 +499,9 @@ export async function draftOutreachForProspect(id: string): Promise<ProspectRow 
     `If you'd rather not hear from us again, just reply and let us know and we won't reach out further.`,
   ].join("\n");
 
-  // Short SMS-length version, drafted whenever a phone is on file -- even if an email draft also
-  // exists, since the two channels aren't exclusive. There's no automated send for this (unlike
-  // the real customer SMS system, this has no consent on file to send against), it's text for an
-  // admin to copy and send themselves if they choose to reach out that way.
+  // Short SMS-length version. There's no automated send for this (unlike the real customer SMS
+  // system, this has no consent on file to send against) -- it's text for an admin to copy and
+  // send themselves if they choose to reach out that way.
   const smsOpeners: Record<ProspectCategory, string> = {
     PROPERTY_MANAGER: `Hi, I help property managers in ${areas} with fast, reliable turnover cleaning between tenants.`,
     REALTOR: `Hi, I handle move-in/move-out cleaning for local realtors so listings show well and closings aren't held up.`,
@@ -501,7 +509,20 @@ export async function draftOutreachForProspect(id: string): Promise<ProspectRow 
     HOMEOWNER: `Hi, welcome to the neighborhood! I run a local residential cleaning service in ${areas}, happy to help if useful.`,
     OTHER: `Hi, I run a local cleaning service in ${areas} and wanted to introduce myself.`,
   };
-  const smsBody = `${smsOpeners[(p.category as ProspectCategory) ?? "OTHER"]} This is ${business.name} -- reply STOP to opt out, or call ${contact.phoneDisplay} with any questions.`;
+  const smsBody = `${smsOpeners[category]} This is ${business.name} -- reply STOP to opt out, or call ${contact.phoneDisplay} with any questions.`;
+
+  return { subject, body, smsBody };
+}
+
+/**
+ * Deterministic, template-based outreach draft -- no model call. An admin always reviews/edits
+ * before anything sends.
+ */
+export async function draftOutreachForProspect(id: string): Promise<ProspectRow | null> {
+  const p = await db().prospect.findUnique({ where: { id } });
+  if (!p) return null;
+  const contact = await getContactInfo();
+  const { subject, body, smsBody } = buildCategoryDraft(p, contact);
 
   const updated = await db().prospect.update({
     where: { id },
@@ -514,6 +535,60 @@ export async function draftOutreachForProspect(id: string): Promise<ProspectRow 
     include: PROSPECT_INCLUDE,
   });
   return mapRow(updated);
+}
+
+export interface OutreachTemplate {
+  subject: string;
+  body: string;
+}
+
+const DEFAULT_TEMPLATE_SETTING_KEY = "prospectingDefaultMessage";
+
+/**
+ * The admin's own reusable outreach message -- written once in Settings, applied to every
+ * prospect queued via queueTopProspectsForOutreach below. Deliberately not AI-generated: the
+ * admin asked to be the one setting the wording, not have a different message invented per
+ * prospect. Supports {{business}}, {{category}}, {{our_phone}}, {{our_email}}, {{our_name}} tokens;
+ * left blank, queueing falls back to the existing per-category deterministic draft instead.
+ */
+export async function getDefaultOutreachTemplate(): Promise<OutreachTemplate> {
+  if (!isDatabaseConfigured || !prisma) return { subject: "", body: "" };
+  const row = await prisma.businessSetting.findUnique({ where: { key: DEFAULT_TEMPLATE_SETTING_KEY } });
+  const v = (row?.value as Partial<OutreachTemplate> | undefined) ?? {};
+  return { subject: v.subject ?? "", body: v.body ?? "" };
+}
+
+export async function saveDefaultOutreachTemplate(template: OutreachTemplate): Promise<void> {
+  if (!isDatabaseConfigured || !prisma) throw new Error("Database not configured");
+  await prisma.businessSetting.upsert({
+    where: { key: DEFAULT_TEMPLATE_SETTING_KEY },
+    create: { key: DEFAULT_TEMPLATE_SETTING_KEY, value: { ...template } },
+    update: { value: { ...template } },
+  });
+}
+
+function renderTemplateTokens(text: string, vars: Record<string, string>): string {
+  return text.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key: string) => vars[key] ?? "");
+}
+
+async function buildDraftForProspect(p: MinimalProspect): Promise<{ subject: string; body: string }> {
+  const contact = await getContactInfo();
+  const template = await getDefaultOutreachTemplate();
+  if (!template.subject.trim() && !template.body.trim()) {
+    const draft = buildCategoryDraft(p, contact);
+    return { subject: draft.subject, body: draft.body };
+  }
+  const vars: Record<string, string> = {
+    business: p.businessName || p.contactName || "there",
+    category: (PROSPECT_CATEGORIES as readonly string[]).includes(p.category ?? "") ? prospectCategoryLabels[p.category as ProspectCategory] : "Other",
+    our_phone: contact.phoneDisplay,
+    our_email: contact.email,
+    our_name: business.name,
+  };
+  return {
+    subject: renderTemplateTokens(template.subject, vars) || `Cleaning services for ${p.businessName || "you"}, ${business.name}`,
+    body: renderTemplateTokens(template.body, vars),
+  };
 }
 
 export async function updateProspect(
@@ -784,6 +859,109 @@ async function tryExtractEmailFromWebsite(url: string): Promise<string | null> {
     }
   }
   return null;
+}
+
+export interface QueueTopProspectsResult {
+  ok: boolean;
+  error?: string;
+  considered?: number;
+  enrichedEmails?: number;
+  skippedNoEmail?: number;
+  queued?: number;
+  queuedNames?: string[];
+}
+
+/**
+ * The admin picks a target count (e.g. 10/15/20) of their best real prospects to reach out to
+ * right now. Ranks the real eligible pool (NEW or DRAFTED, not already queued/sent/rejected) by
+ * computeFitScore, best-effort fetches a missing email from each candidate's own website before
+ * ranking (the "AI goes to their site and gets the email" step, run synchronously here rather
+ * than only in the next nightly pass), takes the top N that have a usable email, and applies the
+ * admin's own default message (see getDefaultOutreachTemplate) as their draft.
+ *
+ * This only QUEUES them (status -> APPROVED) -- it does not send anything. See
+ * processQueuedOutreach for the actual, paced, one-by-one send step: queuing a batch here, then
+ * that batch being dispatched a few at a time over the following cron ticks, is what gives the
+ * admin a real window to open any of them and edit or pull it before it actually goes out.
+ */
+export async function queueTopProspectsForOutreach(count: number): Promise<QueueTopProspectsResult> {
+  if (!isDatabaseConfigured || !prisma) return { ok: false, error: "Database not configured" };
+  const n = Math.max(1, Math.min(30, Math.floor(count) || 15));
+
+  const candidates = await prisma.prospect.findMany({
+    where: { status: { in: ["NEW", "DRAFTED"] } },
+    orderBy: { discoveredAt: "asc" },
+    take: 300,
+  });
+
+  let enrichedEmails = 0;
+  for (const c of candidates) {
+    if (!c.email && c.website) {
+      const found = await tryExtractEmailFromWebsite(c.website);
+      if (found) {
+        await prisma.prospect.update({ where: { id: c.id }, data: { email: found } });
+        c.email = found;
+        enrichedEmails++;
+      }
+    }
+  }
+
+  const withEmail = candidates.filter((c) => !!c.email);
+  const skippedNoEmail = candidates.length - withEmail.length;
+
+  const fitOrder = { HIGH: 3, MEDIUM: 2, LOW: 1 } as const;
+  const ranked = withEmail
+    .map((c) => ({ c, fit: computeFitScore({ category: (c.category as ProspectCategory) ?? "OTHER", website: c.website, phone: c.phone, address: c.address }) }))
+    .sort((a, b) => fitOrder[b.fit.level] - fitOrder[a.fit.level] || a.c.discoveredAt.getTime() - b.c.discoveredAt.getTime())
+    .slice(0, n);
+
+  const queuedNames: string[] = [];
+  for (const { c } of ranked) {
+    const { subject, body } = await buildDraftForProspect(c);
+    await prisma.prospect.update({
+      where: { id: c.id },
+      data: { draftSubject: subject, draftBody: body, status: "APPROVED" },
+    });
+    queuedNames.push(c.businessName || c.contactName || "Unnamed prospect");
+  }
+
+  return { ok: true, considered: candidates.length, enrichedEmails, skippedNoEmail, queued: ranked.length, queuedNames };
+}
+
+const MAX_QUEUED_SENDS_PER_RUN = 5;
+
+export interface ProcessQueueResult {
+  ok: boolean;
+  sent: number;
+  failed: number;
+  remaining: number;
+}
+
+/**
+ * Drains the send queue (status APPROVED) a few at a time, reusing the same single-send function
+ * the manual "Send" button uses. Called every automation cron tick (~every 15 min), so a batch of
+ * e.g. 15 goes out spaced over roughly 45 minutes instead of all 15 firing in the same second --
+ * exactly the "send one by one, not all at once" behavior that was asked for.
+ */
+export async function processQueuedOutreach(): Promise<ProcessQueueResult> {
+  if (!isDatabaseConfigured || !prisma) return { ok: false, sent: 0, failed: 0, remaining: 0 };
+
+  const queued = await prisma.prospect.findMany({
+    where: { status: "APPROVED" },
+    orderBy: { updatedAt: "asc" },
+    take: MAX_QUEUED_SENDS_PER_RUN,
+  });
+
+  let sent = 0;
+  let failed = 0;
+  for (const p of queued) {
+    const result = await sendProspectOutreach(p.id);
+    if (result.ok) sent++;
+    else failed++;
+  }
+
+  const remaining = await prisma.prospect.count({ where: { status: "APPROVED" } });
+  return { ok: true, sent, failed, remaining };
 }
 
 const DAILY_PROSPECTING_SETTING_KEY = "prospecting_daily_run";

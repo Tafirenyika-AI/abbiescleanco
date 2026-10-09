@@ -19,7 +19,7 @@ export type ProspectStatus = (typeof PROSPECT_STATUSES)[number];
 export const prospectStatusLabels: Record<ProspectStatus, string> = {
   NEW: "New",
   DRAFTED: "Drafted",
-  APPROVED: "Approved",
+  APPROVED: "Queued to send",
   SENT: "Sent",
   REPLIED: "Replied",
   CONVERTED: "Converted",

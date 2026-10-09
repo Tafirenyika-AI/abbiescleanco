@@ -50,6 +50,61 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
   const [webSearchResult, setWebSearchResult] = useState<{ message: string; tone: "success" | "error" | "empty" } | null>(null);
   const [statusFilter, setStatusFilter] = useState<ProspectStatus | "">("");
 
+  const [defaultSubject, setDefaultSubject] = useState("");
+  const [defaultBody, setDefaultBody] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [queueCount, setQueueCount] = useState(15);
+  const [queuing, setQueuing] = useState(false);
+  const [queueResult, setQueueResult] = useState<{ message: string; names?: string[] } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/prospecting/default-message")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.ok) {
+          setDefaultSubject(data.template.subject || "");
+          setDefaultBody(data.template.body || "");
+        }
+      });
+  }, []);
+
+  async function saveTemplate() {
+    setSavingTemplate(true);
+    const res = await fetch("/api/admin/prospecting/default-message", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subject: defaultSubject, body: defaultBody }),
+    });
+    const data = await res.json().catch(() => null);
+    setSavingTemplate(false);
+    if (!data?.ok) return showToast(data?.error || "Couldn't save", "error");
+    showToast("Default message saved.", "success");
+  }
+
+  async function queueTop() {
+    setQueuing(true);
+    setQueueResult(null);
+    const res = await fetch("/api/admin/prospecting/queue", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ count: queueCount }),
+    });
+    const data = await res.json().catch(() => null);
+    setQueuing(false);
+    if (!data?.ok) {
+      showToast(data?.error || "Couldn't queue outreach", "error");
+      setQueueResult({ message: data?.error || "Couldn't queue outreach" });
+      return;
+    }
+    const parts = [`Queued ${data.queued} of your top prospects to send`];
+    if (data.enrichedEmails > 0) parts.push(`found an email for ${data.enrichedEmails} by checking their website`);
+    if (data.skippedNoEmail > 0) parts.push(`${data.skippedNoEmail} skipped, still no email on file`);
+    const message = `${parts.join(", ")}. They'll go out a few at a time, not all at once -- open any of them below to review or edit before they send.`;
+    showToast(`Queued ${data.queued} for outreach.`, "success");
+    setQueueResult({ message, names: data.queuedNames });
+    await refresh();
+  }
+
   async function refresh() {
     const qs = statusFilter ? `?status=${statusFilter}` : "";
     const res = await fetch(`/api/admin/prospecting${qs}`);
@@ -131,7 +186,7 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
       <div>
         <h1 className="text-xl font-semibold text-admin-text">Prospecting</h1>
         <p className="mt-1 text-sm text-admin-text-muted">
-          Find potential customers, property managers, realtors, local businesses, and reach out. Every message is drafted for your review; nothing sends without you clicking Send.
+          Find potential customers, property managers, realtors, local businesses, and reach out. Every message is drafted first, either for you to send yourself or, once queued, to go out automatically a few at a time, reviewable or removable right up until it sends.
         </p>
         <p className="mt-1 text-xs text-admin-text-muted">
           Both searches below also run automatically once a day (up to 20 new prospects/day combined), draft outreach for anything new, and notify you with a daily summary, you don&apos;t have to run them yourself.
@@ -197,6 +252,70 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
           <p className={`mt-1.5 text-xs font-medium ${webSearchResult.tone === "error" ? "text-red-600" : webSearchResult.tone === "empty" ? "text-admin-text-muted" : "text-admin-success"}`}>
             {webSearchResult.message}
           </p>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-admin-border bg-admin-card p-4">
+        <h2 className="text-sm font-semibold text-admin-text">Default outreach message</h2>
+        <p className="mt-1 text-xs text-admin-text-muted">
+          {"Write the message yourself, this is what goes out when you queue your top prospects below -- nothing is AI-generated here. Use {{business}}, {{category}}, {{our_phone}}, {{our_email}}, or {{our_name}} anywhere you want those filled in per prospect. Leave both fields blank to fall back to the built-in per-category message instead."}
+        </p>
+        <input
+          value={defaultSubject}
+          onChange={(e) => setDefaultSubject(e.target.value)}
+          placeholder="Subject, e.g. Cleaning services for {{business}}"
+          className="mt-2 w-full rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text"
+        />
+        <textarea
+          value={defaultBody}
+          onChange={(e) => setDefaultBody(e.target.value)}
+          rows={6}
+          placeholder="Hi {{business}}, ..."
+          className="mt-2 w-full rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text"
+        />
+        <button type="button" onClick={saveTemplate} disabled={savingTemplate} className="ios-press mt-2 rounded-full bg-admin-bg px-3.5 py-1.5 text-xs font-semibold text-admin-text disabled:opacity-50">
+          {savingTemplate ? "Saving…" : "Save default message"}
+        </button>
+      </div>
+
+      <div className="rounded-xl border border-admin-border bg-admin-card p-4">
+        <h2 className="text-sm font-semibold text-admin-text">Queue your top prospects</h2>
+        <p className="mt-1 text-xs text-admin-text-muted">
+          {"Picks your best real prospects (ranked by Fit), checks each one's own website for a missing email first, and applies the default message above. This only queues them, it doesn't send yet -- they go out a few at a time over the next cron cycles, not all at once, so you have time to open any of them and edit or remove it before it sends."}
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {[10, 15, 20].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setQueueCount(n)}
+              className={`ios-press rounded-full px-3 py-1.5 text-xs font-semibold ${queueCount === n ? "bg-admin-navy text-white" : "bg-admin-bg text-admin-text"}`}
+            >
+              {n}
+            </button>
+          ))}
+          <input
+            type="number"
+            min={1}
+            max={30}
+            value={queueCount}
+            onChange={(e) => setQueueCount(Math.max(1, Math.min(30, Number(e.target.value) || 1)))}
+            className="w-20 rounded-lg border border-admin-border bg-admin-bg px-2.5 py-1.5 text-sm text-admin-text"
+          />
+          <button
+            type="button"
+            onClick={queueTop}
+            disabled={queuing}
+            className="ios-press inline-flex items-center gap-1.5 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {queuing ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Send className="size-4" aria-hidden />} Queue top {queueCount} for outreach
+          </button>
+        </div>
+        {!queuing && queueResult && (
+          <div className="mt-2 text-xs text-admin-text-muted">
+            <p className="font-medium text-admin-text">{queueResult.message}</p>
+            {queueResult.names && queueResult.names.length > 0 && <p className="mt-0.5">Queued: {queueResult.names.join(", ")}</p>}
+          </div>
         )}
       </div>
 
@@ -536,6 +655,16 @@ function ProspectDrawer({ prospect, onClose, onUpdated, onDeleted }: { prospect:
           )}
         </div>
 
+        {prospect.status === "APPROVED" && (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <p className="text-sm font-medium text-amber-800">Queued to send</p>
+            <p className="mt-1 text-xs text-amber-700">This went into the send queue from &quot;Queue your top prospects.&quot; It&apos;ll go out automatically within the next little while, a few at a time. Edit the draft below if you want to change it first, or pull it out of the queue.</p>
+            <button type="button" onClick={() => setStatus("DRAFTED")} disabled={!!busy} className="ios-press mt-2 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-amber-800 disabled:opacity-50">
+              Remove from queue
+            </button>
+          </div>
+        )}
+
         <div className="mt-5">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Outreach draft</h3>
           <p className="mt-1 text-xs text-admin-text-muted">This is exactly what will be sent, edit freely before sending.</p>
@@ -599,7 +728,7 @@ function ProspectDrawer({ prospect, onClose, onUpdated, onDeleted }: { prospect:
           </div>
         )}
 
-        <p className="mt-6 flex items-start gap-1.5 text-xs text-admin-text-muted"><Mail className="mt-0.5 size-3.5 shrink-0" aria-hidden /> Outreach is only ever sent by you clicking Send, nothing here contacts anyone automatically.</p>
+        <p className="mt-6 flex items-start gap-1.5 text-xs text-admin-text-muted"><Mail className="mt-0.5 size-3.5 shrink-0" aria-hidden /> Email only ever goes out either when you click Send here, or after you&apos;ve queued it via &quot;Queue your top prospects&quot; (reviewable/removable before it sends). The text draft above is never sent automatically.</p>
       </div>
     </div>
   );
