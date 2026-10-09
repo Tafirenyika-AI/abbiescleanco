@@ -824,12 +824,40 @@ export async function convertProspectToLead(id: string): Promise<ConvertToLeadRe
  * mailto: link or a bare address in the page text. Never invents one -- silently gives up if the
  * site is unreachable, isn't real HTML, or just doesn't publish an address anywhere checked.
  */
+// Known real public email providers small businesses genuinely use for a contact address --
+// anything else has to match the site's own domain to be trusted (see isPlausibleBusinessEmail).
+const PUBLIC_EMAIL_PROVIDERS = new Set(["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com", "aol.com", "live.com", "me.com", "msn.com"]);
+
+// Real bug found via live verification (2026-10-09): a found bare-text match of
+// "user@domain.com" on a real dental office's site got saved as their email -- that's boilerplate
+// placeholder text left in a theme/plugin's markup (a stock "your email here" example), not a
+// real contact. Matching text on a page is not enough; the email's own domain also has to make
+// sense -- either it's the business's real domain, or a real public provider, never a generic
+// template placeholder domain.
+const PLACEHOLDER_EMAIL_DOMAINS = new Set(["domain.com", "example.com", "yourdomain.com", "email.com", "test.com", "mydomain.com", "website.com", "yoursite.com", "company.com", "sentry.io", "wixpress.com", "godaddy.com"]);
+
+function isPlausibleBusinessEmail(email: string, siteHostname: string): boolean {
+  const domain = email.split("@")[1]?.toLowerCase();
+  if (!domain) return false;
+  if (PLACEHOLDER_EMAIL_DOMAINS.has(domain)) return false;
+  if (/\.(png|jpg|jpeg|gif|svg|webp|css|js)$/i.test(email)) return false;
+  if (PUBLIC_EMAIL_PROVIDERS.has(domain)) return true;
+  // Otherwise the email's domain has to actually match the business's own site (allowing for a
+  // www./subdomain or apex mismatch) -- a domain that matches neither is far more likely to be
+  // someone else's placeholder/example text than this business's real address.
+  const site = siteHostname.replace(/^www\./, "");
+  const emailRoot = domain.replace(/^www\./, "");
+  return emailRoot === site || emailRoot.endsWith(`.${site}`) || site.endsWith(`.${emailRoot}`);
+}
+
 async function tryExtractEmailFromWebsite(url: string): Promise<string | null> {
   let base: string;
+  let hostname: string;
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
     base = parsed.toString().replace(/\/$/, "");
+    hostname = parsed.hostname.toLowerCase();
   } catch {
     return null;
   }
@@ -846,13 +874,14 @@ async function tryExtractEmailFromWebsite(url: string): Promise<string | null> {
       if (!contentType.includes("text/html")) continue;
       const html = (await res.text()).slice(0, 500_000);
 
-      const mailto = html.match(/mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
-      if (mailto) return mailto[1];
+      const mailtoMatches = html.match(/mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g) ?? [];
+      for (const m of mailtoMatches) {
+        const addr = m.replace(/^mailto:/, "");
+        if (isPlausibleBusinessEmail(addr, hostname)) return addr;
+      }
 
       const bareMatches = html.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) ?? [];
-      const realMatch = bareMatches.find(
-        (m) => !/\.(png|jpg|jpeg|gif|svg|webp|css|js)$/i.test(m) && !/sentry\.io|wixpress\.com|example\.com|godaddy\.com/i.test(m)
-      );
+      const realMatch = bareMatches.find((m) => isPlausibleBusinessEmail(m, hostname));
       if (realMatch) return realMatch;
     } catch {
       // try the next candidate path; give up silently if none work -- best-effort only
