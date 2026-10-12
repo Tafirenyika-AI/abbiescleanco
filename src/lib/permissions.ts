@@ -33,7 +33,7 @@ export const permissionLabels: Record<AdminPermission, string> = {
   FINANCE_EXPENSES: "Add, edit & delete expenses",
   FINANCE_PAYMENTS: "Record & manage payments",
   FINANCE_SUBCONTRACTORS: "View & manage subcontractor payables",
-  FINANCE_DOCUMENTS: "Access the financial document vault",
+  FINANCE_DOCUMENTS: "Access the business document vault (agreements, insurance, licenses, receipts, statements)",
   FINANCE_TAX_RECORDS: "View & manage tax records",
   FINANCE_REFUNDS: "Approve refunds",
   FINANCE_ADMIN: "Manage Finance settings & permissions",

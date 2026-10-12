@@ -156,6 +156,7 @@ model AdminUser {
   socialConnections SocialConnection[]
   sentLocationShares CleanerLocationShare[]
   editedEmailTemplates EmailTemplate[]
+  businessDocuments BusinessDocument[]
 
   @@index([email])
   @@map("admin_users")
@@ -1054,6 +1055,78 @@ model StoredFile {
   createdAt   DateTime @default(now())
 
   @@map("stored_files")
+}
+
+enum DocumentCategory {
+  AGREEMENT
+  INSURANCE
+  LICENSE
+  RECEIPT
+  STATEMENT
+  TAX
+  LEGAL
+  CORRESPONDENCE
+  OTHER
+}
+
+enum DocumentStatus {
+  ACTIVE
+  EXPIRED
+  TERMINATED
+  ARCHIVED
+}
+
+// General business document vault -- agreements/contracts with vendors or partners, insurance,
+// licenses, receipts, statements, and any other paperwork worth keeping a record of. Deliberately
+// broader than just finance paperwork (see src/lib/server/documentStore.ts). Email correspondence
+// is logged manually (pasted text and/or an uploaded .eml/PDF/screenshot via BusinessDocumentFile)
+// -- there's no live mailbox integration here, by design (2026-10-12).
+model BusinessDocument {
+  id       String           @id @default(cuid())
+  title    String
+  category DocumentCategory @default(OTHER)
+  status   DocumentStatus   @default(ACTIVE)
+
+  // Manually entered (e.g. a real reference from a signed paper agreement) or system-generated
+  // (see generateDocumentReference) -- always editable afterward either way. Unique when set;
+  // Postgres allows multiple NULLs under a unique index, so leaving it blank never conflicts.
+  reference        String? @unique
+  counterpartyName String? // who the agreement/document is with
+
+  effectiveDate   DateTime?
+  expirationDate  DateTime?
+  notes           String? // free-text description/terms summary
+  correspondenceLog String? // manually pasted/logged email thread content related to this document
+
+  createdById String?
+  createdBy   AdminUser? @relation(fields: [createdById], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  files BusinessDocumentFile[]
+
+  @@index([category])
+  @@index([status])
+  @@map("business_documents")
+}
+
+model BusinessDocumentFile {
+  id         String           @id @default(cuid())
+  documentId String
+  document   BusinessDocument @relation(fields: [documentId], references: [id])
+
+  // The underlying StoredFile's id -- served only via the admin-authenticated route (not the
+  // public /api/files/[id] path other uploads use), since agreements/insurance/legal paperwork is
+  // more sensitive than a logo or marketing poster.
+  fileId      String @unique
+  filename    String
+  contentType String
+
+  uploadedAt DateTime @default(now())
+
+  @@map("business_document_files")
 }
 
 // ---------- Team & expenses ----------

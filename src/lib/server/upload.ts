@@ -9,6 +9,18 @@ const ALLOWED_TYPES: Record<string, string> = {
 };
 const MAX_BYTES = 8 * 1024 * 1024; // 8MB
 
+// Agreements/insurance certs/statements are commonly scanned PDFs or exported email threads --
+// a broader set than the image-only uploads above, with a higher size cap for multi-page scans.
+const ALLOWED_DOCUMENT_TYPES: Record<string, string> = {
+  ...ALLOWED_TYPES,
+  "application/pdf": "pdf",
+  "application/msword": "doc",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+  "text/plain": "txt",
+  "message/rfc822": "eml", // a raw exported email (.eml)
+};
+const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024; // 20MB
+
 export class UploadError extends Error {}
 
 /**
@@ -40,6 +52,24 @@ export async function saveUploadedImage(file: File): Promise<{ url: string }> {
   }
   const buffer = Buffer.from(await file.arrayBuffer());
   return { url: await storeInDb(buffer, file.type) };
+}
+
+/**
+ * Stores an admin-uploaded business document (agreement, insurance cert, statement, exported
+ * email thread, etc.) and returns the raw StoredFile id -- NOT a public URL. Callers serve this
+ * only through an admin-authenticated route (see /api/admin/documents/files/[fileId]), unlike
+ * saveUploadedImage's logos/posters, since this content is more sensitive.
+ */
+export async function saveUploadedDocument(file: File): Promise<{ fileId: string }> {
+  if (!ALLOWED_DOCUMENT_TYPES[file.type]) {
+    throw new UploadError("Only PDF, Word, plain text, .eml, PNG, JPG, WEBP, or GIF files are allowed.");
+  }
+  if (file.size > MAX_DOCUMENT_BYTES) {
+    throw new UploadError("File must be smaller than 20MB.");
+  }
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const url = await storeInDb(buffer, file.type);
+  return { fileId: url.replace("/api/files/", "") };
 }
 
 /**

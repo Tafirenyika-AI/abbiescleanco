@@ -3,7 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 
 // Real round trips over the network to the real dev DB run well past Vitest's 5s default per test.
-vi.setConfig({ testTimeout: 15000 });
+// hookTimeout covers afterAll's own ~7 sequential awaited deletes -- left at the 10s default this
+// flaked under real elevated DB latency even though every actual assertion passed.
+vi.setConfig({ testTimeout: 15000, hookTimeout: 20000 });
 
 // quoteStore.ts has no JSON-mock fallback (DB-only, unlike leadStore.ts/pricingStore.ts), so these
 // tests need a real DATABASE_URL. Vitest doesn't auto-load .env.local the way Next.js dev/build
