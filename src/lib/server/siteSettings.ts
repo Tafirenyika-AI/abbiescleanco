@@ -10,6 +10,11 @@ export interface BusinessHoursRow {
 export interface SocialLinks {
   facebook?: string;
   tiktok?: string;
+  // The business's real, public Google Business Profile listing URL (e.g. https://g.page/...
+  // or a Google Maps place link). Linking the website and the GBP listing to each other is a
+  // real, zero-cost local-SEO signal Google's own guidance recommends -- this app doesn't have
+  // a live GBP API connection, so this is a manually-entered link, not something fetched.
+  googleBusinessUrl?: string;
 }
 
 export async function getBusinessHours(): Promise<BusinessHoursRow[]> {

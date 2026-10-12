@@ -87,6 +87,16 @@ export default function HoursAndSocialManager({
               className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
             />
           </label>
+          <label className="block sm:col-span-2">
+            <span className="text-xs font-medium text-slate-500">Google Business Profile URL</span>
+            <input
+              value={social.googleBusinessUrl || ""}
+              onChange={(e) => setSocial((s) => ({ ...s, googleBusinessUrl: e.target.value }))}
+              placeholder="https://g.page/... or your Google Maps listing link"
+              className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
+            />
+            <span className="mt-1 block text-xs text-slate-500">Links your site to your real Google Business Profile listing, a genuine local-SEO signal Google recommends -- shown as a &quot;View us on Google&quot; link in the footer once set.</span>
+          </label>
         </div>
         <div className="mt-4 flex items-center gap-3">
           <button type="button" onClick={saveSocial} disabled={socialState === "saving"} className="ios-press inline-flex items-center gap-2 rounded-full bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">

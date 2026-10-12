@@ -8,6 +8,7 @@ import GuestAssistantWidget from "@/components/layout/GuestAssistantWidget";
 import { business } from "@/lib/data/business";
 import { getBranding, getContactInfo, getBusinessHours, getSocialLinks } from "@/lib/server/siteSettings";
 import { listServiceAreas } from "@/lib/server/content";
+import { listPublishedReviews } from "@/lib/server/reviews";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -41,12 +42,13 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [branding, contact, hours, social, serviceAreas] = await Promise.all([
+  const [branding, contact, hours, social, serviceAreas, publishedReviews] = await Promise.all([
     getBranding(),
     getContactInfo(),
     getBusinessHours(),
     getSocialLinks(),
     listServiceAreas(true),
+    listPublishedReviews(),
   ]);
   const areaNames = serviceAreas.length > 0 ? serviceAreas.map((a) => a.name) : [...business.areaServed];
 
@@ -75,8 +77,29 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       opens: h.opens,
       closes: h.closes,
     })),
-    sameAs: [social.tiktok, social.facebook].filter(Boolean),
+    image: `${siteUrl}${branding.logoUrl || "/images/logo.png"}`,
+    // Linking the site to the real GBP listing (when the admin has set one) is a genuine,
+    // zero-API local-SEO signal -- Google's own guidance recommends cross-linking a Business
+    // Profile and its website via sameAs/the site itself, not just the reverse.
+    sameAs: [social.tiktok, social.facebook, social.googleBusinessUrl].filter(Boolean),
     url: siteUrl,
+    // Only emitted when there's at least one real published review -- never a fabricated rating.
+    // Values are the honest average/count of real Review rows, exactly what's shown on-site.
+    ...(publishedReviews.length > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: (publishedReviews.reduce((sum, r) => sum + r.rating, 0) / publishedReviews.length).toFixed(1),
+            reviewCount: publishedReviews.length,
+          },
+          review: publishedReviews.slice(0, 10).map((r) => ({
+            "@type": "Review",
+            author: { "@type": "Person", name: r.authorName },
+            reviewRating: { "@type": "Rating", ratingValue: r.rating, bestRating: 5 },
+            reviewBody: r.quote,
+          })),
+        }
+      : {}),
   };
 
   return (

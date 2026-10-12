@@ -7,6 +7,7 @@ import { getSocialLinks, setSocialLinks } from "@/lib/server/siteSettings";
 const schema = z.object({
   facebook: z.string().trim().max(300).url().optional().or(z.literal("")),
   tiktok: z.string().trim().max(300).url().optional().or(z.literal("")),
+  googleBusinessUrl: z.string().trim().max(300).url().optional().or(z.literal("")),
 });
 
 export async function GET(req: NextRequest) {

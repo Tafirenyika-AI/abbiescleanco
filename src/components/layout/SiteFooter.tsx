@@ -36,6 +36,11 @@ export default async function SiteFooter({ contact, social }: { contact: Contact
                 Facebook
               </a>
             )}
+            {social.googleBusinessUrl && (
+              <a href={social.googleBusinessUrl} target="_blank" rel="noopener noreferrer" className="text-sm underline hover:text-teal-300">
+                View us on Google
+              </a>
+            )}
           </div>
         </div>
 
