@@ -91,7 +91,10 @@ export async function createLead(input: QuoteRequestInput, estimate: EstimateRes
           data: {
             firstName: input.firstName,
             lastName: input.lastName,
-            email: input.email,
+            // The public quote form always validates a real email first, so this only ever
+            // normalizes the "" convertProspectToLead passes when a prospect genuinely has none
+            // yet -- a clean null, never a fake blank address on the Customer row.
+            email: input.email || null,
             phone: input.phone,
             communicationPreference: {
               create: { smsConsent: input.smsConsent, emailConsent: input.emailConsent },

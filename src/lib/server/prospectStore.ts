@@ -789,7 +789,11 @@ export async function convertProspectToLead(id: string): Promise<ConvertToLeadRe
   const p = await db().prospect.findUnique({ where: { id } });
   if (!p) return { ok: false, error: "Not found" };
   if (p.convertedLeadId) return { ok: false, error: "This prospect has already been converted to a lead." };
-  if (!p.email) return { ok: false, error: "Add an email address for this prospect before converting." };
+  // Email is NOT required here -- Customer.email is genuinely nullable system-wide (phone is the
+  // one contact method this app actually requires everywhere else), and it's always editable
+  // after conversion. Real bug this fixes: an admin could type an email in the drawer and click
+  // Convert without first clicking "Save contact info" -- the edit never reached the database, so
+  // this check (reading fresh from the DB) saw it as missing even though it was visibly typed.
   if (!p.phone) return { ok: false, error: "Add a phone number for this prospect before converting." };
   const zipMatch = p.address?.match(/\b(\d{5})\b/);
   if (!zipMatch) return { ok: false, error: "This prospect's address needs a 5-digit ZIP code before converting, edit the address first." };
@@ -816,7 +820,10 @@ export async function convertProspectToLead(id: string): Promise<ConvertToLeadRe
     {
       firstName,
       lastName,
-      email: p.email,
+      // "" (not p.email, which may be null) only to satisfy QuoteRequestInput's string type here --
+      // leadStore.createLead normalizes an empty string back to a real null on the Customer row,
+      // never storing a fake blank address.
+      email: p.email || "",
       phone: p.phone,
       service: "commercial-cleaning",
       zip: zipMatch[1],

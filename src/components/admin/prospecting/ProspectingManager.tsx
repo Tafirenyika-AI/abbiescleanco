@@ -531,11 +531,26 @@ function ProspectDrawer({ prospect, opportunityWeights, onClose, onUpdated, onDe
 
   async function convertToLead() {
     setBusy("convert");
+    // Real bug this fixed: typing an email/phone/address here and clicking Convert without first
+    // clicking "Save contact info" never reached the database -- convert's own server-side check
+    // (reading fresh from the DB) saw it as missing even though it was visibly typed. Persist
+    // whatever's currently in these fields first, every time, so that can't happen again.
+    const saveRes = await fetch(`/api/admin/prospecting/${prospect.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contactName, phone, email, address }),
+    });
+    const saveData = await saveRes.json().catch(() => null);
+    if (!saveData?.ok) {
+      setBusy(null);
+      return showToast(saveData?.error || "Couldn't save contact info before converting", "error");
+    }
+
     const res = await fetch(`/api/admin/prospecting/${prospect.id}/convert`, { method: "POST" });
     const data = await res.json().catch(() => null);
     setBusy(null);
     if (!data?.ok) return showToast(data?.error || "Couldn't convert to a lead", "error");
-    onUpdated({ ...prospect, status: "CONVERTED", convertedLeadId: data.leadId, convertedLeadReference: data.leadReference });
+    onUpdated({ ...saveData.prospect, status: "CONVERTED", convertedLeadId: data.leadId, convertedLeadReference: data.leadReference });
     showToast(`Converted, lead ${data.leadReference} created.`, "success");
   }
 
@@ -710,7 +725,7 @@ function ProspectDrawer({ prospect, opportunityWeights, onClose, onUpdated, onDe
           ) : (
             <>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Convert to lead</h3>
-              <p className="mt-1 text-xs text-admin-text-muted">Once they&apos;re ready to book, turn this into a real lead in the same pipeline as every other customer, you&apos;ll quote and schedule them from there. Needs a real email, phone, and a ZIP code in the address.</p>
+              <p className="mt-1 text-xs text-admin-text-muted">Once they&apos;re ready to book, turn this into a real lead in the same pipeline as every other customer, you&apos;ll quote and schedule them from there. Needs a phone number and a ZIP code in the address -- email is optional and can be added later. Saves whatever&apos;s currently in the contact fields above first.</p>
               <button type="button" onClick={convertToLead} disabled={busy === "convert"} className="ios-press mt-2 inline-flex items-center gap-1.5 rounded-full bg-admin-navy px-3.5 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
                 {busy === "convert" && <Loader2 className="size-3.5 animate-spin" aria-hidden />} Convert to lead
               </button>
