@@ -40,6 +40,8 @@ export interface StoredLead {
   utmSource?: string;
   utmMedium?: string;
   utmContent?: string;
+  utmTerm?: string;
+  gclid?: string;
   referrer?: string;
   input: QuoteRequestInput;
   estimate: EstimateResult;

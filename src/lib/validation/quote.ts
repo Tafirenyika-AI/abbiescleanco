@@ -72,6 +72,8 @@ export const quoteRequestSchema = z.object({
   utmSource: z.string().trim().max(100).optional(),
   utmMedium: z.string().trim().max(100).optional(),
   utmContent: z.string().trim().max(100).optional(),
+  utmTerm: z.string().trim().max(150).optional(),
+  gclid: z.string().trim().max(200).optional(),
   referrer: z.string().trim().max(500).optional(),
 
   // Optional promo code, validated server-side when the quote is built (not at submit time)

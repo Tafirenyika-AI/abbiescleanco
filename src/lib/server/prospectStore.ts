@@ -2,7 +2,7 @@ import { prisma, isDatabaseConfigured } from "@/lib/db";
 import { getIntegrationValue } from "@/lib/server/integrationSettings";
 import { getContactInfo } from "@/lib/server/siteSettings";
 import { business } from "@/lib/data/business";
-import { PROSPECT_CATEGORIES, PROSPECT_STATUSES, prospectCategoryLabels, computeFitScore, type ProspectCategory, type ProspectStatus, type ProspectRow } from "@/lib/prospects";
+import { PROSPECT_CATEGORIES, PROSPECT_STATUSES, prospectCategoryLabels, computeFitScore, DEFAULT_COMMERCIAL_OPPORTUNITY_WEIGHTS, type ProspectCategory, type ProspectStatus, type ProspectRow, type CommercialOpportunityWeights } from "@/lib/prospects";
 import { HOUSE_WRITING_STYLE } from "@/lib/aiStyle";
 import { notifyAdmins } from "@/lib/server/notificationStore";
 
@@ -565,6 +565,34 @@ export async function saveDefaultOutreachTemplate(template: OutreachTemplate): P
     create: { key: DEFAULT_TEMPLATE_SETTING_KEY, value: { ...template } },
     update: { value: { ...template } },
   });
+}
+
+const OPPORTUNITY_WEIGHTS_SETTING_KEY = "commercialOpportunityWeights";
+
+export async function getCommercialOpportunityWeights(): Promise<CommercialOpportunityWeights> {
+  if (!isDatabaseConfigured || !prisma) return DEFAULT_COMMERCIAL_OPPORTUNITY_WEIGHTS;
+  const row = await prisma.businessSetting.findUnique({ where: { key: OPPORTUNITY_WEIGHTS_SETTING_KEY } });
+  const v = row?.value as Partial<CommercialOpportunityWeights> | undefined;
+  if (!v) return DEFAULT_COMMERCIAL_OPPORTUNITY_WEIGHTS;
+  return {
+    buyingSignal: v.buyingSignal ?? DEFAULT_COMMERCIAL_OPPORTUNITY_WEIGHTS.buyingSignal,
+    recurringPotential: v.recurringPotential ?? DEFAULT_COMMERCIAL_OPPORTUNITY_WEIGHTS.recurringPotential,
+    decisionMakerAccess: v.decisionMakerAccess ?? DEFAULT_COMMERCIAL_OPPORTUNITY_WEIGHTS.decisionMakerAccess,
+    commercialSuitability: v.commercialSuitability ?? DEFAULT_COMMERCIAL_OPPORTUNITY_WEIGHTS.commercialSuitability,
+    geographicFit: v.geographicFit ?? DEFAULT_COMMERCIAL_OPPORTUNITY_WEIGHTS.geographicFit,
+  };
+}
+
+export async function saveCommercialOpportunityWeights(weights: CommercialOpportunityWeights): Promise<{ ok: boolean; error?: string }> {
+  if (!isDatabaseConfigured || !prisma) return { ok: false, error: "Database not configured" };
+  const sum = weights.buyingSignal + weights.recurringPotential + weights.decisionMakerAccess + weights.commercialSuitability + weights.geographicFit;
+  if (Math.round(sum) !== 100) return { ok: false, error: `Weights must add up to 100 (currently ${sum}).` };
+  await prisma.businessSetting.upsert({
+    where: { key: OPPORTUNITY_WEIGHTS_SETTING_KEY },
+    create: { key: OPPORTUNITY_WEIGHTS_SETTING_KEY, value: { ...weights } },
+    update: { value: { ...weights } },
+  });
+  return { ok: true };
 }
 
 function renderTemplateTokens(text: string, vars: Record<string, string>): string {

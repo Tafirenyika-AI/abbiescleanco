@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { verifyAdminSessionToken, ADMIN_SESSION_COOKIE } from "@/lib/server/adminAuth";
 import { getAdminProfile, hasPermission } from "@/lib/server/adminUsers";
-import { listProspects, isPlacesSearchConfigured, isWebLeadSearchConfigured } from "@/lib/server/prospectStore";
+import { listProspects, isPlacesSearchConfigured, isWebLeadSearchConfigured, getCommercialOpportunityWeights } from "@/lib/server/prospectStore";
 import ProspectingManager from "@/components/admin/prospecting/ProspectingManager";
 
 export default async function AdminProspectingPage() {
@@ -14,7 +14,19 @@ export default async function AdminProspectingPage() {
     redirect("/admin");
   }
 
-  const [prospects, placesConfigured, webSearchConfigured] = await Promise.all([listProspects(), isPlacesSearchConfigured(), isWebLeadSearchConfigured()]);
+  const [prospects, placesConfigured, webSearchConfigured, opportunityWeights] = await Promise.all([
+    listProspects(),
+    isPlacesSearchConfigured(),
+    isWebLeadSearchConfigured(),
+    getCommercialOpportunityWeights(),
+  ]);
 
-  return <ProspectingManager initialProspects={prospects} placesConfigured={placesConfigured} webSearchConfigured={webSearchConfigured} />;
+  return (
+    <ProspectingManager
+      initialProspects={prospects}
+      placesConfigured={placesConfigured}
+      webSearchConfigured={webSearchConfigured}
+      initialOpportunityWeights={opportunityWeights}
+    />
+  );
 }

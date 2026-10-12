@@ -12,12 +12,15 @@ import {
   type ProspectRow,
   type ProspectCategory,
   type ProspectStatus,
+  type CommercialOpportunityWeights,
   PROSPECT_CATEGORIES,
   PROSPECT_STATUSES,
   prospectCategoryLabels,
   prospectStatusLabels,
   likelyServiceHints,
   computeFitScore,
+  computeCommercialOpportunityScore,
+  DEFAULT_COMMERCIAL_OPPORTUNITY_WEIGHTS,
 } from "@/lib/prospects";
 
 function statusTone(status: ProspectStatus): "neutral" | "teal" | "success" | "warning" | "error" | "info" {
@@ -38,9 +41,39 @@ function when(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric" });
 }
 
-export default function ProspectingManager({ initialProspects, placesConfigured, webSearchConfigured }: { initialProspects: ProspectRow[]; placesConfigured: boolean; webSearchConfigured: boolean }) {
+export default function ProspectingManager({
+  initialProspects,
+  placesConfigured,
+  webSearchConfigured,
+  initialOpportunityWeights,
+}: {
+  initialProspects: ProspectRow[];
+  placesConfigured: boolean;
+  webSearchConfigured: boolean;
+  initialOpportunityWeights: CommercialOpportunityWeights;
+}) {
   const { showToast } = useToast();
   const [prospects, setProspects] = useState(initialProspects);
+  const [opportunityWeights, setOpportunityWeights] = useState(initialOpportunityWeights);
+  const [showWeightsEditor, setShowWeightsEditor] = useState(false);
+  const [weightsDraft, setWeightsDraft] = useState(initialOpportunityWeights);
+  const [savingWeights, setSavingWeights] = useState(false);
+  const weightsSum = weightsDraft.buyingSignal + weightsDraft.recurringPotential + weightsDraft.decisionMakerAccess + weightsDraft.commercialSuitability + weightsDraft.geographicFit;
+
+  async function saveWeights() {
+    setSavingWeights(true);
+    const res = await fetch("/api/admin/prospecting/opportunity-weights", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(weightsDraft),
+    });
+    const data = await res.json().catch(() => null);
+    setSavingWeights(false);
+    if (!data?.ok) return showToast(data?.error || "Couldn't save", "error");
+    setOpportunityWeights(weightsDraft);
+    showToast("Scoring weights saved.", "success");
+    setShowWeightsEditor(false);
+  }
   const [selected, setSelected] = useState<ProspectRow | null>(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<ProspectCategory>("LOCAL_BUSINESS");
@@ -331,7 +364,47 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
           ))}
         </select>
         <span className="text-xs text-admin-text-muted">{filtered.length} prospect{filtered.length === 1 ? "" : "s"}</span>
+        <button type="button" onClick={() => { setWeightsDraft(opportunityWeights); setShowWeightsEditor(true); }} className="ios-press ml-auto rounded-full bg-admin-bg px-3 py-1.5 text-xs font-semibold text-admin-text">
+          Opportunity scoring weights
+        </button>
       </div>
+
+      {showWeightsEditor && (
+        <div className="ios-backdrop-in fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm" onClick={() => setShowWeightsEditor(false)}>
+          <div className="ios-modal-in w-full max-w-md rounded-2xl bg-admin-card p-6 shadow-[0_8px_24px_rgba(15,23,42,0.1),0_24px_64px_rgba(15,23,42,0.16)]" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-admin-text">Commercial opportunity scoring weights</h2>
+            <p className="mt-1 text-xs text-admin-text-muted">How much each real factor counts toward a commercial prospect&apos;s opportunity score, out of 100 total.</p>
+            <div className="mt-3 space-y-2.5">
+              {([
+                ["buyingSignal", "Buying signal"],
+                ["recurringPotential", "Recurring cleaning potential"],
+                ["decisionMakerAccess", "Decision-maker accessibility"],
+                ["commercialSuitability", "Commercial suitability"],
+                ["geographicFit", "Geographic fit"],
+              ] as const).map(([key, label]) => (
+                <label key={key} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="text-admin-text">{label}</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={weightsDraft[key]}
+                    onChange={(e) => setWeightsDraft((prev) => ({ ...prev, [key]: Number(e.target.value) || 0 }))}
+                    className="w-20 rounded-lg border border-admin-border bg-admin-bg px-2.5 py-1.5 text-right text-sm text-admin-text"
+                  />
+                </label>
+              ))}
+            </div>
+            <p className={`mt-3 text-xs font-medium ${weightsSum === 100 ? "text-admin-success" : "text-red-600"}`}>Total: {weightsSum} {weightsSum === 100 ? "" : "(must equal 100)"}</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => setWeightsDraft(DEFAULT_COMMERCIAL_OPPORTUNITY_WEIGHTS)} className="ios-press rounded-lg border border-admin-border px-3.5 py-2 text-sm font-semibold text-admin-text hover:bg-admin-bg">Reset to default</button>
+              <button type="button" disabled={savingWeights || weightsSum !== 100} onClick={saveWeights} className="ios-press rounded-lg bg-admin-teal px-3.5 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-50">
+                {savingWeights ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <BulkDeleteBar count={bulk.selected.size} itemLabel="prospect" onDelete={() => setConfirmBulkDelete(true)} onClear={bulk.clear} busy={bulkDeleting} />
 
@@ -347,6 +420,7 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
                 <th className="px-4 py-2.5">Category</th>
                 <th className="px-4 py-2.5">Contact info</th>
                 <th className="px-4 py-2.5">Fit</th>
+                <th className="px-4 py-2.5">Opportunity</th>
                 <th className="px-4 py-2.5">Assigned</th>
                 <th className="px-4 py-2.5">Status</th>
                 <th className="px-4 py-2.5">Discovered</th>
@@ -355,6 +429,7 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
             <tbody>
               {filtered.map((p) => {
                 const fit = computeFitScore(p);
+                const opportunity = computeCommercialOpportunityScore(p, opportunityWeights);
                 return (
                   <tr key={p.id} onClick={() => setSelected(p)} className="cursor-pointer border-t border-admin-border transition-colors duration-150 hover:bg-admin-bg">
                     <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
@@ -364,6 +439,7 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
                     <td className="px-4 py-2.5 text-admin-text-muted">{prospectCategoryLabels[p.category]}</td>
                     <td className="px-4 py-2.5 text-admin-text-muted">{p.phone || p.email || "—"}</td>
                     <td className="px-4 py-2.5"><Badge tone={fitTone(fit.level)}>{fit.level}</Badge></td>
+                    <td className="px-4 py-2.5 text-admin-text-muted">{opportunity.score}/100</td>
                     <td className="px-4 py-2.5 text-admin-text-muted">{p.assignedToName || "—"}</td>
                     <td className="px-4 py-2.5"><Badge tone={statusTone(p.status)}>{prospectStatusLabels[p.status]}</Badge></td>
                     <td className="px-4 py-2.5 text-admin-text-muted">{when(p.discoveredAt)}</td>
@@ -378,6 +454,7 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
       {selected && (
         <ProspectDrawer
           prospect={selected}
+          opportunityWeights={opportunityWeights}
           onClose={() => setSelected(null)}
           onUpdated={(p) => {
             setSelected(p);
@@ -403,7 +480,7 @@ export default function ProspectingManager({ initialProspects, placesConfigured,
   );
 }
 
-function ProspectDrawer({ prospect, onClose, onUpdated, onDeleted }: { prospect: ProspectRow; onClose: () => void; onUpdated: (p: ProspectRow) => void; onDeleted: (id: string) => void }) {
+function ProspectDrawer({ prospect, opportunityWeights, onClose, onUpdated, onDeleted }: { prospect: ProspectRow; opportunityWeights: CommercialOpportunityWeights; onClose: () => void; onUpdated: (p: ProspectRow) => void; onDeleted: (id: string) => void }) {
   const { showToast } = useToast();
   const [subject, setSubject] = useState(prospect.draftSubject || "");
   const [body, setBody] = useState(prospect.draftBody || "");
@@ -417,6 +494,7 @@ function ProspectDrawer({ prospect, onClose, onUpdated, onDeleted }: { prospect:
   const [admins, setAdmins] = useState<{ id: string; name: string }[]>([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const fit = computeFitScore(prospect);
+  const opportunity = computeCommercialOpportunityScore(prospect, opportunityWeights);
 
   useEffect(() => {
     fetch("/api/admin/prospecting/assignable-admins")
@@ -591,6 +669,21 @@ function ProspectDrawer({ prospect, onClose, onUpdated, onDeleted }: { prospect:
             {fit.factors.map((f, i) => <li key={i}>• {f}</li>)}
           </ul>
           <p className="mt-2 text-xs text-admin-text"><span className="font-semibold">Likely to be cleaning:</span> {likelyServiceHints[prospect.category]}</p>
+        </div>
+
+        <div className="mt-3 rounded-lg bg-admin-bg p-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Commercial opportunity score</h3>
+            <span className="text-sm font-semibold text-admin-text">{opportunity.score}/100</span>
+          </div>
+          <ul className="mt-1.5 space-y-1 text-xs text-admin-text-muted">
+            {opportunity.breakdown.map((b, i) => (
+              <li key={i} className="flex justify-between gap-2">
+                <span>{b.factor} ({b.weight}%)</span>
+                <span className="text-right text-admin-text">{b.points}/{b.weight} — {b.reason}</span>
+              </li>
+            ))}
+          </ul>
         </div>
 
         <div className="mt-4">

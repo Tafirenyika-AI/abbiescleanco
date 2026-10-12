@@ -108,6 +108,12 @@ export default function EstimateWizard({
     if (utmMedium) setValue("utmMedium", utmMedium);
     const utmContent = searchParams.get("utm_content");
     if (utmContent) setValue("utmContent", utmContent);
+    const utmTerm = searchParams.get("utm_term");
+    if (utmTerm) setValue("utmTerm", utmTerm);
+    // Google appends this to the destination URL on an ad click -- captured now so it isn't lost
+    // while the Google Ads connection is reconnected; not yet used for offline conversion upload.
+    const gclid = searchParams.get("gclid");
+    if (gclid) setValue("gclid", gclid);
     // Only meaningful when it points away from this site — an internal referrer (e.g. the
     // homepage linking to this page) says nothing about how the visitor first arrived.
     if (typeof document !== "undefined" && document.referrer && !document.referrer.startsWith(window.location.origin)) {

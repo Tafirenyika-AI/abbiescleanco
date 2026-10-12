@@ -17,6 +17,8 @@ import {
 import type { ConnectionListItem } from "@/lib/server/marketingConnections";
 import type { PosterSize } from "@/lib/server/aiContent";
 import { assembleSlideshowVideo } from "@/lib/client/videoSlideshow";
+import { SUGGESTED_SEED_KEYWORDS, type KeywordOpportunityRow } from "@/lib/keywords";
+import { Search, Sparkles } from "lucide-react";
 
 function money(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
@@ -50,13 +52,17 @@ export default function MarketingManager({
   initialCampaigns,
   initialPosts,
   initialConnections,
+  initialKeywords,
+  keywordClassifierConfigured,
 }: {
   initialCampaigns: CampaignListItem[];
   initialPosts: PostListItem[];
   initialConnections: ConnectionListItem[];
+  initialKeywords: KeywordOpportunityRow[];
+  keywordClassifierConfigured: boolean;
 }) {
   const { showToast } = useToast();
-  const [tab, setTab] = useState<"campaigns" | "posts" | "connections">(() => {
+  const [tab, setTab] = useState<"campaigns" | "posts" | "connections" | "keywords">(() => {
     if (typeof window === "undefined") return "campaigns";
     const params = new URLSearchParams(window.location.search);
     return params.get("connected") || params.get("connectError") ? "connections" : "campaigns";
@@ -65,6 +71,37 @@ export default function MarketingManager({
   const [posts, setPosts] = useState(initialPosts);
   const [connections, setConnections] = useState(initialConnections);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  const [keywords, setKeywords] = useState(initialKeywords);
+  const [keywordImportText, setKeywordImportText] = useState("");
+  const [keywordImporting, setKeywordImporting] = useState(false);
+  const [keywordCategoryFilter, setKeywordCategoryFilter] = useState<"ALL" | "RESIDENTIAL" | "COMMERCIAL">("ALL");
+
+  async function importKeywordsNow() {
+    if (!keywordImportText.trim()) return;
+    setKeywordImporting(true);
+    const res = await fetch("/api/admin/marketing/keywords", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: keywordImportText }),
+    });
+    const data = await res.json().catch(() => null);
+    setKeywordImporting(false);
+    if (!data?.ok) return showToast(data?.error || "Import failed", "error");
+    showToast(`Imported ${data.imported}, AI-classified ${data.classified}.`, "success");
+    setKeywordImportText("");
+    const refreshed = await fetch("/api/admin/marketing/keywords").then((r) => r.json());
+    if (refreshed?.ok) setKeywords(refreshed.keywords);
+  }
+
+  async function deleteKeyword(id: string) {
+    setBusyId(id);
+    await fetch(`/api/admin/marketing/keywords/${id}`, { method: "DELETE" });
+    setBusyId(null);
+    setKeywords((prev) => prev.filter((k) => k.id !== id));
+  }
+
+  const filteredKeywords = keywordCategoryFilter === "ALL" ? keywords : keywords.filter((k) => k.category === keywordCategoryFilter);
 
   const [showCampaignForm, setShowCampaignForm] = useState(false);
   const [cName, setCName] = useState("");
@@ -331,6 +368,7 @@ export default function MarketingManager({
         <button type="button" onClick={() => setTab("campaigns")} className={`rounded-full px-3.5 py-1.5 text-xs font-semibold ${tab === "campaigns" ? "bg-admin-navy text-white" : "text-admin-text-muted hover:text-admin-text"}`}>Campaigns</button>
         <button type="button" onClick={() => setTab("posts")} className={`rounded-full px-3.5 py-1.5 text-xs font-semibold ${tab === "posts" ? "bg-admin-navy text-white" : "text-admin-text-muted hover:text-admin-text"}`}>Content planner</button>
         <button type="button" onClick={() => setTab("connections")} className={`rounded-full px-3.5 py-1.5 text-xs font-semibold ${tab === "connections" ? "bg-admin-navy text-white" : "text-admin-text-muted hover:text-admin-text"}`}>Connected accounts</button>
+        <button type="button" onClick={() => setTab("keywords")} className={`rounded-full px-3.5 py-1.5 text-xs font-semibold ${tab === "keywords" ? "bg-admin-navy text-white" : "text-admin-text-muted hover:text-admin-text"}`}>Keyword opportunities</button>
       </div>
 
       {tab === "campaigns" && (
@@ -538,6 +576,95 @@ export default function MarketingManager({
                   </div>
                 </Card>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === "keywords" && (
+        <div className="space-y-4">
+          <Card>
+            <p className="text-sm font-semibold text-admin-text">Import keywords to research</p>
+            <p className="mt-1 text-xs text-admin-text-muted">
+              {"Google Ads' own Keyword Planner data needs a live Ads connection this account doesn't currently have, so real search-volume/CPC numbers come from pasting in what Google's free Keyword Planner UI already shows you (one keyword per line, or \"keyword, avg monthly searches, top-of-page bid, competition\" if you have those columns). AI only classifies category/intent/priority -- it never invents a number."}
+            </p>
+            {!keywordClassifierConfigured && (
+              <p className="mt-2 text-sm text-amber-700">Needs an Anthropic API key in Settings → Integrations for AI classification -- keywords will still import with a neutral Medium priority without it.</p>
+            )}
+            <textarea
+              value={keywordImportText}
+              onChange={(e) => setKeywordImportText(e.target.value)}
+              rows={6}
+              placeholder={"house cleaning Spokane Valley WA\ndeep cleaning Spokane Valley, 90, 4.20, Medium\n..."}
+              className="mt-2 w-full rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text"
+            />
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setKeywordImportText((prev) => (prev ? `${prev}\n${SUGGESTED_SEED_KEYWORDS.join("\n")}` : SUGGESTED_SEED_KEYWORDS.join("\n")))}
+                className="ios-press rounded-full bg-admin-bg px-3.5 py-1.5 text-xs font-semibold text-admin-text"
+              >
+                Load suggested starter list
+              </button>
+              <button
+                type="button"
+                onClick={importKeywordsNow}
+                disabled={keywordImporting || !keywordImportText.trim()}
+                className="ios-press inline-flex items-center gap-1.5 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {keywordImporting ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Sparkles className="size-4" aria-hidden />} {keywordImporting ? "Importing & classifying…" : "Import & classify"}
+              </button>
+            </div>
+          </Card>
+
+          <div className="flex items-center gap-2">
+            <select value={keywordCategoryFilter} onChange={(e) => setKeywordCategoryFilter(e.target.value as "ALL" | "RESIDENTIAL" | "COMMERCIAL")} className="rounded-lg border border-admin-border bg-admin-card px-3 py-1.5 text-sm text-admin-text">
+              <option value="ALL">All categories</option>
+              <option value="RESIDENTIAL">Residential</option>
+              <option value="COMMERCIAL">Commercial</option>
+            </select>
+            <span className="text-xs text-admin-text-muted">{filteredKeywords.length} keyword{filteredKeywords.length === 1 ? "" : "s"}</span>
+          </div>
+
+          {filteredKeywords.length === 0 ? (
+            <EmptyState icon={Search} title="No keywords yet" description="Import a list above to get an AI priority read before spending anything on ads." />
+          ) : (
+            <div className="admin-table-surface overflow-hidden rounded-xl border border-admin-border bg-admin-card">
+              <table className="w-full text-sm">
+                <thead className="bg-admin-bg text-left text-xs font-semibold uppercase text-admin-text-muted">
+                  <tr>
+                    <th className="px-4 py-2.5">Keyword</th>
+                    <th className="px-4 py-2.5">Category</th>
+                    <th className="px-4 py-2.5">Priority</th>
+                    <th className="px-4 py-2.5">Intent / why</th>
+                    <th className="px-4 py-2.5">Volume</th>
+                    <th className="px-4 py-2.5">CPC</th>
+                    <th className="px-4 py-2.5"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredKeywords.map((k) => (
+                    <tr key={k.id} className="border-t border-admin-border">
+                      <td className="px-4 py-2.5 font-medium text-admin-text">{k.keyword}</td>
+                      <td className="px-4 py-2.5 text-admin-text-muted">{k.category === "COMMERCIAL" ? "Commercial" : "Residential"}</td>
+                      <td className="px-4 py-2.5">
+                        <Badge tone={k.priority === "HIGH" ? "success" : k.priority === "LOW" ? "neutral" : "warning"}>{k.priority}</Badge>
+                      </td>
+                      <td className="px-4 py-2.5 max-w-xs text-xs text-admin-text-muted">
+                        {k.intent && <p className="font-medium text-admin-text">{k.intent}</p>}
+                        {k.reasoning && <p className="mt-0.5">{k.reasoning}</p>}
+                      </td>
+                      <td className="px-4 py-2.5 text-admin-text-muted">{k.searchVolume !== null ? k.searchVolume.toLocaleString() : "—"}</td>
+                      <td className="px-4 py-2.5 text-admin-text-muted">{k.cpcCents !== null ? money(k.cpcCents) : "—"}</td>
+                      <td className="px-4 py-2.5">
+                        <button type="button" disabled={busyId === k.id} onClick={() => deleteKeyword(k.id)} className="ios-press rounded-full p-1.5 text-admin-text-muted hover:bg-red-50 hover:text-red-700 disabled:opacity-50">
+                          <Trash2 className="size-4" aria-hidden />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
