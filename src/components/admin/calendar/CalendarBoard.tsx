@@ -33,6 +33,21 @@ const statusTone: Record<BookingStatusValue, "neutral" | "info" | "success" | "e
   RESCHEDULED: "warning",
 };
 
+// Real bug fixed 2026-10-12: every chip/event block was hardcoded to one solid teal color
+// regardless of status -- statusTone above was only ever used by StatusLegend, never applied to
+// the chips themselves. These are the same tone families Badge.tsx uses, just a solid shade
+// suited to white text on a filled background instead of a light badge pill.
+const statusChipClass: Record<BookingStatusValue, string> = {
+  REQUESTED: "bg-amber-500",
+  CONFIRMED: "bg-blue-500",
+  SCHEDULED: "bg-blue-500",
+  ON_THE_WAY: "bg-admin-teal",
+  IN_PROGRESS: "bg-admin-teal",
+  COMPLETED: "bg-green-600",
+  CANCELLED: "bg-red-500",
+  RESCHEDULED: "bg-amber-600",
+};
+
 const GRID_START_HOUR = 6;
 const GRID_END_HOUR = 20;
 const GRID_MINUTES = (GRID_END_HOUR - GRID_START_HOUR) * 60;
@@ -137,51 +152,124 @@ export default function CalendarBoard({
     setDraggingId(null);
   }
 
+  // Hover "show everything" card -- lifted to one shared piece of state rendered once here,
+  // rather than each chip owning its own tooltip, so it's never clipped by an ancestor's
+  // overflow-x-auto (position: fixed, placed from the hovered chip's own real bounding rect).
+  const [hover, setHover] = useState<{ booking: BookingListItem; rect: DOMRect } | null>(null);
+  const onHoverChip = (booking: BookingListItem, e: React.MouseEvent) => setHover({ booking, rect: e.currentTarget.getBoundingClientRect() });
+  const onHoverEndChip = () => setHover(null);
+
+  let content: React.ReactNode;
   if (view === "month") {
-    return <MonthGrid anchorDate={anchorDate} byDay={byDay} today={today} draggingId={draggingId} busy={busy} onDragStartChip={onDragStartChip} onDragEndChip={onDragEndChip} onDropDay={moveToDate} />;
-  }
-
-  const days = view === "week" ? Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(anchorDate), i)) : [anchorDate];
-
-  if (view === "day" && resourceView) {
-    return (
-      <ResourceDayGrid
-        dateKey={anchorDate}
-        bookings={byDay.get(anchorDate) ?? []}
-        teamMembers={teamMembers}
+    content = (
+      <MonthGrid
+        anchorDate={anchorDate}
+        byDay={byDay}
+        today={today}
         draggingId={draggingId}
         busy={busy}
         onDragStartChip={onDragStartChip}
         onDragEndChip={onDragEndChip}
-        onDropSlot={moveToTime}
+        onDropDay={moveToDate}
+        onHoverChip={onHoverChip}
+        onHoverEndChip={onHoverEndChip}
       />
     );
+  } else {
+    const days = view === "week" ? Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(anchorDate), i)) : [anchorDate];
+    if (view === "day" && resourceView) {
+      content = (
+        <ResourceDayGrid
+          dateKey={anchorDate}
+          bookings={byDay.get(anchorDate) ?? []}
+          teamMembers={teamMembers}
+          draggingId={draggingId}
+          busy={busy}
+          onDragStartChip={onDragStartChip}
+          onDragEndChip={onDragEndChip}
+          onDropSlot={moveToTime}
+          onHoverChip={onHoverChip}
+          onHoverEndChip={onHoverEndChip}
+        />
+      );
+    } else {
+      content = (
+        <TimeGrid
+          days={days}
+          byDay={byDay}
+          today={today}
+          draggingId={draggingId}
+          busy={busy}
+          onDragStartChip={onDragStartChip}
+          onDragEndChip={onDragEndChip}
+          onDropSlot={(dateKey, minutes) => draggingId && moveToTime(draggingId, dateKey, minutes)}
+          onHoverChip={onHoverChip}
+          onHoverEndChip={onHoverEndChip}
+        />
+      );
+    }
   }
 
   return (
-    <TimeGrid
-      days={days}
-      byDay={byDay}
-      today={today}
-      draggingId={draggingId}
-      busy={busy}
-      onDragStartChip={onDragStartChip}
-      onDragEndChip={onDragEndChip}
-      onDropSlot={(dateKey, minutes) => draggingId && moveToTime(draggingId, dateKey, minutes)}
-    />
+    <>
+      {content}
+      {hover && <BookingHoverCard booking={hover.booking} rect={hover.rect} />}
+    </>
   );
 }
 
-function BookingChip({ b, draggable, onDragStart, onDragEnd, compact }: { b: BookingListItem; draggable: boolean; onDragStart: (e: React.DragEvent) => void; onDragEnd: () => void; compact?: boolean }) {
+type HoverHandler = (booking: BookingListItem, e: React.MouseEvent) => void;
+
+function BookingHoverCard({ booking: b, rect }: { booking: BookingListItem; rect: DOMRect }) {
+  const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1024;
+  const cardWidth = 280;
+  const left = Math.min(Math.max(rect.left, 8), viewportWidth - cardWidth - 8);
+  const top = rect.bottom + 6;
+
+  const rows: [string, string][] = [
+    ["Reference", b.reference],
+    ["Status", bookingStatusLabels[b.status]],
+    ["Customer", b.customerName],
+    ["Phone", b.customerPhone],
+    ["Service", b.serviceName],
+    ["When", b.scheduledStart ? `${businessTimeLabel(b.scheduledStart)}${b.scheduledEnd ? ` – ${businessTimeLabel(b.scheduledEnd)}` : ""}` : "Not scheduled"],
+    ...(b.arrivalWindow ? ([["Arrival window", b.arrivalWindow]] as [string, string][]) : []),
+    ["Address", b.address],
+    ["Assigned to", b.staffAssignee || "Unassigned"],
+  ];
+
+  return (
+    <div
+      style={{ position: "fixed", left, top, width: cardWidth, zIndex: 100 }}
+      className="pointer-events-none rounded-lg border border-admin-border bg-admin-card p-3 text-xs shadow-[0_8px_24px_rgba(15,23,42,0.18)]"
+    >
+      <dl className="space-y-1">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex justify-between gap-2">
+            <dt className="shrink-0 text-admin-text-muted">{label}</dt>
+            <dd className="text-right font-medium text-admin-text">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function BookingChip({
+  b, draggable, onDragStart, onDragEnd, compact, onHoverChip, onHoverEndChip,
+}: {
+  b: BookingListItem; draggable: boolean; onDragStart: (e: React.DragEvent) => void; onDragEnd: () => void; compact?: boolean;
+  onHoverChip: HoverHandler; onHoverEndChip: () => void;
+}) {
   return (
     <Link
       href={`/admin/bookings/${b.id}`}
       draggable={draggable}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      className={`block truncate rounded px-1.5 py-0.5 text-[11px] font-medium text-white hover:opacity-90 ${draggable ? "cursor-grab active:cursor-grabbing" : ""}`}
-      style={{ backgroundColor: "var(--color-admin-teal)" }}
-      title={`${b.customerName}, ${bookingStatusLabels[b.status]}${b.staffAssignee ? `, ${b.staffAssignee}` : ""}`}
+      onMouseEnter={(e) => onHoverChip(b, e)}
+      onMouseLeave={onHoverEndChip}
+      className={`block truncate rounded px-1.5 py-0.5 text-[11px] font-medium text-white hover:opacity-90 ${statusChipClass[b.status]} ${draggable ? "cursor-grab active:cursor-grabbing" : ""}`}
     >
       {!compact && b.scheduledStart && `${businessTimeLabel(b.scheduledStart)} `}{b.customerName}
     </Link>
@@ -199,6 +287,8 @@ function MonthGrid({
   onDragStartChip,
   onDragEndChip,
   onDropDay,
+  onHoverChip,
+  onHoverEndChip,
 }: {
   anchorDate: string;
   byDay: Map<string, BookingListItem[]>;
@@ -208,6 +298,8 @@ function MonthGrid({
   onDragStartChip: (e: React.DragEvent, id: string) => void;
   onDragEndChip: () => void;
   onDropDay: (bookingId: string, dateKey: string) => void;
+  onHoverChip: HoverHandler;
+  onHoverEndChip: () => void;
 }) {
   const { year, month } = parseDateKey(anchorDate);
   const firstOfMonth = toDateKey(year, month, 1);
@@ -245,7 +337,7 @@ function MonthGrid({
               <div className="mt-1 space-y-1">
                 {dayBookings.slice(0, 3).map((b) => (
                   <div key={b.id} className={draggingId === b.id ? "opacity-40" : ""}>
-                    <BookingChip b={b} draggable onDragStart={(e) => onDragStartChip(e, b.id)} onDragEnd={onDragEndChip} />
+                    <BookingChip b={b} draggable onDragStart={(e) => onDragStartChip(e, b.id)} onDragEnd={onDragEndChip} onHoverChip={onHoverChip} onHoverEndChip={onHoverEndChip} />
                   </div>
                 ))}
                 {dayBookings.length > 3 && <p className="text-[10px] text-admin-text-muted">+{dayBookings.length - 3} more</p>}
@@ -274,7 +366,12 @@ function HourRail() {
   );
 }
 
-function EventBlock({ b, draggingId, onDragStartChip, onDragEndChip }: { b: BookingListItem; draggingId: string | null; onDragStartChip: (e: React.DragEvent, id: string) => void; onDragEndChip: () => void }) {
+function EventBlock({
+  b, draggingId, onDragStartChip, onDragEndChip, onHoverChip, onHoverEndChip,
+}: {
+  b: BookingListItem; draggingId: string | null; onDragStartChip: (e: React.DragEvent, id: string) => void; onDragEndChip: () => void;
+  onHoverChip: HoverHandler; onHoverEndChip: () => void;
+}) {
   if (!b.scheduledStart) return null;
   const startMin = Math.max(businessMinutesOfDay(b.scheduledStart) - GRID_START_HOUR * 60, 0);
   const endMin = b.scheduledEnd ? businessMinutesOfDay(b.scheduledEnd) - GRID_START_HOUR * 60 : startMin + 60;
@@ -290,9 +387,9 @@ function EventBlock({ b, draggingId, onDragStartChip, onDragEndChip }: { b: Book
     >
       <Link
         href={`/admin/bookings/${b.id}`}
-        className="block h-full cursor-grab overflow-hidden rounded-md px-1.5 py-0.5 text-[11px] font-medium text-white active:cursor-grabbing"
-        style={{ backgroundColor: "var(--color-admin-teal)" }}
-        title={`${b.customerName}, ${bookingStatusLabels[b.status]}`}
+        onMouseEnter={(e) => onHoverChip(b, e)}
+        onMouseLeave={onHoverEndChip}
+        className={`block h-full cursor-grab overflow-hidden rounded-md px-1.5 py-0.5 text-[11px] font-medium text-white active:cursor-grabbing ${statusChipClass[b.status]}`}
       >
         <span className="font-semibold">{businessTimeLabel(b.scheduledStart)}</span> {b.customerName}
       </Link>
@@ -310,6 +407,8 @@ function GridColumn({
   onDragStartChip,
   onDragEndChip,
   onDropSlot,
+  onHoverChip,
+  onHoverEndChip,
 }: {
   dateKey: string;
   label: React.ReactNode;
@@ -320,6 +419,8 @@ function GridColumn({
   onDragStartChip: (e: React.DragEvent, id: string) => void;
   onDragEndChip: () => void;
   onDropSlot: (dateKey: string, minutesFromMidnight: number) => void;
+  onHoverChip: HoverHandler;
+  onHoverEndChip: () => void;
 }) {
   const colRef = useRef<HTMLDivElement>(null);
   return (
@@ -345,7 +446,7 @@ function GridColumn({
           <div key={i} style={{ position: "absolute", top: i * HOUR_PX, left: 0, right: 0, height: HOUR_PX }} className="border-b border-admin-border/50" />
         ))}
         {bookings.map((b) => (
-          <EventBlock key={b.id} b={b} draggingId={draggingId} onDragStartChip={onDragStartChip} onDragEndChip={onDragEndChip} />
+          <EventBlock key={b.id} b={b} draggingId={draggingId} onDragStartChip={onDragStartChip} onDragEndChip={onDragEndChip} onHoverChip={onHoverChip} onHoverEndChip={onHoverEndChip} />
         ))}
       </div>
     </div>
@@ -361,6 +462,8 @@ function TimeGrid({
   onDragStartChip,
   onDragEndChip,
   onDropSlot,
+  onHoverChip,
+  onHoverEndChip,
 }: {
   days: string[];
   byDay: Map<string, BookingListItem[]>;
@@ -370,6 +473,8 @@ function TimeGrid({
   onDragStartChip: (e: React.DragEvent, id: string) => void;
   onDragEndChip: () => void;
   onDropSlot: (dateKey: string, minutesFromMidnight: number) => void;
+  onHoverChip: HoverHandler;
+  onHoverEndChip: () => void;
 }) {
   return (
     <Card padded={false}>
@@ -389,6 +494,8 @@ function TimeGrid({
               onDragStartChip={onDragStartChip}
               onDragEndChip={onDragEndChip}
               onDropSlot={onDropSlot}
+              onHoverChip={onHoverChip}
+              onHoverEndChip={onHoverEndChip}
             />
           );
         })}
@@ -408,6 +515,8 @@ function ResourceDayGrid({
   onDragStartChip,
   onDragEndChip,
   onDropSlot,
+  onHoverChip,
+  onHoverEndChip,
 }: {
   dateKey: string;
   bookings: BookingListItem[];
@@ -417,6 +526,8 @@ function ResourceDayGrid({
   onDragStartChip: (e: React.DragEvent, id: string) => void;
   onDragEndChip: () => void;
   onDropSlot: (bookingId: string, dateKey: string, minutesFromMidnight: number, newStaff?: string) => void;
+  onHoverChip: HoverHandler;
+  onHoverEndChip: () => void;
 }) {
   const columns = [...teamMembers.map((m) => m.name), "Unassigned"];
   const byPerson = new Map<string, BookingListItem[]>();
@@ -452,7 +563,7 @@ function ResourceDayGrid({
                 <div key={i} style={{ position: "absolute", top: i * HOUR_PX, left: 0, right: 0, height: HOUR_PX }} className="border-b border-admin-border/50" />
               ))}
               {(byPerson.get(name) ?? []).map((b) => (
-                <EventBlock key={b.id} b={b} draggingId={draggingId} onDragStartChip={onDragStartChip} onDragEndChip={onDragEndChip} />
+                <EventBlock key={b.id} b={b} draggingId={draggingId} onDragStartChip={onDragStartChip} onDragEndChip={onDragEndChip} onHoverChip={onHoverChip} onHoverEndChip={onHoverEndChip} />
               ))}
             </div>
           </div>
