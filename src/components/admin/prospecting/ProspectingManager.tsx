@@ -291,7 +291,7 @@ export default function ProspectingManager({
       <div className="rounded-xl border border-admin-border bg-admin-card p-4">
         <h2 className="text-sm font-semibold text-admin-text">Default outreach message</h2>
         <p className="mt-1 text-xs text-admin-text-muted">
-          {"Write the message yourself, this is what goes out when you queue your top prospects below -- nothing is AI-generated here. Use {{business}}, {{category}}, {{our_phone}}, {{our_email}}, or {{our_name}} anywhere you want those filled in per prospect. Leave both fields blank to fall back to the built-in per-category message instead."}
+          {"Write the message yourself, this is what goes out when you queue your top prospects below -- nothing is AI-generated here. Use {{business}}, {{category}}, {{our_phone}}, {{our_email}}, {{our_name}}, or {{opt_out_link}} anywhere you want those filled in per prospect. Leave both fields blank to fall back to the built-in per-category message instead. A one-click \"stop contacting me\" link is always included automatically, even if you don't add the token yourself -- clicking it immediately marks them do-not-contact, no reply needed."}
         </p>
         <input
           value={defaultSubject}

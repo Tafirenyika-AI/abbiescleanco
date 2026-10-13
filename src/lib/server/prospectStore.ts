@@ -5,6 +5,7 @@ import { business } from "@/lib/data/business";
 import { PROSPECT_CATEGORIES, PROSPECT_STATUSES, prospectCategoryLabels, computeFitScore, DEFAULT_COMMERCIAL_OPPORTUNITY_WEIGHTS, type ProspectCategory, type ProspectStatus, type ProspectRow, type CommercialOpportunityWeights } from "@/lib/prospects";
 import { HOUSE_WRITING_STYLE } from "@/lib/aiStyle";
 import { notifyAdmins } from "@/lib/server/notificationStore";
+import { getSiteUrl } from "@/lib/server/siteUrl";
 
 export { PROSPECT_CATEGORIES, prospectCategoryLabels, PROSPECT_STATUSES, prospectStatusLabels, type ProspectCategory, type ProspectStatus, type ProspectRow } from "@/lib/prospects";
 
@@ -455,6 +456,7 @@ export async function listAssignableAdmins(): Promise<AssignableAdmin[]> {
 }
 
 interface MinimalProspect {
+  id: string;
   category: string | null;
   businessName: string | null;
   contactName: string | null;
@@ -462,6 +464,17 @@ interface MinimalProspect {
 interface ContactInfo {
   phoneDisplay: string;
   email: string;
+}
+
+/**
+ * Real, working, one-click opt-out link -- the id is the prospect's own unguessable cuid, no
+ * separate token needed (see the route's own comment). Automatically honored the instant it's
+ * clicked, no mailbox access or reply-parsing required. Always included in every outreach email,
+ * regardless of category/template, same as the cancellation-policy notice is always appended to
+ * booking emails -- compliance text that never depends on what gets typed into an editable field.
+ */
+function optOutUrl(prospectId: string): string {
+  return `${getSiteUrl()}/api/prospecting/opt-out/${prospectId}`;
 }
 
 /**
@@ -496,7 +509,7 @@ function buildCategoryDraft(p: MinimalProspect, contact: ContactInfo): { subject
     "Thanks,",
     business.name,
     "",
-    `If you'd rather not hear from us again, just reply and let us know and we won't reach out further.`,
+    `If you'd rather not hear from us again, reply and let us know, or click here and we won't reach out further: ${optOutUrl(p.id)}`,
   ].join("\n");
 
   // Short SMS-length version. There's no automated send for this (unlike the real customer SMS
@@ -606,16 +619,25 @@ async function buildDraftForProspect(p: MinimalProspect): Promise<{ subject: str
     const draft = buildCategoryDraft(p, contact);
     return { subject: draft.subject, body: draft.body };
   }
+  const link = optOutUrl(p.id);
   const vars: Record<string, string> = {
     business: p.businessName || p.contactName || "there",
     category: (PROSPECT_CATEGORIES as readonly string[]).includes(p.category ?? "") ? prospectCategoryLabels[p.category as ProspectCategory] : "Other",
     our_phone: contact.phoneDisplay,
     our_email: contact.email,
     our_name: business.name,
+    opt_out_link: link,
   };
+  let body = renderTemplateTokens(template.body, vars);
+  // Always present regardless of what the admin wrote -- same reasoning as the cancellation
+  // notice on booking emails. If their template already placed {{opt_out_link}} somewhere, this
+  // is a no-op; otherwise it's appended so no outreach email can ever go out without it.
+  if (!body.includes(link)) {
+    body += `\n\nIf you'd rather not hear from us again, click here and we won't reach out further: ${link}`;
+  }
   return {
     subject: renderTemplateTokens(template.subject, vars) || `Cleaning services for ${p.businessName || "you"}, ${business.name}`,
-    body: renderTemplateTokens(template.body, vars),
+    body,
   };
 }
 
