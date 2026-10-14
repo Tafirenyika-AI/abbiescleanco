@@ -80,6 +80,10 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
   const [arrivalWindow, setArrivalWindow] = useState(booking.arrivalWindow ?? "");
   const [conflicts, setConflicts] = useState<{ reference: string; customerName: string; scheduledStart: string | null }[] | null>(null);
   const [savingSchedule, setSavingSchedule] = useState(false);
+  // Matches rescheduleBooking's own preserveStatus logic server-side -- a completed or cancelled
+  // booking's date can still be corrected, but it's never really a "reschedule" (that implies an
+  // upcoming appointment moving), so the UI says so plainly instead of using that word.
+  const isHistorical = booking.status === "COMPLETED" || booking.status === "CANCELLED";
 
   const [payAmount, setPayAmount] = useState("");
   const [payKind, setPayKind] = useState<"deposit" | "full_payment">("full_payment");
@@ -217,7 +221,7 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
         showToast(json.error || "Couldn't reschedule", "error");
         return;
       }
-      showToast("Rescheduled", "success");
+      showToast(isHistorical ? "Date & time updated" : "Rescheduled", "success");
       setConflicts(null);
       setRescheduling(false);
       router.refresh();
@@ -349,9 +353,14 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-admin-text">Schedule</h2>
               <button type="button" onClick={() => setRescheduling((v) => !v)} className="text-sm font-semibold text-admin-teal-hover hover:underline">
-                {rescheduling ? "Cancel" : "Reschedule"}
+                {rescheduling ? "Cancel" : isHistorical ? "Edit date & time" : "Reschedule"}
               </button>
             </div>
+            {isHistorical && (
+              <p className="mt-1 text-xs text-admin-text-muted">
+                {booking.status === "COMPLETED" ? "This job is already completed -- this only corrects the recorded date/time, it stays Completed." : "This booking was cancelled -- this only corrects the recorded date/time, it stays Cancelled."}
+              </p>
+            )}
             {rescheduling && (
               <div className="mt-3 space-y-3">
                 <label className="block">
@@ -378,11 +387,11 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
                     <ul className="mt-1 list-disc pl-4">
                       {conflicts.map((c) => <li key={c.reference}>{c.customerName}, {c.scheduledStart ? formatDateTime(c.scheduledStart) : ""}</li>)}
                     </ul>
-                    <button type="button" onClick={() => saveReschedule(true)} disabled={savingSchedule} className="mt-2 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-60">Reschedule anyway</button>
+                    <button type="button" onClick={() => saveReschedule(true)} disabled={savingSchedule} className="mt-2 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-60">{isHistorical ? "Save anyway" : "Reschedule anyway"}</button>
                   </div>
                 )}
                 <button type="button" onClick={() => saveReschedule(false)} disabled={savingSchedule} className="flex items-center gap-2 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60">
-                  {savingSchedule ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null} Confirm reschedule
+                  {savingSchedule ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null} {isHistorical ? "Save date & time" : "Confirm reschedule"}
                 </button>
               </div>
             )}
