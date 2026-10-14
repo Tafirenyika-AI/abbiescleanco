@@ -536,6 +536,11 @@ export async function createAdminBooking(data: {
   addressLabel?: string; // optional nickname for a newly-created property, e.g. "Unit 4B"
   scheduledStart: string;
   scheduledEnd: string;
+  // For a job that was already done before it was ever entered into the system (e.g. booked by
+  // phone/in person and never logged) -- creates straight into COMPLETED with real actual
+  // start/end times, skips the confirmation/reminder automation entirely (nothing should tell a
+  // customer their already-finished job is "confirmed"), and records why in the status history.
+  alreadyCompleted?: boolean;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const customer = await db().customer.findUnique({ where: { id: data.customerId } });
   if (!customer) return { ok: false, error: "Customer not found" };
@@ -599,6 +604,11 @@ export async function createAdminBooking(data: {
     },
   });
 
+  const status = data.alreadyCompleted ? "COMPLETED" : "CONFIRMED";
+  const historyNote = data.alreadyCompleted
+    ? "Logged retroactively -- job was already completed before being entered into the system."
+    : "Created directly by admin";
+
   let booking: { id: string };
   try {
     booking = await withSlotLock(async (tx) => {
@@ -610,10 +620,11 @@ export async function createAdminBooking(data: {
           quoteId: quote.id,
           customerId: customer.id,
           addressId: address.id,
-          status: "CONFIRMED",
+          status,
           scheduledStart: start,
           scheduledEnd: end,
-          statusHistory: { create: { toStatus: "CONFIRMED", note: "Created directly by admin" } },
+          ...(data.alreadyCompleted ? { actualStart: start, actualEnd: end } : {}),
+          statusHistory: { create: { toStatus: status, note: historyNote } },
         },
       });
     });
@@ -622,7 +633,11 @@ export async function createAdminBooking(data: {
     throw err;
   }
 
-  await scheduleBookingConfirmationAndReminders(booking.id, start);
+  // A job logged as already-completed never gets the confirmation/reminder automation -- there's
+  // no real future appointment to confirm or remind anyone about.
+  if (!data.alreadyCompleted) {
+    await scheduleBookingConfirmationAndReminders(booking.id, start);
+  }
 
   return { ok: true, id: booking.id };
 }

@@ -29,6 +29,7 @@ export default function NewBookingForm() {
   const [date, setDate] = useState("");
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("11:00");
+  const [alreadyCompleted, setAlreadyCompleted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [suggestions, setSuggestions] = useState<SuggestedSlot[]>([]);
@@ -98,6 +99,7 @@ export default function NewBookingForm() {
         zip,
         scheduledStart: pacificDateTimeToUtcIso(date, start),
         scheduledEnd: pacificDateTimeToUtcIso(date, end),
+        alreadyCompleted,
       }),
     });
     const json = await res.json();
@@ -175,7 +177,14 @@ export default function NewBookingForm() {
         </label>
       </div>
 
-      {date && service && (
+      <label className="mt-3 flex items-start gap-2 rounded-lg bg-admin-bg p-3">
+        <input type="checkbox" checked={alreadyCompleted} onChange={(e) => setAlreadyCompleted(e.target.checked)} className="mt-0.5" />
+        <span className="text-xs text-admin-text">
+          <span className="font-medium">This job is already completed</span> -- it happened but was never entered into the system. Date/time above are when it actually took place. Creates it straight into Completed status, no confirmation or reminder emails/texts go out.
+        </span>
+      </label>
+
+      {!alreadyCompleted && date && service && (
         <div className="mt-3">
           <p className="flex items-center gap-1.5 text-xs font-semibold text-admin-text-muted">
             <Sparkles className="size-3.5 text-admin-teal-hover" aria-hidden /> Suggested times
@@ -212,7 +221,7 @@ export default function NewBookingForm() {
         disabled={!valid || saving}
         className="ios-press mt-4 flex items-center gap-2 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white hover:bg-admin-teal-hover disabled:opacity-60"
       >
-        {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null} Create booking
+        {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null} {alreadyCompleted ? "Log completed job" : "Create booking"}
       </button>
     </Card>
   );

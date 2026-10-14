@@ -16,6 +16,7 @@ const schema = z.object({
   zip: z.string().trim().regex(/^\d{5}(-\d{4})?$/),
   scheduledStart: z.string().min(1),
   scheduledEnd: z.string().min(1),
+  alreadyCompleted: z.boolean().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -46,6 +47,7 @@ export async function POST(req: NextRequest) {
     zip: parsed.data.zip,
     scheduledStart: parsed.data.scheduledStart,
     scheduledEnd: parsed.data.scheduledEnd,
+    alreadyCompleted: parsed.data.alreadyCompleted,
   });
   if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: 400 });
   return NextResponse.json({ ok: true, id: result.id });
