@@ -325,12 +325,38 @@ export async function rescheduleBooking(
   const existing = await db().booking.findUnique({ where: { id } });
   if (!existing) return { ok: false, error: "Booking not found" };
 
+  // Real bug fixed 2026-10-13: this unconditionally forced status to RESCHEDULED, even for a
+  // COMPLETED or CANCELLED booking -- simply correcting a mistaken date on a job that already
+  // happened (or was called off) would silently turn it into "Rescheduled" on the calendar, the
+  // wrong color and the wrong real-world meaning. Only an active, still-upcoming booking actually
+  // means "rescheduled" when its date moves; a finished or cancelled one keeps its real status,
+  // just with the corrected date.
+  const preserveStatus = existing.status === "COMPLETED" || existing.status === "CANCELLED";
+  const nextStatus = preserveStatus ? existing.status : "RESCHEDULED";
+  const start = new Date(data.scheduledStart);
+  const end = new Date(data.scheduledEnd);
+
   await db().booking.update({
     where: { id },
-    data: { scheduledStart: new Date(data.scheduledStart), scheduledEnd: new Date(data.scheduledEnd), arrivalWindow: data.arrivalWindow, status: "RESCHEDULED" },
+    data: {
+      scheduledStart: start,
+      scheduledEnd: end,
+      arrivalWindow: data.arrivalWindow,
+      status: nextStatus,
+      // A completed job's actual start/end were set to match its scheduled time when it was
+      // logged (see createAdminBooking's alreadyCompleted path) -- correcting the date should
+      // move those too, so Job Time doesn't show a stale actual time that no longer lines up.
+      ...(existing.status === "COMPLETED" ? { actualStart: start, actualEnd: end } : {}),
+    },
   });
   await db().bookingStatusHistory.create({
-    data: { bookingId: id, fromStatus: existing.status, toStatus: "RESCHEDULED", note: `Moved to ${data.scheduledStart}`, changedBy: adminUserId },
+    data: {
+      bookingId: id,
+      fromStatus: existing.status,
+      toStatus: nextStatus,
+      note: preserveStatus ? `Date corrected to ${data.scheduledStart} (status unchanged)` : `Moved to ${data.scheduledStart}`,
+      changedBy: adminUserId,
+    },
   });
   return { ok: true };
 }
