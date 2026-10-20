@@ -1,7 +1,7 @@
 "use client";
 
 import ClientThreadPanel from "@/components/admin/ClientThreadPanel";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Phone, Mail, Loader2, CreditCard, Copy, ExternalLink, Star, MapPin, Clock } from "lucide-react";
@@ -72,6 +72,14 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
   const [staff, setStaff] = useState(booking.staffAssignee ?? "");
   const [savingStaff, setSavingStaff] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [subcontractorId, setSubcontractorId] = useState(booking.subcontractorId ?? "");
+  const [assignableSubcontractors, setAssignableSubcontractors] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/admin/bookings/assignable-subcontractors")
+      .then((r) => r.json())
+      .then((data) => { if (data.ok) setAssignableSubcontractors(data.subcontractors); });
+  }, []);
 
   const [rescheduling, setRescheduling] = useState(false);
   const [date, setDate] = useState(toDateInput(booking.scheduledStart));
@@ -167,7 +175,7 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
     const res = await fetch(`/api/admin/bookings/${booking.id}/assign`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ staffAssignee: staff }),
+      body: JSON.stringify({ staffAssignee: staff, subcontractorId: subcontractorId || null }),
     });
     setSavingStaff(false);
     if (!res.ok) {
@@ -490,10 +498,37 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
 
           <Card>
             <h2 className="font-semibold text-admin-text">Assigned cleaner</h2>
+            {assignableSubcontractors.length > 0 && (
+              <label className="mt-2 block">
+                <span className="text-xs font-medium text-admin-text-muted">Pick a real subcontractor on file</span>
+                <select
+                  value={subcontractorId}
+                  onChange={(e) => {
+                    setSubcontractorId(e.target.value);
+                    const match = assignableSubcontractors.find((s) => s.id === e.target.value);
+                    if (match) setStaff(match.name);
+                  }}
+                  className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text"
+                >
+                  <option value="">Not a subcontractor on file</option>
+                  {assignableSubcontractors.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </label>
+            )}
             <div className="mt-2 flex gap-2">
-              <input value={staff} onChange={(e) => setStaff(e.target.value)} placeholder="Unassigned" className="flex-1 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+              <input
+                value={staff}
+                onChange={(e) => { setStaff(e.target.value); setSubcontractorId(""); }}
+                placeholder="Unassigned"
+                className="flex-1 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text"
+              />
               <button type="button" onClick={saveStaff} disabled={savingStaff} className="ios-press rounded-lg bg-admin-navy px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">Save</button>
             </div>
+            {subcontractorId && (
+              <p className="mt-1.5 text-xs text-admin-text-muted">
+                Linked to a real subcontractor -- payables for this job are tracked automatically. <Link href={`/admin/finance/subcontractors/${subcontractorId}`} className="text-admin-teal-hover hover:underline">View payables</Link>
+              </p>
+            )}
           </Card>
 
           {!["COMPLETED", "CANCELLED"].includes(booking.status) && (

@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { verifyAdminSessionToken, ADMIN_SESSION_COOKIE } from "@/lib/server/adminAuth";
 import { getAdminProfile, hasPermission } from "@/lib/server/adminUsers";
 import { getFinanceOverview, computeOutstandingInvoices, getExpensesByCategory, getRevenueByService, getRevenueVsExpensesTrend } from "@/lib/server/financeStore";
+import { computeSubcontractorOwed } from "@/lib/server/subcontractorStore";
 import FinanceDashboard from "@/components/admin/finance/FinanceDashboard";
 
 export default async function AdminFinancePage() {
@@ -14,11 +15,11 @@ export default async function AdminFinancePage() {
     redirect("/admin");
   }
 
-  const outstandingInvoices = await computeOutstandingInvoices();
+  const [outstandingInvoices, subcontractorOwed] = await Promise.all([computeOutstandingInvoices(), computeSubcontractorOwed()]);
   const [today, month, year, expensesByCategory, revenueByService, trend] = await Promise.all([
-    getFinanceOverview("today", outstandingInvoices),
-    getFinanceOverview("month", outstandingInvoices),
-    getFinanceOverview("year", outstandingInvoices),
+    getFinanceOverview("today", outstandingInvoices, subcontractorOwed),
+    getFinanceOverview("month", outstandingInvoices, subcontractorOwed),
+    getFinanceOverview("year", outstandingInvoices, subcontractorOwed),
     getExpensesByCategory("month"),
     getRevenueByService("month"),
     getRevenueVsExpensesTrend(30),

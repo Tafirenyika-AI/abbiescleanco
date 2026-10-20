@@ -1,4 +1,5 @@
 import { prisma, isDatabaseConfigured } from "@/lib/db";
+import { computeSubcontractorOwed } from "@/lib/server/subcontractorStore";
 
 /**
  * Finance overview aggregation -- extends reportsStore.ts's existing query pattern (parallel
@@ -6,9 +7,9 @@ import { prisma, isDatabaseConfigured } from "@/lib/db";
  * "finance_transactions" ledger table: money in/out is read live from Payment + Expense, which
  * are already the real source of truth, per the module's own "don't duplicate data" instruction.
  *
- * "Subcontractor owed" is deliberately always 0 with an honest note -- there is no subcontractor
- * data model yet (Workforce is a Coming-Soon module), so a real number can't be computed. Never
- * fabricated.
+ * "Subcontractor owed" is now real (see subcontractorStore.computeSubcontractorOwed), now that a
+ * real Subcontractor data model exists -- previously always 0 with an honest "can't compute yet"
+ * note, before that module was built.
  */
 
 function rangeFor(range: "today" | "month" | "year"): { start: Date; end: Date } {
@@ -35,7 +36,7 @@ export interface FinanceOverview {
   expenses: number; // cents
   estimatedProfit: number; // cents -- collected minus expenses (cash-basis)
   outstandingInvoices: number; // cents -- balance due on all non-cancelled invoices, regardless of window
-  subcontractorOwed: null; // always null -- no subcontractor data model exists yet
+  subcontractorOwed: number; // cents -- real, point-in-time total across active subcontractors, not range-scoped
 }
 
 /**
@@ -63,21 +64,26 @@ export async function computeOutstandingInvoices(): Promise<number> {
   }, 0);
 }
 
-export async function getFinanceOverview(range: "today" | "month" | "year", precomputedOutstanding?: number): Promise<FinanceOverview> {
+export async function getFinanceOverview(
+  range: "today" | "month" | "year",
+  precomputedOutstanding?: number,
+  precomputedSubcontractorOwed?: number
+): Promise<FinanceOverview> {
   const { start, end } = rangeFor(range);
   const empty: FinanceOverview = {
     range, rangeStart: start.toISOString(), rangeEnd: end.toISOString(),
-    revenue: 0, collected: 0, expenses: 0, estimatedProfit: 0, outstandingInvoices: 0, subcontractorOwed: null,
+    revenue: 0, collected: 0, expenses: 0, estimatedProfit: 0, outstandingInvoices: 0, subcontractorOwed: 0,
   };
   if (!isDatabaseConfigured || !prisma) return empty;
 
-  const [acceptedQuotes, paidPayments, expenses, outstandingInvoices] = await Promise.all([
+  const [acceptedQuotes, paidPayments, expenses, outstandingInvoices, subcontractorOwed] = await Promise.all([
     prisma.quote.findMany({ where: { status: "ACCEPTED", createdAt: { gte: start, lte: end }, deletedAt: null }, select: { total: true } }),
     // Excludes payments whose booking has since been deleted -- deleting a booking now actually
     // moves this number instead of the payment staying counted forever.
     prisma.payment.findMany({ where: { status: "PAID", createdAt: { gte: start, lte: end }, OR: [{ bookingId: null }, { booking: { deletedAt: null } }] }, select: { amount: true, refundAmount: true } }),
     prisma.expense.findMany({ where: { date: { gte: start, lte: end }, deletedAt: null }, select: { amount: true } }),
     precomputedOutstanding ?? computeOutstandingInvoices(),
+    precomputedSubcontractorOwed ?? computeSubcontractorOwed(),
   ]);
 
   const revenue = acceptedQuotes.reduce((sum, q) => sum + q.total, 0);
@@ -89,7 +95,7 @@ export async function getFinanceOverview(range: "today" | "month" | "year", prec
     revenue, collected, expenses: expensesTotal,
     estimatedProfit: collected - expensesTotal,
     outstandingInvoices,
-    subcontractorOwed: null,
+    subcontractorOwed,
   };
 }
 

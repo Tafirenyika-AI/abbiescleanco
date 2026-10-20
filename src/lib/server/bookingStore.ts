@@ -53,6 +53,7 @@ export interface BookingListItem {
   scheduledEnd: string | null;
   arrivalWindow: string | null;
   staffAssignee: string | null;
+  subcontractorId: string | null;
   customerName: string;
   customerPhone: string;
   address: string;
@@ -63,6 +64,7 @@ export interface BookingListItem {
 function mapBooking(b: {
   id: string; reference: string; status: BookingStatusValue;
   scheduledStart: Date | null; scheduledEnd: Date | null; arrivalWindow: string | null; staffAssignee: string | null;
+  subcontractorId: string | null;
   customer: { firstName: string; lastName: string; phone: string } | null;
   address: { line1: string; city: string; state: string; zip: string } | null;
   lead: { service: { name: string } } | null;
@@ -75,6 +77,7 @@ function mapBooking(b: {
     scheduledEnd: b.scheduledEnd?.toISOString() ?? null,
     arrivalWindow: b.arrivalWindow,
     staffAssignee: b.staffAssignee,
+    subcontractorId: b.subcontractorId,
     customerName: b.customer ? `${b.customer.firstName} ${b.customer.lastName}`.trim() : "—",
     customerPhone: b.customer?.phone ?? "—",
     address: b.address ? `${b.address.line1}, ${b.address.city}, ${b.address.state} ${b.address.zip}` : "—",

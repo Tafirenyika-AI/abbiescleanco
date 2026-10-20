@@ -587,7 +587,12 @@ model Booking {
   finishReminderSentAt   DateTime?
   clockOutReminderSentAt DateTime?
 
-  staffAssignee String? // free-text placeholder until staff accounts exist
+  staffAssignee String? // free-text; still set/read even when subcontractorId below is set, so every
+  // existing display (calendar, resource view) keeps working unchanged -- kept in sync with the
+  // linked Subcontractor's name by assignBookingToSubcontractor, never edited independently once set.
+
+  subcontractorId String?
+  subcontractor   Subcontractor? @relation(fields: [subcontractorId], references: [id])
 
   googleCalendarEventId String?
 
@@ -610,6 +615,7 @@ model Booking {
 
   @@index([status])
   @@index([scheduledStart])
+  @@index([subcontractorId])
   @@map("bookings")
 }
 
@@ -1185,6 +1191,13 @@ model Expense {
   bookingId String? // ties a cost to the job that generated it, for job-profitability later
   booking   Booking? @relation(fields: [bookingId], references: [id])
 
+  // Set when this expense IS a subcontractor payout (category SUBCONTRACTORS) -- independent of
+  // bookingId, since a real payout is usually a lump sum covering several jobs, not tied to one.
+  // This is the one real source of truth for "how much has actually been paid" (see
+  // subcontractorStore.getSubcontractorPayables) -- no separate payout ledger table.
+  subcontractorId String?
+  subcontractor   Subcontractor? @relation(fields: [subcontractorId], references: [id])
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -1194,7 +1207,53 @@ model Expense {
   @@index([category])
   @@index([date])
   @@index([bookingId])
+  @@index([subcontractorId])
   @@map("expenses")
+}
+
+enum SubcontractorPayType {
+  PER_JOB // a flat rate per completed job
+  HOURLY // rate x actual (or scheduled, if actual isn't recorded) hours worked
+  PERCENTAGE // a percent of the job's real quoted total
+  FLAT_MONTHLY // a fixed recurring amount, not tied to individual jobs -- payables can't be
+  // auto-calculated from bookings for this type (see getSubcontractorPayables's own note), the
+  // admin just logs real payouts against it directly.
+}
+
+enum SubcontractorStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// A real subcontractor/independent-cleaner entity -- this is what Booking.staffAssignee's own
+// comment calls "a free-text placeholder until staff accounts exist." Deliberately does NOT store
+// a full SSN/EIN: this app has no field-level encryption anywhere (see integrationSettings.ts's
+// own "not a secrets vault" note), so only the last 4 digits are collected, enough for the admin's
+// own recordkeeping without holding a complete, independently-dangerous tax id in plain text. Real
+// 1099 e-filing (if ever needed) belongs with a dedicated provider (Track1099, etc.), not here.
+model Subcontractor {
+  id    String @id @default(cuid())
+  name  String
+  email String?
+  phone String?
+
+  payType        SubcontractorPayType @default(PER_JOB)
+  payRateCents   Int                  @default(0) // PER_JOB: flat per job. HOURLY: cents/hour. FLAT_MONTHLY: flat monthly amount. Unused (0) for PERCENTAGE.
+  payRatePercent Int? // 1-100, only meaningful when payType = PERCENTAGE
+
+  taxIdLast4 String? // last 4 digits only, see model comment above
+  status     SubcontractorStatus @default(ACTIVE)
+  notes      String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  bookings Booking[]
+  expenses Expense[]
+
+  @@index([status])
+  @@map("subcontractors")
 }
 
 // ---------- Banking (bank CSV import + reconciliation) ----------

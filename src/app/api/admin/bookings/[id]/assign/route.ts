@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/server/requireAdmin";
 import { assignStaff } from "@/lib/server/bookingStore";
+import { assignBookingToSubcontractor } from "@/lib/server/subcontractorStore";
 
-const schema = z.object({ staffAssignee: z.string().trim().max(100) });
+// subcontractorId set -> pick a real, on-file Subcontractor (its name syncs into staffAssignee
+// automatically, see assignBookingToSubcontractor). subcontractorId omitted/null -> plain free
+// text, same as before this field existed -- and clears any previously-linked subcontractor,
+// since the admin just typed a different name by hand and the two would otherwise go stale.
+const schema = z.object({ staffAssignee: z.string().trim().max(100), subcontractorId: z.string().trim().min(1).nullable().optional() });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin(req, "MANAGE_BOOKINGS");
@@ -19,6 +24,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ ok: false, error: "Validation failed" }, { status: 400 });
 
+  if (parsed.data.subcontractorId) {
+    const result = await assignBookingToSubcontractor(id, parsed.data.subcontractorId);
+    if (!result.ok) return NextResponse.json(result, { status: 400 });
+    return NextResponse.json({ ok: true });
+  }
+
+  await assignBookingToSubcontractor(id, null);
   await assignStaff(id, parsed.data.staffAssignee);
   return NextResponse.json({ ok: true });
 }

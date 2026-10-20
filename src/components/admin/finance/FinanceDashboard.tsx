@@ -55,14 +55,8 @@ export default function FinanceDashboard({
         <StatCard label="Estimated profit" value={money(o.estimatedProfit)} icon={Wallet} hint="Collected minus expenses" />
         <StatCard label="Expenses" value={money(o.expenses)} icon={TrendingDown} href="/admin/expenses" />
         <StatCard label="Outstanding invoices" value={money(o.outstandingInvoices)} icon={FileWarning} href="/admin/invoices" hint="Owed right now, any period" />
+        <StatCard label="Subcontractors owed" value={money(o.subcontractorOwed)} icon={Users2} href="/admin/finance/subcontractors" hint="Owed right now, any period" />
       </div>
-
-      <Card className="border-dashed">
-        <div className="flex items-center gap-2.5 text-sm text-admin-text-muted">
-          <Users2 className="size-4 shrink-0" aria-hidden />
-          <p>Subcontractor amounts owed aren&apos;t shown yet -- there&apos;s no subcontractor system built yet to compute a real number from (see Workforce in the nav).</p>
-        </div>
-      </Card>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
