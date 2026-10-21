@@ -10,14 +10,17 @@ const schema = z.object({
   tagline: z.string().trim().min(1).max(160),
 });
 
+// Gated on MANAGE_LEADS, not MANAGE_CONTENT -- this signature is only ever used on prospecting
+// outreach emails (see buildEmailSignatureHtml in prospectStore.ts), so it belongs with whoever
+// manages prospecting, not general site content/branding.
 export async function GET(req: NextRequest) {
-  const admin = await requireAdmin(req, "MANAGE_CONTENT");
+  const admin = await requireAdmin(req, "MANAGE_LEADS");
   if (!admin) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   return NextResponse.json({ ok: true, signature: await getEmailSignatureSettings() });
 }
 
 export async function PUT(req: NextRequest) {
-  const admin = await requireAdmin(req, "MANAGE_CONTENT");
+  const admin = await requireAdmin(req, "MANAGE_LEADS");
   if (!admin) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
 
   const parsed = schema.safeParse(await req.json().catch(() => null));

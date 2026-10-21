@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { verifyAdminSessionToken, ADMIN_SESSION_COOKIE } from "@/lib/server/adminAuth";
 import { getAdminProfile, hasPermission } from "@/lib/server/adminUsers";
 import { listProspects, isPlacesSearchConfigured, isWebLeadSearchConfigured, getCommercialOpportunityWeights } from "@/lib/server/prospectStore";
+import { getEmailSignatureSettings } from "@/lib/server/siteSettings";
 import ProspectingManager from "@/components/admin/prospecting/ProspectingManager";
 
 export default async function AdminProspectingPage() {
@@ -14,11 +15,12 @@ export default async function AdminProspectingPage() {
     redirect("/admin");
   }
 
-  const [prospects, placesConfigured, webSearchConfigured, opportunityWeights] = await Promise.all([
+  const [prospects, placesConfigured, webSearchConfigured, opportunityWeights, emailSignature] = await Promise.all([
     listProspects(),
     isPlacesSearchConfigured(),
     isWebLeadSearchConfigured(),
     getCommercialOpportunityWeights(),
+    getEmailSignatureSettings(),
   ]);
 
   return (
@@ -27,6 +29,7 @@ export default async function AdminProspectingPage() {
       placesConfigured={placesConfigured}
       webSearchConfigured={webSearchConfigured}
       initialOpportunityWeights={opportunityWeights}
+      initialSignature={emailSignature}
     />
   );
 }

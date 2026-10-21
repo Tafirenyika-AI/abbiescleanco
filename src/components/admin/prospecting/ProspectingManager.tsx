@@ -22,6 +22,7 @@ import {
   computeCommercialOpportunityScore,
   DEFAULT_COMMERCIAL_OPPORTUNITY_WEIGHTS,
 } from "@/lib/prospects";
+import type { EmailSignatureSettings } from "@/lib/server/siteSettings";
 
 function statusTone(status: ProspectStatus): "neutral" | "teal" | "success" | "warning" | "error" | "info" {
   if (status === "DO_NOT_CONTACT" || status === "REJECTED") return "error";
@@ -46,11 +47,13 @@ export default function ProspectingManager({
   placesConfigured,
   webSearchConfigured,
   initialOpportunityWeights,
+  initialSignature,
 }: {
   initialProspects: ProspectRow[];
   placesConfigured: boolean;
   webSearchConfigured: boolean;
   initialOpportunityWeights: CommercialOpportunityWeights;
+  initialSignature: EmailSignatureSettings;
 }) {
   const { showToast } = useToast();
   const [prospects, setProspects] = useState(initialProspects);
@@ -86,6 +89,8 @@ export default function ProspectingManager({
   const [defaultSubject, setDefaultSubject] = useState("");
   const [defaultBody, setDefaultBody] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [signature, setSignature] = useState(initialSignature);
+  const [savingSignature, setSavingSignature] = useState(false);
   const [queueCount, setQueueCount] = useState(15);
   const [queuing, setQueuing] = useState(false);
   const [queueResult, setQueueResult] = useState<{ message: string; names?: string[] } | null>(null);
@@ -112,6 +117,19 @@ export default function ProspectingManager({
     setSavingTemplate(false);
     if (!data?.ok) return showToast(data?.error || "Couldn't save", "error");
     showToast("Default message saved.", "success");
+  }
+
+  async function saveSignature() {
+    setSavingSignature(true);
+    const res = await fetch("/api/admin/settings/email-signature", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(signature),
+    });
+    const data = await res.json().catch(() => null);
+    setSavingSignature(false);
+    if (!data?.ok) return showToast(data?.issues?.[0]?.message || data?.error || "Couldn't save", "error");
+    showToast("Signature saved.", "success");
   }
 
   async function queueTop() {
@@ -291,7 +309,7 @@ export default function ProspectingManager({
       <div className="rounded-xl border border-admin-border bg-admin-card p-4">
         <h2 className="text-sm font-semibold text-admin-text">Default outreach message</h2>
         <p className="mt-1 text-xs text-admin-text-muted">
-          {"Write the message yourself, this is what goes out when you queue your top prospects below -- nothing is AI-generated here. Use {{business}}, {{category}}, {{our_phone}}, {{our_email}}, {{our_name}}, or {{opt_out_link}} anywhere you want those filled in per prospect. Leave both fields blank to fall back to the built-in per-category message instead. Your real branded signature and a one-click \"stop contacting me\" link are both always added automatically below whatever you write here -- no need to include either yourself, and clicking the link immediately marks them do-not-contact, no reply needed. Edit the signature's name, title, and tagline in Settings."}
+          {"Write the message yourself, this is what goes out when you queue your top prospects below -- nothing is AI-generated here. Use {{business}}, {{category}}, {{our_phone}}, {{our_email}}, {{our_name}}, or {{opt_out_link}} anywhere you want those filled in per prospect. Leave both fields blank to fall back to the built-in per-category message instead. Your real branded signature and a one-click \"stop contacting me\" link are both always added automatically below whatever you write here -- no need to include either yourself, and clicking the link immediately marks them do-not-contact, no reply needed."}
         </p>
         <input
           value={defaultSubject}
@@ -309,6 +327,40 @@ export default function ProspectingManager({
         <button type="button" onClick={saveTemplate} disabled={savingTemplate} className="ios-press mt-2 rounded-full bg-admin-bg px-3.5 py-1.5 text-xs font-semibold text-admin-text disabled:opacity-50">
           {savingTemplate ? "Saving…" : "Save default message"}
         </button>
+
+        <div className="mt-5 border-t border-admin-border pt-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Signature</h3>
+          <p className="mt-1 text-xs text-admin-text-muted">The name, title, and tagline shown on the branded signature added below every outreach email. Phone and email come from Settings → Contact info.</p>
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <input
+              value={signature.founderFirstName}
+              onChange={(e) => setSignature((s) => ({ ...s, founderFirstName: e.target.value }))}
+              placeholder="First name"
+              className="rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text"
+            />
+            <input
+              value={signature.founderLastName}
+              onChange={(e) => setSignature((s) => ({ ...s, founderLastName: e.target.value }))}
+              placeholder="Last name"
+              className="rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text"
+            />
+            <input
+              value={signature.founderTitle}
+              onChange={(e) => setSignature((s) => ({ ...s, founderTitle: e.target.value }))}
+              placeholder="Title, e.g. Founder & Owner"
+              className="rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text sm:col-span-2"
+            />
+            <input
+              value={signature.tagline}
+              onChange={(e) => setSignature((s) => ({ ...s, tagline: e.target.value }))}
+              placeholder="Tagline"
+              className="rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text sm:col-span-2"
+            />
+          </div>
+          <button type="button" onClick={saveSignature} disabled={savingSignature} className="ios-press mt-2 rounded-full bg-admin-bg px-3.5 py-1.5 text-xs font-semibold text-admin-text disabled:opacity-50">
+            {savingSignature ? "Saving…" : "Save signature"}
+          </button>
+        </div>
       </div>
 
       <div className="rounded-xl border border-admin-border bg-admin-card p-4">
