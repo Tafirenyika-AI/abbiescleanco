@@ -759,18 +759,21 @@ export interface SendOutreachResult {
 /** Sends the (admin-reviewed, possibly edited) draft via email. The explicit admin call to this
  *  function IS the human-approval step -- nothing upstream of this ever sends on its own. */
 /**
- * The business's branded email signature (logo + name/title/company + contact + tagline),
- * matching its designed signature graphic -- table-based HTML with inline styles only, for real
- * email-client compatibility (no external stylesheet, no flex/grid). Name/title/tagline are
- * admin-editable (see /admin/settings, EmailSignatureManager); phone/email reuse the same
- * admin-editable contact info used site-wide, and the logo reuses the admin-editable branding
- * logo if one's been uploaded, falling back to the static default. Always appended to outreach
- * emails regardless of what the admin wrote in the draft, same "never optional" pattern as the
- * opt-out link and the cancellation notice on booking emails.
+ * The business's branded email signature, always appended to outreach emails regardless of what
+ * the admin wrote in the draft (same "never optional" pattern as the opt-out link and the
+ * cancellation notice on booking emails). When the admin has uploaded a real designed signature
+ * graphic (see the Prospecting page's Signature panel, imageUrl), that image is attached exactly
+ * as-is -- a single <img>, not a recreation. Otherwise falls back to an HTML/CSS approximation
+ * (table-based, inline styles only, for real email-client compatibility) built from the
+ * name/title/tagline fields, the site's contact info, and the branding logo.
  */
 async function buildEmailSignatureHtml(): Promise<string> {
-  const contact = await getContactInfo();
   const signature = await getEmailSignatureSettings();
+  if (signature.imageUrl) {
+    return `<img src="${signature.imageUrl}" alt="${business.name}" style="display:block;margin-top:28px;max-width:600px;width:100%;height:auto;" />`;
+  }
+
+  const contact = await getContactInfo();
   const branding = await getBranding();
   const logoUrl = branding.logoUrl || `${getSiteUrl()}/images/logo.png`;
   const NAVY = "#13213f";

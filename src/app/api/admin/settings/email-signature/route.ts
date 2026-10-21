@@ -8,6 +8,7 @@ const schema = z.object({
   founderLastName: z.string().trim().min(1).max(60),
   founderTitle: z.string().trim().min(1).max(80),
   tagline: z.string().trim().min(1).max(160),
+  imageUrl: z.string().trim().max(2048).nullable(),
 });
 
 // Gated on MANAGE_LEADS, not MANAGE_CONTENT -- this signature is only ever used on prospecting

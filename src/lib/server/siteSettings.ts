@@ -104,6 +104,10 @@ export interface EmailSignatureSettings {
   founderLastName: string;
   founderTitle: string;
   tagline: string;
+  // When set, this real designed signature graphic is attached exactly as-is instead of the
+  // HTML-recreated block built from the fields above (which only act as a fallback once this is
+  // cleared). Uploaded the same way as the branding logo -- see ImageUploadField.
+  imageUrl: string | null;
 }
 
 const defaultEmailSignature: EmailSignatureSettings = {
@@ -111,10 +115,13 @@ const defaultEmailSignature: EmailSignatureSettings = {
   founderLastName: defaultBusiness.founder.lastName,
   founderTitle: defaultBusiness.founder.title,
   tagline: defaultBusiness.emailSignatureTagline,
+  imageUrl: null,
 };
 
-/** The branded signature block appended to prospecting outreach emails (name, title, tagline --
- *  phone/email come from getContactInfo() instead, so they only need editing in one place). */
+/** The branded signature appended to prospecting outreach emails -- either a real uploaded
+ *  signature image (imageUrl) attached as-is, or an HTML-recreated fallback built from the other
+ *  fields when no image has been uploaded. Phone/email come from getContactInfo() instead, so
+ *  they only need editing in one place. */
 export async function getEmailSignatureSettings(): Promise<EmailSignatureSettings> {
   if (!isDatabaseConfigured || !prisma) return { ...defaultEmailSignature };
   const row = await prisma.businessSetting.findUnique({ where: { key: "email_signature" } });

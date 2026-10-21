@@ -7,6 +7,7 @@ import EmptyState from "@/components/admin/ui/EmptyState";
 import ConfirmDialog from "@/components/admin/ui/ConfirmDialog";
 import BulkDeleteBar from "@/components/admin/ui/BulkDeleteBar";
 import { useToast } from "@/components/admin/ui/Toast";
+import ImageUploadField from "@/components/admin/content/ImageUploadField";
 import { useBulkSelect } from "@/lib/admin/useBulkSelect";
 import {
   type ProspectRow,
@@ -119,16 +120,17 @@ export default function ProspectingManager({
     showToast("Default message saved.", "success");
   }
 
-  async function saveSignature() {
+  async function saveSignature(next: EmailSignatureSettings = signature) {
     setSavingSignature(true);
     const res = await fetch("/api/admin/settings/email-signature", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(signature),
+      body: JSON.stringify(next),
     });
     const data = await res.json().catch(() => null);
     setSavingSignature(false);
     if (!data?.ok) return showToast(data?.issues?.[0]?.message || data?.error || "Couldn't save", "error");
+    setSignature(next);
     showToast("Signature saved.", "success");
   }
 
@@ -330,36 +332,49 @@ export default function ProspectingManager({
 
         <div className="mt-5 border-t border-admin-border pt-4">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Signature</h3>
-          <p className="mt-1 text-xs text-admin-text-muted">The name, title, and tagline shown on the branded signature added below every outreach email. Phone and email come from Settings → Contact info.</p>
-          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <input
-              value={signature.founderFirstName}
-              onChange={(e) => setSignature((s) => ({ ...s, founderFirstName: e.target.value }))}
-              placeholder="First name"
-              className="rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text"
-            />
-            <input
-              value={signature.founderLastName}
-              onChange={(e) => setSignature((s) => ({ ...s, founderLastName: e.target.value }))}
-              placeholder="Last name"
-              className="rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text"
-            />
-            <input
-              value={signature.founderTitle}
-              onChange={(e) => setSignature((s) => ({ ...s, founderTitle: e.target.value }))}
-              placeholder="Title, e.g. Founder & Owner"
-              className="rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text sm:col-span-2"
-            />
-            <input
-              value={signature.tagline}
-              onChange={(e) => setSignature((s) => ({ ...s, tagline: e.target.value }))}
-              placeholder="Tagline"
-              className="rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text sm:col-span-2"
+          <p className="mt-1 text-xs text-admin-text-muted">Upload your real designed signature graphic and it&apos;s attached to every outreach email exactly as-is, below whatever you write above.</p>
+          <div className="mt-2 max-w-md">
+            <ImageUploadField
+              label="Signature image"
+              value={signature.imageUrl ?? ""}
+              onChange={(url) => setSignature((s) => ({ ...s, imageUrl: url || null }))}
+              onCommit={(url) => saveSignature({ ...signature, imageUrl: url || null })}
             />
           </div>
-          <button type="button" onClick={saveSignature} disabled={savingSignature} className="ios-press mt-2 rounded-full bg-admin-bg px-3.5 py-1.5 text-xs font-semibold text-admin-text disabled:opacity-50">
-            {savingSignature ? "Saving…" : "Save signature"}
-          </button>
+
+          <details className="mt-3">
+            <summary className="cursor-pointer text-xs font-semibold text-admin-text-muted">Fallback signature (used only if no image is uploaded)</summary>
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <input
+                value={signature.founderFirstName}
+                onChange={(e) => setSignature((s) => ({ ...s, founderFirstName: e.target.value }))}
+                placeholder="First name"
+                className="rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text"
+              />
+              <input
+                value={signature.founderLastName}
+                onChange={(e) => setSignature((s) => ({ ...s, founderLastName: e.target.value }))}
+                placeholder="Last name"
+                className="rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text"
+              />
+              <input
+                value={signature.founderTitle}
+                onChange={(e) => setSignature((s) => ({ ...s, founderTitle: e.target.value }))}
+                placeholder="Title, e.g. Founder & Owner"
+                className="rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text sm:col-span-2"
+              />
+              <input
+                value={signature.tagline}
+                onChange={(e) => setSignature((s) => ({ ...s, tagline: e.target.value }))}
+                placeholder="Tagline"
+                className="rounded-lg border border-admin-border bg-admin-bg px-3 py-2 text-sm text-admin-text sm:col-span-2"
+              />
+            </div>
+            <p className="mt-1 text-xs text-admin-text-muted">Phone and email come from Settings → Contact info.</p>
+            <button type="button" onClick={() => saveSignature()} disabled={savingSignature} className="ios-press mt-2 rounded-full bg-admin-bg px-3.5 py-1.5 text-xs font-semibold text-admin-text disabled:opacity-50">
+              {savingSignature ? "Saving…" : "Save fallback signature"}
+            </button>
+          </details>
         </div>
       </div>
 
