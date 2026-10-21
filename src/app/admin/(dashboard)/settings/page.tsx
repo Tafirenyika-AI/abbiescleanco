@@ -2,13 +2,14 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { verifyAdminSessionToken, ADMIN_SESSION_COOKIE } from "@/lib/server/adminAuth";
 import { getAdminProfile, hasPermission } from "@/lib/server/adminUsers";
-import { getBusinessHours, getSocialLinks, getBranding, getContactInfo } from "@/lib/server/siteSettings";
+import { getBusinessHours, getSocialLinks, getBranding, getContactInfo, getEmailSignatureSettings } from "@/lib/server/siteSettings";
 import { getIntegrationStatus } from "@/lib/server/integrationSettings";
 import { getTelnyxComplianceChecklist } from "@/lib/server/smsCompliance";
 import HoursAndSocialManager from "@/components/admin/settings/HoursAndSocialManager";
 import IntegrationsManager from "@/components/admin/settings/IntegrationsManager";
 import BrandingManager from "@/components/admin/settings/BrandingManager";
 import ContactInfoManager from "@/components/admin/settings/ContactInfoManager";
+import EmailSignatureManager from "@/components/admin/settings/EmailSignatureManager";
 import TelnyxComplianceChecklist from "@/components/admin/settings/TelnyxComplianceChecklist";
 
 export default async function AdminSettingsPage() {
@@ -23,11 +24,12 @@ export default async function AdminSettingsPage() {
     redirect("/admin");
   }
 
-  const [hours, social, branding, contact, integrationStatus, telnyxChecklist] = await Promise.all([
+  const [hours, social, branding, contact, emailSignature, integrationStatus, telnyxChecklist] = await Promise.all([
     canManageContent ? getBusinessHours() : Promise.resolve(null),
     canManageContent ? getSocialLinks() : Promise.resolve(null),
     canManageContent ? getBranding() : Promise.resolve(null),
     canManageContent ? getContactInfo() : Promise.resolve(null),
+    canManageContent ? getEmailSignatureSettings() : Promise.resolve(null),
     canManageIntegrations ? getIntegrationStatus() : Promise.resolve(null),
     canManageIntegrations ? getTelnyxComplianceChecklist() : Promise.resolve(null),
   ]);
@@ -41,6 +43,8 @@ export default async function AdminSettingsPage() {
         {canManageContent && branding && <BrandingManager initialBranding={branding} />}
 
         {canManageContent && contact && <ContactInfoManager initialContact={contact} />}
+
+        {canManageContent && emailSignature && <EmailSignatureManager initialSignature={emailSignature} />}
 
         {canManageContent && hours && social && (
           <HoursAndSocialManager initialHours={hours} initialSocial={social} />

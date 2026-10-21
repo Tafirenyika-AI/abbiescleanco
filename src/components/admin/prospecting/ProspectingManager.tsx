@@ -291,7 +291,7 @@ export default function ProspectingManager({
       <div className="rounded-xl border border-admin-border bg-admin-card p-4">
         <h2 className="text-sm font-semibold text-admin-text">Default outreach message</h2>
         <p className="mt-1 text-xs text-admin-text-muted">
-          {"Write the message yourself, this is what goes out when you queue your top prospects below -- nothing is AI-generated here. Use {{business}}, {{category}}, {{our_phone}}, {{our_email}}, {{our_name}}, or {{opt_out_link}} anywhere you want those filled in per prospect. Leave both fields blank to fall back to the built-in per-category message instead. Your real branded signature and a one-click \"stop contacting me\" link are both always added automatically below whatever you write here -- no need to include either yourself, and clicking the link immediately marks them do-not-contact, no reply needed."}
+          {"Write the message yourself, this is what goes out when you queue your top prospects below -- nothing is AI-generated here. Use {{business}}, {{category}}, {{our_phone}}, {{our_email}}, {{our_name}}, or {{opt_out_link}} anywhere you want those filled in per prospect. Leave both fields blank to fall back to the built-in per-category message instead. Your real branded signature and a one-click \"stop contacting me\" link are both always added automatically below whatever you write here -- no need to include either yourself, and clicking the link immediately marks them do-not-contact, no reply needed. Edit the signature's name, title, and tagline in Settings."}
         </p>
         <input
           value={defaultSubject}

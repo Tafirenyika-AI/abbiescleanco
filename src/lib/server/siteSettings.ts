@@ -98,3 +98,34 @@ export async function setBranding(branding: BrandingSettings): Promise<void> {
     create: { key: "branding", value: branding as unknown as Prisma.InputJsonValue },
   });
 }
+
+export interface EmailSignatureSettings {
+  founderFirstName: string;
+  founderLastName: string;
+  founderTitle: string;
+  tagline: string;
+}
+
+const defaultEmailSignature: EmailSignatureSettings = {
+  founderFirstName: defaultBusiness.founder.firstName,
+  founderLastName: defaultBusiness.founder.lastName,
+  founderTitle: defaultBusiness.founder.title,
+  tagline: defaultBusiness.emailSignatureTagline,
+};
+
+/** The branded signature block appended to prospecting outreach emails (name, title, tagline --
+ *  phone/email come from getContactInfo() instead, so they only need editing in one place). */
+export async function getEmailSignatureSettings(): Promise<EmailSignatureSettings> {
+  if (!isDatabaseConfigured || !prisma) return { ...defaultEmailSignature };
+  const row = await prisma.businessSetting.findUnique({ where: { key: "email_signature" } });
+  return { ...defaultEmailSignature, ...(row?.value as Partial<EmailSignatureSettings> | undefined) };
+}
+
+export async function setEmailSignatureSettings(signature: EmailSignatureSettings): Promise<void> {
+  if (!isDatabaseConfigured || !prisma) throw new Error("Requires DATABASE_URL to be configured.");
+  await prisma.businessSetting.upsert({
+    where: { key: "email_signature" },
+    update: { value: signature as unknown as Prisma.InputJsonValue },
+    create: { key: "email_signature", value: signature as unknown as Prisma.InputJsonValue },
+  });
+}

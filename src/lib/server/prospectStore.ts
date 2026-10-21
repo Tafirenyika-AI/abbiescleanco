@@ -1,6 +1,6 @@
 import { prisma, isDatabaseConfigured } from "@/lib/db";
 import { getIntegrationValue } from "@/lib/server/integrationSettings";
-import { getContactInfo } from "@/lib/server/siteSettings";
+import { getContactInfo, getEmailSignatureSettings, getBranding } from "@/lib/server/siteSettings";
 import { business } from "@/lib/data/business";
 import { PROSPECT_CATEGORIES, PROSPECT_STATUSES, prospectCategoryLabels, computeFitScore, DEFAULT_COMMERCIAL_OPPORTUNITY_WEIGHTS, type ProspectCategory, type ProspectStatus, type ProspectRow, type CommercialOpportunityWeights } from "@/lib/prospects";
 import { HOUSE_WRITING_STYLE } from "@/lib/aiStyle";
@@ -483,7 +483,7 @@ function optOutUrl(prospectId: string): string {
  * (the prospect's own name/category, our real service area and contact info); never invents a
  * relationship or claim that hasn't happened.
  */
-function buildCategoryDraft(p: MinimalProspect, contact: ContactInfo): { subject: string; body: string; smsBody: string } {
+function buildCategoryDraft(p: MinimalProspect, contact: ContactInfo, founderFirstName: string): { subject: string; body: string; smsBody: string } {
   const areas = business.areaServed.slice(0, 3).join(", ");
   const who = p.businessName || p.contactName || "there";
   const category = (PROSPECT_CATEGORIES as readonly string[]).includes(p.category ?? "") ? (p.category as ProspectCategory) : "OTHER";
@@ -507,7 +507,7 @@ function buildCategoryDraft(p: MinimalProspect, contact: ContactInfo): { subject
     `You can reach me directly at ${contact.phoneDisplay} or ${contact.email}, or reply to this email.`,
     "",
     `Thanks,`,
-    business.founder.firstName,
+    founderFirstName,
     "",
     `If you'd rather not hear from us again, reply and let us know, or click here and we won't reach out further: ${optOutUrl(p.id)}`,
   ].join("\n");
@@ -535,7 +535,8 @@ export async function draftOutreachForProspect(id: string): Promise<ProspectRow 
   const p = await db().prospect.findUnique({ where: { id } });
   if (!p) return null;
   const contact = await getContactInfo();
-  const { subject, body, smsBody } = buildCategoryDraft(p, contact);
+  const signature = await getEmailSignatureSettings();
+  const { subject, body, smsBody } = buildCategoryDraft(p, contact, signature.founderFirstName);
 
   const updated = await db().prospect.update({
     where: { id },
@@ -616,7 +617,8 @@ async function buildDraftForProspect(p: MinimalProspect): Promise<{ subject: str
   const contact = await getContactInfo();
   const template = await getDefaultOutreachTemplate();
   if (!template.subject.trim() && !template.body.trim()) {
-    const draft = buildCategoryDraft(p, contact);
+    const signature = await getEmailSignatureSettings();
+    const draft = buildCategoryDraft(p, contact, signature.founderFirstName);
     return { subject: draft.subject, body: draft.body };
   }
   const link = optOutUrl(p.id);
@@ -757,15 +759,20 @@ export interface SendOutreachResult {
 /** Sends the (admin-reviewed, possibly edited) draft via email. The explicit admin call to this
  *  function IS the human-approval step -- nothing upstream of this ever sends on its own. */
 /**
- * The business's real, designed email signature (logo + name/title/company + contact + tagline),
- * matching its branded signature graphic exactly -- table-based HTML with inline styles only, for
- * real email-client compatibility (no external stylesheet, no flex/grid). Always appended to
- * outreach emails regardless of what the admin wrote in the draft, same "never optional" pattern
- * as the opt-out link and the cancellation notice on booking emails.
+ * The business's branded email signature (logo + name/title/company + contact + tagline),
+ * matching its designed signature graphic -- table-based HTML with inline styles only, for real
+ * email-client compatibility (no external stylesheet, no flex/grid). Name/title/tagline are
+ * admin-editable (see /admin/settings, EmailSignatureManager); phone/email reuse the same
+ * admin-editable contact info used site-wide, and the logo reuses the admin-editable branding
+ * logo if one's been uploaded, falling back to the static default. Always appended to outreach
+ * emails regardless of what the admin wrote in the draft, same "never optional" pattern as the
+ * opt-out link and the cancellation notice on booking emails.
  */
 async function buildEmailSignatureHtml(): Promise<string> {
   const contact = await getContactInfo();
-  const logoUrl = `${getSiteUrl()}/images/logo.png`;
+  const signature = await getEmailSignatureSettings();
+  const branding = await getBranding();
+  const logoUrl = branding.logoUrl || `${getSiteUrl()}/images/logo.png`;
   const NAVY = "#13213f";
   const GOLD = "#c9a052";
   return `
@@ -775,12 +782,12 @@ async function buildEmailSignatureHtml(): Promise<string> {
       <img src="${logoUrl}" width="84" height="84" alt="${business.name}" style="display:block;border-radius:50%;" />
     </td>
     <td style="border-left:2px solid ${GOLD};padding-left:18px;vertical-align:top;">
-      <p style="margin:0;font-size:19px;font-weight:bold;color:${NAVY};">${business.founder.firstName} ${business.founder.lastName}</p>
-      <p style="margin:2px 0 0;font-size:11px;letter-spacing:2px;color:${GOLD};text-transform:uppercase;">${business.founder.title}</p>
+      <p style="margin:0;font-size:19px;font-weight:bold;color:${NAVY};">${signature.founderFirstName} ${signature.founderLastName}</p>
+      <p style="margin:2px 0 0;font-size:11px;letter-spacing:2px;color:${GOLD};text-transform:uppercase;">${signature.founderTitle}</p>
       <p style="margin:4px 0 8px;font-size:15px;font-weight:bold;color:${NAVY};">${business.name}</p>
       <p style="margin:0;font-size:13px;color:${NAVY};">${contact.phoneDisplay}</p>
       <p style="margin:2px 0 8px;font-size:13px;color:${NAVY};">${contact.email}</p>
-      <p style="margin:8px 0 0;border-top:1px solid #e2e2e2;padding-top:8px;font-size:12px;font-style:italic;color:${GOLD};">${business.emailSignatureTagline}</p>
+      <p style="margin:8px 0 0;border-top:1px solid #e2e2e2;padding-top:8px;font-size:12px;font-style:italic;color:${GOLD};">${signature.tagline}</p>
     </td>
   </tr>
 </table>`;
