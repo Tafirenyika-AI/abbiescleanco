@@ -291,7 +291,7 @@ export default function ProspectingManager({
       <div className="rounded-xl border border-admin-border bg-admin-card p-4">
         <h2 className="text-sm font-semibold text-admin-text">Default outreach message</h2>
         <p className="mt-1 text-xs text-admin-text-muted">
-          {"Write the message yourself, this is what goes out when you queue your top prospects below -- nothing is AI-generated here. Use {{business}}, {{category}}, {{our_phone}}, {{our_email}}, {{our_name}}, or {{opt_out_link}} anywhere you want those filled in per prospect. Leave both fields blank to fall back to the built-in per-category message instead. A one-click \"stop contacting me\" link is always included automatically, even if you don't add the token yourself -- clicking it immediately marks them do-not-contact, no reply needed."}
+          {"Write the message yourself, this is what goes out when you queue your top prospects below -- nothing is AI-generated here. Use {{business}}, {{category}}, {{our_phone}}, {{our_email}}, {{our_name}}, or {{opt_out_link}} anywhere you want those filled in per prospect. Leave both fields blank to fall back to the built-in per-category message instead. Your real branded signature and a one-click \"stop contacting me\" link are both always added automatically below whatever you write here -- no need to include either yourself, and clicking the link immediately marks them do-not-contact, no reply needed."}
         </p>
         <input
           value={defaultSubject}
@@ -775,7 +775,7 @@ function ProspectDrawer({ prospect, opportunityWeights, onClose, onUpdated, onDe
 
         <div className="mt-5">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-admin-text-muted">Outreach draft</h3>
-          <p className="mt-1 text-xs text-admin-text-muted">This is exactly what will be sent, edit freely before sending.</p>
+          <p className="mt-1 text-xs text-admin-text-muted">Edit freely before sending -- your real branded signature and a one-click opt-out link are added automatically below this when it actually sends, not shown here.</p>
           <button type="button" onClick={draft} disabled={busy === "draft"} className="ios-press mt-2 inline-flex items-center gap-1.5 rounded-full bg-admin-bg px-3 py-1.5 text-xs font-semibold text-admin-text disabled:opacity-50">
             {busy === "draft" ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Sparkles className="size-3.5" aria-hidden />} {subject ? "Regenerate draft" : "Generate draft"}
           </button>

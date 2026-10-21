@@ -506,8 +506,8 @@ function buildCategoryDraft(p: MinimalProspect, contact: ContactInfo): { subject
     "",
     `You can reach me directly at ${contact.phoneDisplay} or ${contact.email}, or reply to this email.`,
     "",
-    "Thanks,",
-    business.name,
+    `Thanks,`,
+    business.founder.firstName,
     "",
     `If you'd rather not hear from us again, reply and let us know, or click here and we won't reach out further: ${optOutUrl(p.id)}`,
   ].join("\n");
@@ -756,6 +756,36 @@ export interface SendOutreachResult {
 
 /** Sends the (admin-reviewed, possibly edited) draft via email. The explicit admin call to this
  *  function IS the human-approval step -- nothing upstream of this ever sends on its own. */
+/**
+ * The business's real, designed email signature (logo + name/title/company + contact + tagline),
+ * matching its branded signature graphic exactly -- table-based HTML with inline styles only, for
+ * real email-client compatibility (no external stylesheet, no flex/grid). Always appended to
+ * outreach emails regardless of what the admin wrote in the draft, same "never optional" pattern
+ * as the opt-out link and the cancellation notice on booking emails.
+ */
+async function buildEmailSignatureHtml(): Promise<string> {
+  const contact = await getContactInfo();
+  const logoUrl = `${getSiteUrl()}/images/logo.png`;
+  const NAVY = "#13213f";
+  const GOLD = "#c9a052";
+  return `
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:28px;border-top:1px solid #e2e2e2;padding-top:20px;font-family:Georgia,'Times New Roman',serif;">
+  <tr>
+    <td style="vertical-align:top;padding-right:18px;">
+      <img src="${logoUrl}" width="84" height="84" alt="${business.name}" style="display:block;border-radius:50%;" />
+    </td>
+    <td style="border-left:2px solid ${GOLD};padding-left:18px;vertical-align:top;">
+      <p style="margin:0;font-size:19px;font-weight:bold;color:${NAVY};">${business.founder.firstName} ${business.founder.lastName}</p>
+      <p style="margin:2px 0 0;font-size:11px;letter-spacing:2px;color:${GOLD};text-transform:uppercase;">${business.founder.title}</p>
+      <p style="margin:4px 0 8px;font-size:15px;font-weight:bold;color:${NAVY};">${business.name}</p>
+      <p style="margin:0;font-size:13px;color:${NAVY};">${contact.phoneDisplay}</p>
+      <p style="margin:2px 0 8px;font-size:13px;color:${NAVY};">${contact.email}</p>
+      <p style="margin:8px 0 0;border-top:1px solid #e2e2e2;padding-top:8px;font-size:12px;font-style:italic;color:${GOLD};">${business.emailSignatureTagline}</p>
+    </td>
+  </tr>
+</table>`;
+}
+
 export async function sendProspectOutreach(id: string): Promise<SendOutreachResult> {
   const { sendEmail } = await import("@/lib/server/email");
   const p = await db().prospect.findUnique({ where: { id } });
@@ -764,7 +794,9 @@ export async function sendProspectOutreach(id: string): Promise<SendOutreachResu
   if (!p.email) return { ok: false, error: "This prospect has no email address on file yet." };
   if (!p.draftSubject || !p.draftBody) return { ok: false, error: "Draft an outreach message first." };
 
-  const result = await sendEmail({ to: p.email, subject: p.draftSubject, html: p.draftBody.replace(/\n/g, "<br>") });
+  const signatureHtml = await buildEmailSignatureHtml();
+  const html = `${p.draftBody.replace(/\n/g, "<br>")}${signatureHtml}`;
+  const result = await sendEmail({ to: p.email, subject: p.draftSubject, html });
   if (!result.ok) return { ok: false, error: result.error || "Send failed." };
 
   await db().prospect.update({ where: { id }, data: { status: "SENT", contactedAt: new Date() } });

@@ -36,9 +36,14 @@ export const business = {
   },
   founder: {
     firstName: "Abigail",
+    lastName: "Madzivanzira",
+    title: "Founder & Owner",
     story:
       "Abbie's Clean Method LLC was founded by Abigail with a simple mission: to bring the joy of a clean home to families in Spokane Valley.",
   },
+  // The real, designed email-signature tagline (distinct from the SEO meta description above) --
+  // matches the business's own branded signature graphic exactly.
+  emailSignatureTagline: "Clean spaces. Thoughtful service. The Abbie's Method.",
 } as const;
 
 /**
