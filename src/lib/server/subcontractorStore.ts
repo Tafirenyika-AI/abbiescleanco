@@ -1,9 +1,9 @@
 import { prisma, isDatabaseConfigured } from "@/lib/db";
-import { SUBCONTRACTOR_PAY_TYPES, SUBCONTRACTOR_STATUSES, type SubcontractorPayType, type SubcontractorStatusValue, type SubcontractorRow, type PayablesJob, type SubcontractorPayables } from "@/lib/subcontractors";
+import { SUBCONTRACTOR_PAY_TYPES, SUBCONTRACTOR_STATUSES, type SubcontractorPayType, type SubcontractorStatusValue, type SubcontractorRow, type PayablesJob, type SubcontractorPayables, type WorkforceSubcontractorRow } from "@/lib/subcontractors";
 
 export {
   SUBCONTRACTOR_PAY_TYPES, subcontractorPayTypeLabels, SUBCONTRACTOR_STATUSES,
-  type SubcontractorPayType, type SubcontractorStatusValue, type SubcontractorRow, type PayablesJob, type SubcontractorPayables,
+  type SubcontractorPayType, type SubcontractorStatusValue, type SubcontractorRow, type PayablesJob, type SubcontractorPayables, type WorkforceSubcontractorRow,
 } from "@/lib/subcontractors";
 
 /**
@@ -61,6 +61,41 @@ export async function listAssignableSubcontractors(): Promise<AssignableSubcontr
 export async function getSubcontractorById(id: string): Promise<SubcontractorRow | null> {
   const row = await db().subcontractor.findFirst({ where: { id, deletedAt: null } });
   return row ? mapRow(row) : null;
+}
+
+interface SubcontractorIdCountRow { id: string; total: bigint; completed: bigint }
+
+/** Trimmed, non-financial roster for the Workforce page -- see WorkforceSubcontractorRow's own
+ *  comment for why pay rate/tax id are deliberately left out. Job counts come from the real
+ *  subcontractorId FK (no legacy name-matching needed here, unlike TeamMember -- this FK has
+ *  existed since Subcontractor itself was introduced). */
+export async function listSubcontractorsForWorkforce(): Promise<WorkforceSubcontractorRow[]> {
+  if (!isDatabaseConfigured || !prisma) return [];
+  const [rows, counts] = await Promise.all([
+    prisma.subcontractor.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" } }),
+    prisma.$queryRaw<SubcontractorIdCountRow[]>`
+      SELECT "subcontractorId" AS id,
+             COUNT(*) AS total,
+             COUNT(*) FILTER (WHERE status = 'COMPLETED') AS completed
+      FROM bookings
+      WHERE "deletedAt" IS NULL AND "subcontractorId" IS NOT NULL
+      GROUP BY "subcontractorId"
+    `,
+  ]);
+  const countsById = new Map(counts.map((c) => [c.id, c]));
+  return rows.map((s) => {
+    const c = countsById.get(s.id);
+    return {
+      id: s.id,
+      name: s.name,
+      email: s.email,
+      phone: s.phone,
+      payType: (SUBCONTRACTOR_PAY_TYPES as readonly string[]).includes(s.payType) ? (s.payType as SubcontractorPayType) : "PER_JOB",
+      status: (SUBCONTRACTOR_STATUSES as readonly string[]).includes(s.status) ? (s.status as SubcontractorStatusValue) : "ACTIVE",
+      assignedJobs: Number(c?.total ?? 0),
+      completedJobs: Number(c?.completed ?? 0),
+    };
+  });
 }
 
 export interface SaveSubcontractorInput {

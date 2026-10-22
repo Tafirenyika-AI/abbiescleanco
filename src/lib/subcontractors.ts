@@ -28,6 +28,20 @@ export interface SubcontractorRow {
   updatedAt: string;
 }
 
+/** Trimmed, non-financial view for the Workforce roster -- deliberately omits payRateCents,
+ *  payRatePercent, and taxIdLast4 (real pay/tax figures stay in Finance, gated on
+ *  FINANCE_SUBCONTRACTORS; Workforce is gated on the more widely-held MANAGE_USERS). */
+export interface WorkforceSubcontractorRow {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  payType: SubcontractorPayType;
+  status: SubcontractorStatusValue;
+  assignedJobs: number;
+  completedJobs: number;
+}
+
 export interface PayablesJob {
   bookingId: string;
   reference: string;

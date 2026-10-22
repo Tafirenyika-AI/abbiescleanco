@@ -1,7 +1,8 @@
-import { listTeamMembers } from "@/lib/server/teamStore";
-import TeamView from "@/components/admin/team/TeamView";
+import { redirect } from "next/navigation";
 
-export default async function AdminTeamPage() {
-  const members = await listTeamMembers();
-  return <TeamView initialMembers={members} />;
+// Retired in favor of the unified Workforce page (team roster + subcontractor roster + real job
+// assignment, in one place) -- kept as a redirect so any existing bookmark/link still lands
+// somewhere real instead of a dead page.
+export default function AdminTeamPage() {
+  redirect("/admin/workforce");
 }

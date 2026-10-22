@@ -74,11 +74,16 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [subcontractorId, setSubcontractorId] = useState(booking.subcontractorId ?? "");
   const [assignableSubcontractors, setAssignableSubcontractors] = useState<{ id: string; name: string }[]>([]);
+  const [teamMemberId, setTeamMemberId] = useState(booking.teamMemberId ?? "");
+  const [assignableTeamMembers, setAssignableTeamMembers] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     fetch("/api/admin/bookings/assignable-subcontractors")
       .then((r) => r.json())
       .then((data) => { if (data.ok) setAssignableSubcontractors(data.subcontractors); });
+    fetch("/api/admin/bookings/assignable-team-members")
+      .then((r) => r.json())
+      .then((data) => { if (data.ok) setAssignableTeamMembers(data.teamMembers); });
   }, []);
 
   const [rescheduling, setRescheduling] = useState(false);
@@ -175,7 +180,7 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
     const res = await fetch(`/api/admin/bookings/${booking.id}/assign`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ staffAssignee: staff, subcontractorId: subcontractorId || null }),
+      body: JSON.stringify({ staffAssignee: staff, subcontractorId: subcontractorId || null, teamMemberId: teamMemberId || null }),
     });
     setSavingStaff(false);
     if (!res.ok) {
@@ -498,15 +503,32 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
 
           <Card>
             <h2 className="font-semibold text-admin-text">Assigned cleaner</h2>
+            {assignableTeamMembers.length > 0 && (
+              <label className="mt-2 block">
+                <span className="text-xs font-medium text-admin-text-muted">Pick a real team member on file</span>
+                <select
+                  value={teamMemberId}
+                  onChange={(e) => {
+                    setTeamMemberId(e.target.value);
+                    const match = assignableTeamMembers.find((m) => m.id === e.target.value);
+                    if (match) { setStaff(match.name); setSubcontractorId(""); }
+                  }}
+                  className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text"
+                >
+                  <option value="">Not a team member on file</option>
+                  {assignableTeamMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </select>
+              </label>
+            )}
             {assignableSubcontractors.length > 0 && (
               <label className="mt-2 block">
-                <span className="text-xs font-medium text-admin-text-muted">Pick a real subcontractor on file</span>
+                <span className="text-xs font-medium text-admin-text-muted">Or a real subcontractor on file</span>
                 <select
                   value={subcontractorId}
                   onChange={(e) => {
                     setSubcontractorId(e.target.value);
                     const match = assignableSubcontractors.find((s) => s.id === e.target.value);
-                    if (match) setStaff(match.name);
+                    if (match) { setStaff(match.name); setTeamMemberId(""); }
                   }}
                   className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text"
                 >
@@ -518,7 +540,7 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
             <div className="mt-2 flex gap-2">
               <input
                 value={staff}
-                onChange={(e) => { setStaff(e.target.value); setSubcontractorId(""); }}
+                onChange={(e) => { setStaff(e.target.value); setSubcontractorId(""); setTeamMemberId(""); }}
                 placeholder="Unassigned"
                 className="flex-1 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text"
               />
@@ -527,6 +549,11 @@ export default function BookingDetailView({ booking, mapsApiKey }: { booking: Bo
             {subcontractorId && (
               <p className="mt-1.5 text-xs text-admin-text-muted">
                 Linked to a real subcontractor -- payables for this job are tracked automatically. <Link href={`/admin/finance/subcontractors/${subcontractorId}`} className="text-admin-teal-hover hover:underline">View payables</Link>
+              </p>
+            )}
+            {teamMemberId && (
+              <p className="mt-1.5 text-xs text-admin-text-muted">
+                Linked to a real team member -- this job counts toward their assigned/completed totals on the <Link href="/admin/workforce" className="text-admin-teal-hover hover:underline">Workforce</Link> page.
               </p>
             )}
           </Card>

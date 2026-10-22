@@ -311,7 +311,7 @@ export default async function AdminDashboardPage() {
           <Card>
             <div className="flex items-center justify-between">
               <h2 className="flex items-center gap-1.5 text-sm font-semibold text-admin-text"><Users2 className="size-4" aria-hidden /> Your team</h2>
-              <Link href="/admin/team" className="text-xs font-semibold text-admin-teal-hover hover:underline">Manage</Link>
+              <Link href="/admin/workforce" className="text-xs font-semibold text-admin-teal-hover hover:underline">Manage</Link>
             </div>
             {activeTeam.length === 0 ? (
               <p className="mt-3 text-xs text-admin-text-muted">No active team members yet, add your cleaners to assign them to jobs.</p>

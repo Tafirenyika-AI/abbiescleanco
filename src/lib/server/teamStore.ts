@@ -5,6 +5,35 @@ function db() {
   return prisma;
 }
 
+export interface AssignableTeamMember {
+  id: string;
+  name: string;
+}
+
+/** A trimmed, read-only view for the booking-assignment dropdown -- same reasoning as
+ *  subcontractorStore's listAssignableSubcontractors (callers there only have MANAGE_BOOKINGS). */
+export async function listAssignableTeamMembers(): Promise<AssignableTeamMember[]> {
+  if (!isDatabaseConfigured || !prisma) return [];
+  return db().teamMember.findMany({ where: { deletedAt: null, isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } });
+}
+
+/** Links a real booking to a real team member, or clears it (pass null). Keeps the existing
+ *  free-text staffAssignee field in sync, same pattern as subcontractorStore's
+ *  assignBookingToSubcontractor -- see the schema's own comment on Booking.staffAssignee. */
+export async function assignBookingToTeamMember(bookingId: string, teamMemberId: string | null): Promise<{ ok: boolean; error?: string }> {
+  const booking = await db().booking.findFirst({ where: { id: bookingId, deletedAt: null } });
+  if (!booking) return { ok: false, error: "Booking not found" };
+
+  if (teamMemberId === null) {
+    await db().booking.update({ where: { id: bookingId }, data: { teamMemberId: null } });
+    return { ok: true };
+  }
+  const member = await db().teamMember.findFirst({ where: { id: teamMemberId, deletedAt: null } });
+  if (!member) return { ok: false, error: "Team member not found" };
+  await db().booking.update({ where: { id: bookingId }, data: { teamMemberId, staffAssignee: member.name } });
+  return { ok: true };
+}
+
 export interface TeamMemberItem {
   id: string;
   name: string;
@@ -20,26 +49,41 @@ export interface TeamMemberItem {
 }
 
 interface StaffJobCountRow { name: string; total: bigint; completed: bigint }
+interface TeamMemberIdCountRow { id: string; total: bigint; completed: bigint }
 
 export async function listTeamMembers(): Promise<TeamMemberItem[]> {
   if (!isDatabaseConfigured || !prisma) return [];
   const members = await prisma.teamMember.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" } });
 
-  // staffAssignee is free-text (no real FK until staff accounts exist -- see schema comment), so this
-  // is a grouped DB aggregate rather than pulling every booking ever assigned into memory to
-  // string-match in JS, which only got slower as the booking table grew.
-  const counts = await prisma.$queryRaw<StaffJobCountRow[]>`
-    SELECT LOWER(TRIM("staffAssignee")) AS name,
-           COUNT(*) AS total,
-           COUNT(*) FILTER (WHERE status = 'COMPLETED') AS completed
-    FROM bookings
-    WHERE "deletedAt" IS NULL AND "staffAssignee" IS NOT NULL
-    GROUP BY LOWER(TRIM("staffAssignee"))
-  `;
-  const countsByName = new Map(counts.map((c) => [c.name, c]));
+  // Real FK-based counts (bookings assigned via teamMemberId, see assignBookingToTeamMember) plus
+  // a fallback name-match aggregate for older bookings assigned before this FK existed -- the
+  // fallback explicitly excludes rows that already have a teamMemberId so a booking is never
+  // counted twice. Once every booking goes through the real assignment flow, the fallback query
+  // will simply return nothing.
+  const [fkCounts, nameCounts] = await Promise.all([
+    prisma.$queryRaw<TeamMemberIdCountRow[]>`
+      SELECT "teamMemberId" AS id,
+             COUNT(*) AS total,
+             COUNT(*) FILTER (WHERE status = 'COMPLETED') AS completed
+      FROM bookings
+      WHERE "deletedAt" IS NULL AND "teamMemberId" IS NOT NULL
+      GROUP BY "teamMemberId"
+    `,
+    prisma.$queryRaw<StaffJobCountRow[]>`
+      SELECT LOWER(TRIM("staffAssignee")) AS name,
+             COUNT(*) AS total,
+             COUNT(*) FILTER (WHERE status = 'COMPLETED') AS completed
+      FROM bookings
+      WHERE "deletedAt" IS NULL AND "staffAssignee" IS NOT NULL AND "teamMemberId" IS NULL
+      GROUP BY LOWER(TRIM("staffAssignee"))
+    `,
+  ]);
+  const fkById = new Map(fkCounts.map((c) => [c.id, c]));
+  const nameByName = new Map(nameCounts.map((c) => [c.name, c]));
 
   return members.map((m) => {
-    const row = countsByName.get(m.name.trim().toLowerCase());
+    const fk = fkById.get(m.id);
+    const legacy = nameByName.get(m.name.trim().toLowerCase());
     return {
       id: m.id,
       name: m.name,
@@ -50,8 +94,8 @@ export async function listTeamMembers(): Promise<TeamMemberItem[]> {
       workingHours: m.workingHours,
       isActive: m.isActive,
       notes: m.notes,
-      assignedJobs: row ? Number(row.total) : 0,
-      completedJobs: row ? Number(row.completed) : 0,
+      assignedJobs: Number(fk?.total ?? 0) + Number(legacy?.total ?? 0),
+      completedJobs: Number(fk?.completed ?? 0) + Number(legacy?.completed ?? 0),
     };
   });
 }

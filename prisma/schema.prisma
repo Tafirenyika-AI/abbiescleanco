@@ -587,12 +587,20 @@ model Booking {
   finishReminderSentAt   DateTime?
   clockOutReminderSentAt DateTime?
 
-  staffAssignee String? // free-text; still set/read even when subcontractorId below is set, so every
-  // existing display (calendar, resource view) keeps working unchanged -- kept in sync with the
-  // linked Subcontractor's name by assignBookingToSubcontractor, never edited independently once set.
+  staffAssignee String? // free-text; still set/read even when subcontractorId/teamMemberId below is
+  // set, so every existing display (calendar, resource view) keeps working unchanged -- kept in
+  // sync with the linked Subcontractor/TeamMember's name by assignBookingToSubcontractor /
+  // assignBookingToTeamMember, never edited independently once set.
 
   subcontractorId String?
   subcontractor   Subcontractor? @relation(fields: [subcontractorId], references: [id])
+
+  // A real link to an employee on the Team roster, parallel to subcontractorId above -- at most
+  // one of the two is ever set for a given booking (an assignee is either a 1099 subcontractor or
+  // a team member, never both). Lets Workforce compute real "assigned/completed jobs" counts per
+  // person instead of the fragile staffAssignee name-matching this used to be the only option for.
+  teamMemberId String?
+  teamMember   TeamMember? @relation(fields: [teamMemberId], references: [id])
 
   googleCalendarEventId String?
 
@@ -616,6 +624,7 @@ model Booking {
   @@index([status])
   @@index([scheduledStart])
   @@index([subcontractorId])
+  @@index([teamMemberId])
   @@map("bookings")
 }
 
@@ -1151,6 +1160,8 @@ model TeamMember {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+
+  bookings Booking[]
 
   @@map("team_members")
 }

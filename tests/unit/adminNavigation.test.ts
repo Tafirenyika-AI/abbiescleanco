@@ -10,14 +10,17 @@ const current = vi.hoisted(() => ({ pathname: "/admin" }));
 vi.mock("next/navigation", () => ({ usePathname: () => current.pathname }));
 
 describe("Admin navigation across the compact and expanded layouts", () => {
-  it("keeps every existing module reachable, including planned destinations", () => {
+  it("keeps every existing module reachable", () => {
     const html = renderToStaticMarkup(createElement(AdminSidebar, {
       permissions: [...ALL_ADMIN_PERMISSIONS], open: false, onClose: () => {},
     }));
     for (const item of allNavItems) expect(html).toContain(`href="${item.href}"`);
     expect(html).toContain("Invoices");
     expect(html).toContain("Prospecting");
-    expect(html).toContain("coming soon");
+    // Every module is real as of the Workforce build-out -- none marked built: false anymore, so
+    // the sidebar's "(coming soon)" label genuinely shouldn't appear. If a future module is added
+    // as a Coming-Soon placeholder, this flips back to a positive assertion.
+    expect(html).not.toContain("coming soon");
   });
 
   it("does not expose restricted sections to an overview-only admin", () => {

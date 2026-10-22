@@ -54,6 +54,7 @@ export interface BookingListItem {
   arrivalWindow: string | null;
   staffAssignee: string | null;
   subcontractorId: string | null;
+  teamMemberId: string | null;
   customerName: string;
   customerPhone: string;
   address: string;
@@ -65,6 +66,7 @@ function mapBooking(b: {
   id: string; reference: string; status: BookingStatusValue;
   scheduledStart: Date | null; scheduledEnd: Date | null; arrivalWindow: string | null; staffAssignee: string | null;
   subcontractorId: string | null;
+  teamMemberId: string | null;
   customer: { firstName: string; lastName: string; phone: string } | null;
   address: { line1: string; city: string; state: string; zip: string } | null;
   lead: { service: { name: string } } | null;
@@ -78,6 +80,7 @@ function mapBooking(b: {
     arrivalWindow: b.arrivalWindow,
     staffAssignee: b.staffAssignee,
     subcontractorId: b.subcontractorId,
+    teamMemberId: b.teamMemberId,
     customerName: b.customer ? `${b.customer.firstName} ${b.customer.lastName}`.trim() : "—",
     customerPhone: b.customer?.phone ?? "—",
     address: b.address ? `${b.address.line1}, ${b.address.city}, ${b.address.state} ${b.address.zip}` : "—",
@@ -366,6 +369,41 @@ export async function rescheduleBooking(
 
 export async function assignStaff(id: string, staffAssignee: string): Promise<void> {
   await db().booking.update({ where: { id }, data: { staffAssignee } });
+}
+
+export interface WorkerJobSummary {
+  id: string;
+  reference: string;
+  customerName: string;
+  scheduledStart: string | null;
+  status: BookingStatusValue;
+}
+
+/**
+ * A worker's (team member's or subcontractor's) real upcoming jobs, for the Workforce roster's
+ * per-person job list -- not yet started/in progress, ordered soonest first. Takes exactly one of
+ * the two real FKs (never both set on the same booking, see schema comment on Booking.subcontractorId).
+ */
+export async function listUpcomingJobsForWorker(opts: { teamMemberId?: string; subcontractorId?: string }): Promise<WorkerJobSummary[]> {
+  if (!isDatabaseConfigured || !prisma) return [];
+  const bookings = await prisma.booking.findMany({
+    where: {
+      deletedAt: null,
+      status: { notIn: ["COMPLETED", "CANCELLED"] },
+      ...(opts.teamMemberId ? { teamMemberId: opts.teamMemberId } : {}),
+      ...(opts.subcontractorId ? { subcontractorId: opts.subcontractorId } : {}),
+    },
+    include: { customer: true },
+    orderBy: { scheduledStart: "asc" },
+    take: 10,
+  });
+  return bookings.map((b) => ({
+    id: b.id,
+    reference: b.reference,
+    customerName: b.customer ? `${b.customer.firstName} ${b.customer.lastName}`.trim() : "—",
+    scheduledStart: b.scheduledStart?.toISOString() ?? null,
+    status: b.status as BookingStatusValue,
+  }));
 }
 
 export interface DeleteBookingResult { ok: boolean; error?: string }
