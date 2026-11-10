@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Printer, Ban, ArrowLeft, Loader2, Mail, CheckCircle2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Printer, Ban, ArrowLeft, Loader2, Mail, CheckCircle2, Link2, Copy, Trash2, DollarSign, X } from "lucide-react";
 import { useToast } from "@/components/admin/ui/Toast";
-import { invoiceStatusLabels, type InvoiceDetail } from "@/lib/invoices";
+import Badge from "@/components/admin/ui/Badge";
+import { invoiceStatusLabels, invoicePaymentLinkStatusLabels, invoicePaymentLinkStatusTone, type InvoiceDetail } from "@/lib/invoices";
+import { PAYMENT_METHODS, paymentMethodLabels, paymentReferenceLabels, type PaymentMethodValue } from "@/lib/paymentMethods";
+import { GeneratePaymentLinkModal } from "@/components/admin/invoices/InvoicesView";
 import type { ContactInfo } from "@/lib/server/siteSettings";
 import { formatDate } from "@/lib/adminDate";
 
@@ -32,10 +36,18 @@ export default function InvoiceDetailView({
   contact: ContactInfo;
   logoUrl: string;
 }) {
+  const router = useRouter();
   const { showToast } = useToast();
   const [invoice, setInvoice] = useState(initialInvoice);
   const [voiding, setVoiding] = useState(false);
   const [emailing, setEmailing] = useState(false);
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [payFormOpen, setPayFormOpen] = useState(false);
+  const [payMethod, setPayMethod] = useState<PaymentMethodValue>("ZELLE");
+  const [payReference, setPayReference] = useState("");
+  const [markingPaid, setMarkingPaid] = useState(false);
+  const [voidingLinkId, setVoidingLinkId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function voidThisInvoice() {
     if (!confirm(`Void invoice ${invoice.invoiceNumber}? This can't be undone.`)) return;
@@ -46,6 +58,44 @@ export default function InvoiceDetailView({
     if (!data?.ok) return showToast(data?.error || "Couldn't void invoice", "error");
     setInvoice({ ...invoice, status: "CANCELLED" });
     showToast("Invoice voided.", "success");
+  }
+
+  async function markPaid() {
+    setMarkingPaid(true);
+    const res = await fetch(`/api/admin/invoices/${invoice.id}/mark-paid`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ method: payMethod, reference: payReference || undefined }),
+    });
+    const data = await res.json().catch(() => null);
+    setMarkingPaid(false);
+    if (!data?.ok) return showToast(data?.error || "Couldn't mark invoice paid", "error");
+    showToast("Marked as paid.", "success");
+    setPayFormOpen(false);
+    window.location.reload();
+  }
+
+  async function voidLink(id: string) {
+    if (!confirm("Cancel this payment link? It will stop accepting payment.")) return;
+    setVoidingLinkId(id);
+    const res = await fetch(`/api/admin/invoices/payment-links/${id}/void`, { method: "POST" });
+    const data = await res.json().catch(() => null);
+    setVoidingLinkId(null);
+    if (!data?.ok) return showToast(data?.error || "Couldn't cancel link", "error");
+    setInvoice({ ...invoice, paymentLinks: invoice.paymentLinks.map((l) => (l.id === id ? { ...l, status: "VOID" } : l)) });
+    showToast("Payment link cancelled.", "success");
+  }
+
+  async function deleteThisInvoice() {
+    const warn = invoice.paidAmount > 0 ? ` It has $${(invoice.paidAmount / 100).toFixed(2)} in real recorded payments -- those stay on the books, but this invoice's own record will be gone.` : "";
+    if (!confirm(`Permanently delete invoice ${invoice.invoiceNumber}? This can't be undone.${warn}`)) return;
+    setDeleting(true);
+    const res = await fetch(`/api/admin/invoices/${invoice.id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => null);
+    setDeleting(false);
+    if (!data?.ok) return showToast(data?.error || "Couldn't delete invoice", "error");
+    showToast("Invoice deleted.", "success");
+    router.push("/admin/invoices");
   }
 
   async function emailInvoice() {
@@ -77,6 +127,16 @@ export default function InvoiceDetailView({
               {emailing ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Mail className="size-4" aria-hidden />} {invoice.emailedAt ? "Re-send" : "Email to customer"}
             </button>
           )}
+          {invoice.status !== "CANCELLED" && invoice.balance > 0 && invoice.bookingId && (
+            <button type="button" onClick={() => setLinkModalOpen(true)} className="ios-press inline-flex items-center gap-1.5 rounded-full bg-admin-bg px-4 py-2 text-sm font-semibold text-admin-text">
+              <Link2 className="size-4" aria-hidden /> Get payment link
+            </button>
+          )}
+          {invoice.status !== "CANCELLED" && invoice.balance > 0 && invoice.bookingId && (
+            <button type="button" onClick={() => setPayFormOpen((v) => !v)} className="ios-press inline-flex items-center gap-1.5 rounded-full bg-admin-bg px-4 py-2 text-sm font-semibold text-admin-text">
+              <DollarSign className="size-4" aria-hidden /> Mark as paid
+            </button>
+          )}
           <button type="button" onClick={() => window.print()} className="ios-press inline-flex items-center gap-1.5 rounded-full bg-admin-bg px-4 py-2 text-sm font-semibold text-admin-text">
             <Printer className="size-4" aria-hidden /> Print / Save PDF
           </button>
@@ -85,8 +145,66 @@ export default function InvoiceDetailView({
               {voiding ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Ban className="size-4" aria-hidden />} Void
             </button>
           )}
+          <button type="button" onClick={deleteThisInvoice} disabled={deleting} className="ios-press inline-flex items-center gap-1.5 rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">
+            {deleting ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Trash2 className="size-4" aria-hidden />} Delete
+          </button>
         </div>
       </div>
+
+      {payFormOpen && (
+        <div className="print:hidden mx-auto max-w-2xl rounded-xl border border-admin-border bg-admin-card p-4">
+          <h3 className="text-sm font-semibold text-admin-text">Mark as paid, ${(invoice.balance / 100).toFixed(2)} outstanding</h3>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-xs font-medium text-admin-text-muted">Payment method</span>
+              <select value={payMethod} onChange={(e) => setPayMethod(e.target.value as PaymentMethodValue)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text">
+                {PAYMENT_METHODS.map((m) => (
+                  <option key={m} value={m}>{paymentMethodLabels[m]}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-xs font-medium text-admin-text-muted">{paymentReferenceLabels[payMethod]}</span>
+              <input value={payReference} onChange={(e) => setPayReference(e.target.value)} className="mt-1 w-full rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text" />
+            </label>
+          </div>
+          <button type="button" onClick={markPaid} disabled={markingPaid} className="ios-press mt-3 flex items-center gap-2 rounded-lg bg-admin-teal px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+            {markingPaid && <Loader2 className="size-4 animate-spin" aria-hidden />} Record full payment
+          </button>
+        </div>
+      )}
+
+      {invoice.paymentLinks.length > 0 && (
+        <div className="print:hidden mx-auto max-w-2xl rounded-xl border border-admin-border bg-admin-card p-4">
+          <h3 className="text-sm font-semibold text-admin-text">Payment links</h3>
+          <ul className="mt-2 space-y-2">
+            {invoice.paymentLinks.map((link) => (
+              <li key={link.id} className="flex items-center justify-between gap-3 rounded-lg border border-admin-border px-3 py-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Badge tone={invoicePaymentLinkStatusTone[link.status]}>{invoicePaymentLinkStatusLabels[link.status]}</Badge>
+                    <span className="text-sm text-admin-text">${(link.amount / 100).toFixed(2)}</span>
+                    {link.invoiceNumbers.length > 1 && <span className="text-xs text-admin-text-muted">({link.invoiceNumbers.join(", ")})</span>}
+                  </div>
+                  <p className="mt-0.5 truncate text-xs text-admin-text-muted">{link.url}</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <button type="button" onClick={() => navigator.clipboard.writeText(link.url)} title="Copy link" className="ios-press rounded-md p-1.5 text-admin-text-muted hover:bg-admin-bg">
+                    <Copy className="size-4" aria-hidden />
+                  </button>
+                  {link.status === "PENDING" && (
+                    <button type="button" onClick={() => voidLink(link.id)} disabled={voidingLinkId === link.id} className="ios-press rounded-md p-1.5 text-red-700 hover:bg-red-50">
+                      {voidingLinkId === link.id ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <X className="size-4" aria-hidden />}
+                    </button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {linkModalOpen && <GeneratePaymentLinkModal invoices={[invoice]} onClose={() => setLinkModalOpen(false)} onDone={() => window.location.reload()} />}
 
       <div id="printable-area" className="ios-card-shadow mx-auto max-w-2xl rounded-2xl border border-admin-border bg-white p-8 print:rounded-none print:border-0 print:p-0 print:shadow-none">
         <div className="flex items-start justify-between">

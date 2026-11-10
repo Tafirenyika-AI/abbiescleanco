@@ -80,6 +80,62 @@ export async function verifyWebhookSignature(rawBody: string, signature: string)
   }
 }
 
+export interface CreatePaymentLinkInput {
+  amount: number; // cents, the total across everything this link covers
+  description: string;
+  successUrl: string;
+}
+
+/**
+ * A real Stripe Payment Link (`stripe.paymentLinks.create`), not a Checkout Session -- Checkout
+ * Session URLs expire within 24 hours no matter how they're configured, which doesn't fit "stays
+ * in our system for future records" when an invoice can legitimately sit unpaid for its full Net
+ * 15 term. A Payment Link's hosted URL stays live indefinitely until explicitly deactivated (see
+ * deactivatePaymentLink below), so the link we store and email today still works in two weeks.
+ * When someone actually pays through it, Stripe creates a Checkout Session behind the scenes whose
+ * `payment_link` field names this link's id -- that's what the webhook uses to find it again (see
+ * /api/stripe/webhook).
+ */
+export async function createPaymentLink(
+  input: CreatePaymentLinkInput
+): Promise<{ ok: true; url: string; paymentLinkId: string } | { ok: false; error: string }> {
+  const stripe = await getStripeClient();
+  if (!stripe) return { ok: false, error: "Stripe isn't configured yet, add a Secret Key in Settings → Integrations." };
+
+  try {
+    const link = await stripe.paymentLinks.create({
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            unit_amount: input.amount,
+            product_data: { name: input.description },
+          },
+          quantity: 1,
+        },
+      ],
+      after_completion: { type: "redirect", redirect: { url: input.successUrl } },
+    });
+    return { ok: true, url: link.url, paymentLinkId: link.id };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Stripe request failed" };
+  }
+}
+
+/** Deactivates a Payment Link on Stripe's side so the real hosted page stops accepting money --
+ *  used when an admin voids a link before it's paid. The link's record stays in our own DB either
+ *  way; this only stops it from being usable. */
+export async function deactivatePaymentLink(paymentLinkId: string): Promise<boolean> {
+  const stripe = await getStripeClient();
+  if (!stripe) return false;
+  try {
+    await stripe.paymentLinks.update(paymentLinkId, { active: false });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Stripe's own hosted receipt for a completed charge, used as automatic proof-of-payment. */
 export async function getPaymentIntentReceiptUrl(paymentIntentId: string): Promise<string | null> {
   const stripe = await getStripeClient();

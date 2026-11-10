@@ -1,4 +1,5 @@
 import { prisma, isDatabaseConfigured } from "@/lib/db";
+import { recordPayment } from "@/lib/server/paymentStore";
 import { type InvoiceStatusValue, type InvoiceListItem, type InvoiceDetail, type InvoiceableQuote, type CompletedUninvoicedBooking } from "@/lib/invoices";
 
 export { INVOICE_STATUSES, invoiceStatusLabels, type InvoiceStatusValue, type InvoiceListItem, type InvoiceDetail, type InvoiceableQuote, type CompletedUninvoicedBooking } from "@/lib/invoices";
@@ -70,6 +71,16 @@ async function syncStatus(invoiceId: string, status: InvoiceStatusValue, current
   await db().invoice.update({ where: { id: invoiceId }, data: { status } });
 }
 
+/** Most-recent-service-first, same as the admin thinks about "what did we do and when" -- not
+ *  issueDate (when the record was created) or createdAt. Invoices with no linked booking (so no
+ *  real service date) sort to the bottom, ordered by issue date among themselves. */
+function byServiceDateDesc(a: { serviceDate: string | null; issueDate: string }, b: { serviceDate: string | null; issueDate: string }): number {
+  if (a.serviceDate && b.serviceDate) return b.serviceDate.localeCompare(a.serviceDate);
+  if (a.serviceDate) return -1;
+  if (b.serviceDate) return 1;
+  return b.issueDate.localeCompare(a.issueDate);
+}
+
 export async function listInvoices(): Promise<InvoiceListItem[]> {
   if (!isDatabaseConfigured || !prisma) return [];
   const invoices = await prisma.invoice.findMany({
@@ -77,7 +88,7 @@ export async function listInvoices(): Promise<InvoiceListItem[]> {
     orderBy: { createdAt: "desc" },
     take: 300,
   });
-  return Promise.all(
+  const items = await Promise.all(
     invoices.map(async (inv) => {
       const totals = await paymentTotalsForBooking(inv.bookingId);
       const status = deriveStatus({ cancelled: inv.status === "CANCELLED", total: inv.quote.total, dueDate: inv.dueDate, totals });
@@ -90,8 +101,11 @@ export async function listInvoices(): Promise<InvoiceListItem[]> {
         dueDate: inv.dueDate?.toISOString() ?? null,
         serviceDate: bookingServiceDate(inv.booking),
         emailedAt: inv.emailedAt?.toISOString() ?? null,
+        customerId: inv.customerId,
         customerName: `${inv.customer.firstName} ${inv.customer.lastName}`.trim(),
+        customerEmail: inv.customer.email ?? null,
         quoteNumber: inv.quote.quoteNumber,
+        bookingId: inv.bookingId,
         bookingReference: inv.booking?.reference ?? null,
         total: inv.quote.total,
         paidAmount: totals.netPaid,
@@ -99,6 +113,7 @@ export async function listInvoices(): Promise<InvoiceListItem[]> {
       };
     })
   );
+  return items.sort(byServiceDateDesc);
 }
 
 export async function getInvoiceById(id: string): Promise<InvoiceDetail | null> {
@@ -128,6 +143,7 @@ export async function getInvoiceById(id: string): Promise<InvoiceDetail | null> 
     serviceDate: bookingServiceDate(inv.booking),
     emailedAt: inv.emailedAt?.toISOString() ?? null,
     notes: inv.notes,
+    customerId: inv.customerId,
     customerName: `${inv.customer.firstName} ${inv.customer.lastName}`.trim(),
     customerEmail: inv.customer.email ?? "",
     customerPhone: inv.customer.phone,
@@ -145,6 +161,9 @@ export async function getInvoiceById(id: string): Promise<InvoiceDetail | null> 
     balance: Math.max(0, inv.quote.total - totals.netPaid),
     items: inv.quote.items.map((i) => ({ id: i.id, label: i.label, quantity: i.quantity, unitPrice: i.unitPrice, total: i.total })),
     payments: payments.map((p) => ({ id: p.id, amount: p.amount, status: p.status, method: p.method, createdAt: p.createdAt.toISOString() })),
+    // Filled in by the caller (see /api/admin/invoices/[id]) from invoicePaymentLinkStore.ts --
+    // kept out of this module to avoid a circular import between the two stores.
+    paymentLinks: [],
   };
 }
 
@@ -202,6 +221,52 @@ export async function voidInvoice(id: string): Promise<{ ok: boolean; error?: st
 
 export async function markInvoiceEmailed(id: string): Promise<void> {
   await db().invoice.update({ where: { id }, data: { emailedAt: new Date() } });
+}
+
+/**
+ * "Mark as paid" when money arrived by some means outside the online payment-link flow (cash,
+ * check, Zelle, or Stripe collected a different way). This never touches Invoice.status directly
+ * -- it records a real Payment row for the outstanding balance, the same recordPayment() the
+ * Payments screen already uses, so the invoice's status (via deriveStatus above) and the Tax
+ * feature's revenue total (which reads Payment rows directly, see taxStore.ts) both update from
+ * the same real fact instead of a second, hand-set flag that could disagree with them.
+ */
+export async function markInvoicePaidManually(
+  id: string,
+  data: { method: string; reference?: string }
+): Promise<{ ok: boolean; error?: string }> {
+  const inv = await db().invoice.findUnique({ where: { id }, include: { quote: true } });
+  if (!inv) return { ok: false, error: "Invoice not found" };
+  if (inv.status === "CANCELLED") return { ok: false, error: "A cancelled invoice can't be marked paid." };
+  if (!inv.bookingId) return { ok: false, error: "This invoice has no linked booking, so a payment can't be recorded against it here." };
+
+  const totals = await paymentTotalsForBooking(inv.bookingId);
+  const balance = inv.quote.total - totals.netPaid;
+  if (balance <= 0) return { ok: false, error: "This invoice is already paid in full." };
+
+  const result = await recordPayment({
+    bookingId: inv.bookingId,
+    amount: balance,
+    kind: "invoice_payment",
+    status: "PAID",
+    method: data.method,
+    reference: data.reference,
+  });
+  return result;
+}
+
+/**
+ * Permanent delete, per the admin's own explicit request -- unlike voidInvoice (a soft CANCELLED
+ * status, reversible and keeps the record), this removes the row outright. Real Payment rows
+ * recorded against the booking are never touched by this (Payment links to a booking, not an
+ * invoice, so they're structurally independent) -- deleting the invoice document never erases the
+ * real revenue/tax history, only the invoice paper trail itself.
+ */
+export async function deleteInvoiceForGood(id: string): Promise<{ ok: boolean; error?: string }> {
+  const existing = await db().invoice.findUnique({ where: { id } });
+  if (!existing) return { ok: false, error: "Invoice not found" };
+  await db().invoice.delete({ where: { id } });
+  return { ok: true };
 }
 
 /**

@@ -69,7 +69,18 @@ export async function listBookingsAwaitingPayment(): Promise<RecordablePayment[]
     .map((b) => ({ bookingId: b.id, reference: b.reference, customerName: b.customer ? `${b.customer.firstName} ${b.customer.lastName}`.trim() : "—" }));
 }
 
-export async function recordPayment(data: { bookingId: string; amount: number; kind: string; status: PaymentStatusValue; proofUrl?: string; method?: string; reference?: string; tipAmount?: number }): Promise<{ ok: boolean; error?: string }> {
+export async function recordPayment(data: {
+  bookingId: string;
+  amount: number;
+  kind: string;
+  status: PaymentStatusValue;
+  proofUrl?: string;
+  method?: string;
+  reference?: string;
+  tipAmount?: number;
+  provider?: "MANUAL" | "STRIPE";
+  stripePaymentIntentId?: string;
+}): Promise<{ ok: boolean; error?: string }> {
   const booking = await db().booking.findUnique({ where: { id: data.bookingId } });
   if (!booking) return { ok: false, error: "Booking not found" };
 
@@ -83,7 +94,8 @@ export async function recordPayment(data: { bookingId: string; amount: number; k
       proofUrl: data.proofUrl,
       method: data.method,
       reference: data.reference || null,
-      provider: "MANUAL",
+      provider: data.provider ?? "MANUAL",
+      stripePaymentIntentId: data.stripePaymentIntentId,
       tipAmount: data.tipAmount ?? 0,
     },
   });

@@ -39,17 +39,48 @@ export interface InvoiceListItem {
   // null when the invoice has no linked booking. See invoiceStore.ts's bookingServiceDate.
   serviceDate: string | null;
   emailedAt: string | null;
+  customerId: string;
   customerName: string;
+  customerEmail: string | null;
   quoteNumber: string;
+  bookingId: string | null;
   bookingReference: string | null;
   total: number;
   paidAmount: number;
   balance: number;
 }
 
+export const INVOICE_PAYMENT_LINK_STATUSES = ["PENDING", "PAID", "VOID"] as const;
+export type InvoicePaymentLinkStatusValue = (typeof INVOICE_PAYMENT_LINK_STATUSES)[number];
+
+export const invoicePaymentLinkStatusLabels: Record<InvoicePaymentLinkStatusValue, string> = {
+  PENDING: "Awaiting payment",
+  PAID: "Paid",
+  VOID: "Cancelled",
+};
+
+export const invoicePaymentLinkStatusTone: Record<InvoicePaymentLinkStatusValue, "neutral" | "success" | "warning" | "error" | "info"> = {
+  PENDING: "warning",
+  PAID: "success",
+  VOID: "neutral",
+};
+
+/** A real Stripe Payment Link covering one or more invoices in a single charge -- see
+ *  invoicePaymentLinkStore.ts. Shown on each covered invoice's own page as a permanent record of
+ *  what was sent and whether it was ever paid. */
+export interface InvoicePaymentLinkSummary {
+  id: string;
+  invoiceIds: string[];
+  invoiceNumbers: string[];
+  amount: number;
+  status: InvoicePaymentLinkStatusValue;
+  url: string;
+  createdAt: string;
+  paidAt: string | null;
+}
+
 export interface InvoiceDetail extends InvoiceListItem {
   quoteId: string;
-  bookingId: string | null;
   notes: string | null;
   customerEmail: string;
   customerPhone: string;
@@ -60,6 +91,7 @@ export interface InvoiceDetail extends InvoiceListItem {
   tipAmount: number;
   items: { id: string; label: string; quantity: number; unitPrice: number; total: number }[];
   payments: { id: string; amount: number; status: string; method: string | null; createdAt: string }[];
+  paymentLinks: InvoicePaymentLinkSummary[];
 }
 
 export interface InvoiceableQuote {

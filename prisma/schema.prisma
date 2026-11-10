@@ -204,6 +204,7 @@ model Customer {
   recurringSchedules      RecurringSchedule[]
   payments                Payment[]
   invoices                Invoice[]
+  invoicePaymentLinks     InvoicePaymentLink[]
   communicationPreference CommunicationPreference?
   smsConsentEvents        SmsConsentEvent[]
   messages                Message[]
@@ -441,6 +442,50 @@ enum InvoiceStatus {
   OVERDUE
   REFUNDED
   CANCELLED
+}
+
+// A real, persistent Stripe Payment Link (not a 24h-expiring Checkout Session) requesting payment
+// for one or more invoices in a single charge -- the admin picks any number of a customer's
+// invoices, we sum their real outstanding balances, and Stripe hosts one page for the total. Kept
+// on file permanently (per the business's own ask) so there's always a record of what link was
+// sent and whether it was ever paid, even after the link itself is later deactivated.
+model InvoicePaymentLink {
+  id         String @id @default(cuid())
+  // Which invoices this link covers -- a real Postgres array so "does this invoice have an open
+  // link" can be queried directly (`has`), without parsing `items` below.
+  invoiceIds String[]
+  // The exact per-invoice amounts actually charged, snapshotted at link-creation time: [{invoiceId,
+  // invoiceNumber, bookingId, amount}]. The webhook applies exactly this breakdown rather than
+  // re-deriving each invoice's balance at payment time, which could have drifted (e.g. a manual
+  // payment recorded elsewhere in the meantime).
+  items Json
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  status InvoicePaymentLinkStatus @default(PENDING)
+  url    String
+
+  stripePaymentLinkId     String  @unique
+  stripeCheckoutSessionId String? // set once someone actually pays through it
+
+  paidAt   DateTime?
+  voidedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("invoice_payment_links")
+}
+
+// PENDING: generated, not yet paid. PAID: Stripe confirmed payment (see the webhook route) --
+// terminal. VOID: the admin cancelled it before payment (also deactivated on Stripe's side so the
+// real hosted page stops accepting money) -- also terminal.
+enum InvoicePaymentLinkStatus {
+  PENDING
+  PAID
+  VOID
 }
 
 model PromoCode {
