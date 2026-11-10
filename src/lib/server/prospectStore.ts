@@ -199,7 +199,9 @@ async function planPlacesQueries(intent: string): Promise<{ ok: true; plans: Que
   const apiKey = await getIntegrationValue("anthropicApiKey", "ANTHROPIC_API_KEY");
   if (!apiKey) return { ok: false, error: "no Anthropic key" };
 
-  const areas = business.areaServed.join(", ");
+  // Prospecting is deliberately scoped to Spokane Valley only, not the full areaServed list used
+  // for booking/SEO/FAQ content elsewhere -- the admin wants new-customer outreach kept local.
+  const areas = `${business.city}, ${business.region}`;
   const prompt = `${business.name} is a residential/commercial cleaning company. An admin wants to find REAL POTENTIAL CUSTOMERS near ${areas} using Google Places search. Here is what they typed, in their own words (it may be a full sentence, not a search query): "${intent}"
 
 Turn this into 1-4 concrete, well-formed Google Places text-search queries that will find real organizations that could realistically HIRE a cleaning company -- for example property management companies, real estate agencies, HOAs, medical/dental offices, gyms, daycares, event venues, short-term rental hosts, office buildings. Each query should read like a natural Google Places search string, e.g. "property management company Spokane Valley WA", scoped to the real service area above.
@@ -347,7 +349,8 @@ export async function searchWebForCleaningLeads(): Promise<SearchProspectsResult
   const apiKey = await getIntegrationValue("anthropicApiKey", "ANTHROPIC_API_KEY");
   if (!apiKey) return { ok: false, error: "Anthropic isn't configured yet, add an API key in Settings → Integrations." };
 
-  const areas = business.areaServed.join(", ");
+  // Scoped to Spokane Valley only, not the wider areaServed list -- see planPlacesQueries above.
+  const areas = `${business.city}, ${business.region}`;
   const today = new Date().toISOString().slice(0, 10);
   const query = `Search the OPEN WEB -- general search, not limited to any fixed list of sites -- for REAL, RECENT (within about the last 14 days -- today is ${today}) public posts where an individual homeowner or a local business in or very near ${areas} is actively looking for, needs, or wants to hire a house or commercial cleaning service right now.
 
@@ -484,7 +487,8 @@ function optOutUrl(prospectId: string): string {
  * relationship or claim that hasn't happened.
  */
 function buildCategoryDraft(p: MinimalProspect, contact: ContactInfo, founderFirstName: string): { subject: string; body: string; smsBody: string } {
-  const areas = business.areaServed.slice(0, 3).join(", ");
+  // Scoped to Spokane Valley only, not the wider areaServed list -- see planPlacesQueries above.
+  const areas = business.city;
   const who = p.businessName || p.contactName || "there";
   const category = (PROSPECT_CATEGORIES as readonly string[]).includes(p.category ?? "") ? (p.category as ProspectCategory) : "OTHER";
 

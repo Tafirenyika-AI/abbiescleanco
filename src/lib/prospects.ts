@@ -95,12 +95,14 @@ export function computeFitScore(p: { category: ProspectCategory; website: string
     factors.push("Business type often needs recurring cleaning");
   }
   if (p.address) {
-    const inServiceArea = business.areaServed.some((city) => p.address!.toLowerCase().includes(city.toLowerCase()));
+    // Prospecting is scoped to Spokane Valley only, not the wider areaServed list used for
+    // booking/SEO/FAQ content elsewhere -- see prospectStore.ts's buildCategoryDraft.
+    const inServiceArea = p.address.toLowerCase().includes(business.city.toLowerCase());
     if (inServiceArea) {
       points += 1;
-      factors.push("Address is within the declared service area");
+      factors.push("Address is within Spokane Valley");
     } else {
-      factors.push("Address may be outside the declared service area");
+      factors.push("Address may be outside Spokane Valley");
     }
   }
 
@@ -180,10 +182,11 @@ export function computeCommercialOpportunityScore(
 
   let geographicFit: { fraction: number; reason: string };
   if (p.address) {
-    const inServiceArea = business.areaServed.some((city) => p.address!.toLowerCase().includes(city.toLowerCase()));
+    // Prospecting is scoped to Spokane Valley only -- see computeFitScore above.
+    const inServiceArea = p.address.toLowerCase().includes(business.city.toLowerCase());
     geographicFit = inServiceArea
-      ? { fraction: 1, reason: "Address is within the declared service area" }
-      : { fraction: 0, reason: "Address may be outside the declared service area" };
+      ? { fraction: 1, reason: "Address is within Spokane Valley" }
+      : { fraction: 0, reason: "Address may be outside Spokane Valley" };
   } else {
     geographicFit = { fraction: 0.5, reason: "No address on file yet to check" };
   }
