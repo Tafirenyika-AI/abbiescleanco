@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, X, Loader2, FileStack, AlertCircle, Link2, Copy, Mail, Check } from "lucide-react";
+import { Plus, X, Loader2, FileStack, AlertCircle, Link2, Copy, Mail, Check, FlaskConical, ChevronDown, ChevronUp } from "lucide-react";
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import { useToast } from "@/components/admin/ui/Toast";
@@ -23,6 +23,101 @@ function payableReason(inv: InvoiceListItem): string | null {
   if (inv.balance <= 0) return "Already paid in full.";
   if (!inv.bookingId) return "No linked booking, so this can't be paid online yet.";
   return null;
+}
+
+/**
+ * Runs a small real charge through the exact same pipeline a real invoice uses (a completed test
+ * job -> a real invoice -> a real Stripe payment link), so paying it with a real card proves the
+ * whole chain actually works -- Stripe, the webhook, the payment recording, the invoice flipping
+ * to Paid -- before trusting it with a real client's money. Collapsed by default so it doesn't
+ * clutter the page once everyone's confident it works.
+ */
+function TestPaymentPanel() {
+  const { showToast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState("5.00");
+  const [testing, setTesting] = useState(false);
+  const [result, setResult] = useState<{ url: string; invoiceId: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function runTest() {
+    const cents = Math.round(Number(amount) * 100);
+    if (!Number.isFinite(cents) || cents < 100 || cents > 10000) {
+      showToast("Enter an amount between $1 and $100", "error");
+      return;
+    }
+    setTesting(true);
+    setResult(null);
+    const res = await fetch("/api/admin/invoices/test-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: cents }),
+    });
+    const data = await res.json().catch(() => null);
+    setTesting(false);
+    if (!data?.ok) return showToast(data?.error || "Couldn't create test payment link", "error");
+    setResult({ url: data.url, invoiceId: data.invoiceId });
+  }
+
+  async function copyLink() {
+    if (!result) return;
+    await navigator.clipboard.writeText(result.url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div className="rounded-xl border border-dashed border-admin-border bg-admin-bg/50 p-4">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between text-left">
+        <span className="flex items-center gap-2 text-sm font-semibold text-admin-text">
+          <FlaskConical className="size-4 text-admin-text-muted" aria-hidden /> Test a payment before emailing clients
+        </span>
+        {open ? <ChevronUp className="size-4 text-admin-text-muted" aria-hidden /> : <ChevronDown className="size-4 text-admin-text-muted" aria-hidden />}
+      </button>
+      {open && (
+        <div className="mt-3">
+          <p className="text-xs text-admin-text-muted">
+            Creates a real $1-$100 test invoice and a real Stripe payment link, using the exact same pipeline a client invoice uses. Pay it yourself with a real card to confirm Stripe,
+            the automatic payment tracking, and the invoice flipping to Paid all actually work -- then delete the test invoice from its own page when you&apos;re done.
+          </p>
+          <div className="mt-3 flex flex-wrap items-end gap-2">
+            <label className="block">
+              <span className="text-xs font-medium text-admin-text-muted">Amount ($1-$100)</span>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="mt-1 w-28 rounded-lg border border-admin-border px-2.5 py-1.5 text-sm text-admin-text"
+              />
+            </label>
+            <button type="button" onClick={runTest} disabled={testing} className="ios-press inline-flex items-center gap-1.5 rounded-full bg-admin-teal px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+              {testing && <Loader2 className="size-4 animate-spin" aria-hidden />} Create test payment link
+            </button>
+          </div>
+          {result && (
+            <div className="mt-3 rounded-lg border border-admin-border bg-admin-card p-3">
+              <div className="flex items-center gap-2">
+                <span className="flex-1 truncate text-sm text-admin-text">{result.url}</span>
+                <button type="button" onClick={copyLink} className="ios-press rounded-md p-1.5 text-admin-text-muted hover:bg-admin-bg">
+                  {copied ? <Check className="size-4 text-green-600" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-admin-text-muted">
+                Open that link and pay it with a real card. Once it goes through, check{" "}
+                <Link href={`/admin/invoices/${result.invoiceId}`} className="font-medium text-admin-teal-hover hover:underline">
+                  the test invoice
+                </Link>{" "}
+                for &quot;Paid&quot; status, then delete it from that page -- the real payment will still count toward your real revenue/tax totals unless you also refund it in Stripe.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function CompletedUninvoicedPanel({ initialBookings }: { initialBookings: CompletedUninvoicedBooking[] }) {
@@ -108,6 +203,8 @@ export default function InvoicesView({ invoices, completedUninvoiced }: { invoic
           <Plus className="size-4" aria-hidden /> New invoice
         </button>
       </div>
+
+      <TestPaymentPanel />
 
       <CompletedUninvoicedPanel initialBookings={completedUninvoiced} />
 
