@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { verifyAdminSessionToken, ADMIN_SESSION_COOKIE } from "@/lib/server/adminAuth";
 import { getAdminProfile, hasPermission } from "@/lib/server/adminUsers";
-import { listInvoices } from "@/lib/server/invoiceStore";
+import { listInvoices, listCompletedUninvoicedBookings } from "@/lib/server/invoiceStore";
 import InvoicesView from "@/components/admin/invoices/InvoicesView";
 
 export default async function AdminInvoicesPage() {
@@ -14,6 +14,9 @@ export default async function AdminInvoicesPage() {
     redirect("/admin");
   }
 
-  const invoices = await listInvoices();
-  return <InvoicesView invoices={invoices} />;
+  const [invoices, completedUninvoiced] = await Promise.all([
+    listInvoices(),
+    listCompletedUninvoicedBookings(),
+  ]);
+  return <InvoicesView invoices={invoices} completedUninvoiced={completedUninvoiced} />;
 }

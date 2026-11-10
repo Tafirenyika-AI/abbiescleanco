@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Printer, Ban, ArrowLeft, Loader2 } from "lucide-react";
+import { Printer, Ban, ArrowLeft, Loader2, Mail, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/components/admin/ui/Toast";
 import { invoiceStatusLabels, type InvoiceDetail } from "@/lib/invoices";
 import type { ContactInfo } from "@/lib/server/siteSettings";
@@ -35,6 +35,7 @@ export default function InvoiceDetailView({
   const { showToast } = useToast();
   const [invoice, setInvoice] = useState(initialInvoice);
   const [voiding, setVoiding] = useState(false);
+  const [emailing, setEmailing] = useState(false);
 
   async function voidThisInvoice() {
     if (!confirm(`Void invoice ${invoice.invoiceNumber}? This can't be undone.`)) return;
@@ -47,13 +48,35 @@ export default function InvoiceDetailView({
     showToast("Invoice voided.", "success");
   }
 
+  async function emailInvoice() {
+    const verb = invoice.emailedAt ? "Re-send" : "Send";
+    if (!confirm(`${verb} invoice ${invoice.invoiceNumber} to ${invoice.customerEmail || "the customer"} now? This sends a real email.`)) return;
+    setEmailing(true);
+    const res = await fetch(`/api/admin/invoices/${invoice.id}/send`, { method: "POST" });
+    const data = await res.json().catch(() => null);
+    setEmailing(false);
+    if (!data?.ok) return showToast(data?.error || "Couldn't send invoice email", "error");
+    setInvoice({ ...invoice, emailedAt: new Date().toISOString() });
+    showToast("Invoice emailed to customer.", "success");
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Link href="/admin/invoices" className="ios-press inline-flex items-center gap-1.5 text-sm font-medium text-admin-text-muted hover:text-admin-text">
           <ArrowLeft className="size-4" aria-hidden /> Back to invoices
         </Link>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {invoice.emailedAt && (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-admin-text-muted">
+              <CheckCircle2 className="size-3.5 text-green-600" aria-hidden /> Emailed {formatDate(invoice.emailedAt)}
+            </span>
+          )}
+          {invoice.status !== "CANCELLED" && (
+            <button type="button" onClick={emailInvoice} disabled={emailing} className="ios-press inline-flex items-center gap-1.5 rounded-full bg-admin-teal px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              {emailing ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Mail className="size-4" aria-hidden />} {invoice.emailedAt ? "Re-send" : "Email to customer"}
+            </button>
+          )}
           <button type="button" onClick={() => window.print()} className="ios-press inline-flex items-center gap-1.5 rounded-full bg-admin-bg px-4 py-2 text-sm font-semibold text-admin-text">
             <Printer className="size-4" aria-hidden /> Print / Save PDF
           </button>
@@ -94,6 +117,7 @@ export default function InvoiceDetailView({
             <p className="text-surface-700">{invoice.customerPhone}</p>
           </div>
           <div className="text-right">
+            {invoice.serviceDate && <p><span className="text-surface-700">Service date: </span><span className="font-medium text-navy-950">{formatDate(invoice.serviceDate)}</span></p>}
             <p><span className="text-surface-700">Issue date: </span><span className="font-medium text-navy-950">{formatDate(invoice.issueDate)}</span></p>
             {invoice.dueDate && <p><span className="text-surface-700">Due date: </span><span className="font-medium text-navy-950">{formatDate(invoice.dueDate)}</span></p>}
             <p><span className="text-surface-700">Quote: </span><span className="font-medium text-navy-950">{invoice.quoteNumber}</span></p>

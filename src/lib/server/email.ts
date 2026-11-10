@@ -206,6 +206,35 @@ export async function quoteEmail(params: {
   });
 }
 
+export async function invoiceEmail(params: {
+  firstName: string;
+  invoiceNumber: string;
+  serviceDateLabel: string | null;
+  dueDateLabel: string | null;
+  items: { label: string; quantity: number; unitPrice: number; total: number }[];
+  total: number;
+  balance: number;
+  bookingReference: string | null;
+  notes?: string | null;
+}) {
+  const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+  const itemRows = params.items
+    .map((i) => `<tr><td style="padding:6px 0">${escapeHtml(i.label)} ${i.quantity > 1 ? `× ${i.quantity}` : ""}</td><td style="padding:6px 0;text-align:right">${money(i.total)}</td></tr>`)
+    .join("");
+  return renderEmailTemplate("INVOICE_SENT", {
+    firstName: escapeHtml(params.firstName),
+    invoiceNumber: escapeHtml(params.invoiceNumber),
+    serviceDateRowHtml: params.serviceDateLabel ? `<tr><td style="padding:2px 0">Service date</td><td style="padding:2px 0;text-align:right">${escapeHtml(params.serviceDateLabel)}</td></tr>` : "",
+    dueDateRowHtml: params.dueDateLabel ? `<tr><td style="padding:2px 0">Due date</td><td style="padding:2px 0;text-align:right">${escapeHtml(params.dueDateLabel)}</td></tr>` : "",
+    itemsRowsHtml: itemRows,
+    totalLabel: money(params.total),
+    balanceLabel: money(params.balance),
+    bookingReferenceBlockHtml: params.bookingReference ? `<p style="color:#4a5a6a;font-size:13px">Booking reference: ${escapeHtml(params.bookingReference)}</p>` : "",
+    notesBlockHtml: params.notes?.trim() ? `<p style="white-space:pre-wrap">${escapeHtml(params.notes.trim())}</p>` : "",
+    ...bizVars,
+  });
+}
+
 export async function paymentLinkEmail(params: { firstName: string; amountLabel: string; description: string; url: string }) {
   return renderEmailTemplate("PAYMENT_LINK", {
     firstName: escapeHtml(params.firstName),

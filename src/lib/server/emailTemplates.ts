@@ -122,6 +122,28 @@ export const EMAIL_TEMPLATE_DEFS: EmailTemplateDef[] = [
     ${WRAP_CLOSE}`,
   },
   {
+    key: "INVOICE_SENT",
+    name: "Invoice sent",
+    description: "Sent when an admin emails a real invoice to the customer. The line-item table and totals aren't editable here, but everything around them is.",
+    variables: ["firstName", "invoiceNumber", "serviceDateRowHtml", "dueDateRowHtml", "itemsRowsHtml", "totalLabel", "balanceLabel", "bookingReferenceBlockHtml", "notesBlockHtml", "businessPhone", "businessName", "businessCity", "businessRegion"],
+    defaultSubject: "Invoice {{invoiceNumber}} from {{businessName}}",
+    defaultHtml: `${WRAP_OPEN}
+      <h2 style="color:#0b1f33">Hi {{firstName}},</h2>
+      <p>Here's your invoice <strong>{{invoiceNumber}}</strong>:</p>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;color:#4a5a6a">
+        {{serviceDateRowHtml}}
+        {{dueDateRowHtml}}
+      </table>
+      <table style="width:100%;border-collapse:collapse;margin-top:12px">{{itemsRowsHtml}}</table>
+      <p style="font-size:18px;font-weight:bold;margin-top:12px">Total: {{totalLabel}}</p>
+      <p style="font-size:14px;color:#4a5a6a">Balance due: {{balanceLabel}}</p>
+      {{bookingReferenceBlockHtml}}
+      {{notesBlockHtml}}
+      <p>Questions about this invoice? Reply to this email or call/text us at {{businessPhone}}.</p>
+      ${SIGNOFF}
+    ${WRAP_CLOSE}`,
+  },
+  {
     key: "PAYMENT_LINK",
     name: "Payment request",
     description: "Sent when an admin generates a Stripe payment link and chooses to email it.",

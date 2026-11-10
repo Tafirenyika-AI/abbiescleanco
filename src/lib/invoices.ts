@@ -34,6 +34,11 @@ export interface InvoiceListItem {
   status: InvoiceStatusValue;
   issueDate: string;
   dueDate: string | null;
+  // The real day the job happened (booking.actualEnd/actualStart, falling back to
+  // scheduledEnd/scheduledStart), as distinct from issueDate (when the invoice was created) --
+  // null when the invoice has no linked booking. See invoiceStore.ts's bookingServiceDate.
+  serviceDate: string | null;
+  emailedAt: string | null;
   customerName: string;
   quoteNumber: string;
   bookingReference: string | null;
@@ -64,4 +69,17 @@ export interface InvoiceableQuote {
   total: number;
   bookingId: string | null;
   bookingReference: string | null;
+}
+
+/** A real COMPLETED job whose accepted quote has never been invoiced -- surfaced as its own panel
+ *  on the Invoices page so this gap (the real one that prompted this feature) can't silently
+ *  recur. See invoiceStore.ts's listCompletedUninvoicedBookings. */
+export interface CompletedUninvoicedBooking {
+  bookingId: string;
+  reference: string;
+  customerName: string;
+  serviceName: string;
+  serviceDate: string | null;
+  quoteId: string;
+  total: number;
 }

@@ -1,11 +1,21 @@
 import { prisma, isDatabaseConfigured } from "@/lib/db";
-import { type InvoiceStatusValue, type InvoiceListItem, type InvoiceDetail, type InvoiceableQuote } from "@/lib/invoices";
+import { type InvoiceStatusValue, type InvoiceListItem, type InvoiceDetail, type InvoiceableQuote, type CompletedUninvoicedBooking } from "@/lib/invoices";
 
-export { INVOICE_STATUSES, invoiceStatusLabels, type InvoiceStatusValue, type InvoiceListItem, type InvoiceDetail, type InvoiceableQuote } from "@/lib/invoices";
+export { INVOICE_STATUSES, invoiceStatusLabels, type InvoiceStatusValue, type InvoiceListItem, type InvoiceDetail, type InvoiceableQuote, type CompletedUninvoicedBooking } from "@/lib/invoices";
 
 function db() {
   if (!isDatabaseConfigured || !prisma) throw new Error("Invoices require DATABASE_URL to be configured.");
   return prisma;
+}
+
+const DEFAULT_PAYMENT_TERM_DAYS = 15; // Net 15, the business's own standard payment terms.
+
+/** The real day the job happened -- actual times if recorded, falling back to the scheduled
+ *  window (same fallback order bookingStore's payables math already uses for HOURLY payouts). */
+function bookingServiceDate(booking: { actualStart: Date | null; actualEnd: Date | null; scheduledStart: Date | null; scheduledEnd: Date | null } | null): string | null {
+  if (!booking) return null;
+  const d = booking.actualEnd ?? booking.actualStart ?? booking.scheduledEnd ?? booking.scheduledStart;
+  return d?.toISOString() ?? null;
 }
 
 /**
@@ -78,6 +88,8 @@ export async function listInvoices(): Promise<InvoiceListItem[]> {
         status,
         issueDate: inv.issueDate.toISOString(),
         dueDate: inv.dueDate?.toISOString() ?? null,
+        serviceDate: bookingServiceDate(inv.booking),
+        emailedAt: inv.emailedAt?.toISOString() ?? null,
         customerName: `${inv.customer.firstName} ${inv.customer.lastName}`.trim(),
         quoteNumber: inv.quote.quoteNumber,
         bookingReference: inv.booking?.reference ?? null,
@@ -113,6 +125,8 @@ export async function getInvoiceById(id: string): Promise<InvoiceDetail | null> 
     status,
     issueDate: inv.issueDate.toISOString(),
     dueDate: inv.dueDate?.toISOString() ?? null,
+    serviceDate: bookingServiceDate(inv.booking),
+    emailedAt: inv.emailedAt?.toISOString() ?? null,
     notes: inv.notes,
     customerName: `${inv.customer.firstName} ${inv.customer.lastName}`.trim(),
     customerEmail: inv.customer.email ?? "",
@@ -159,13 +173,18 @@ export async function createInvoiceFromQuote(
     if (!booking) return { ok: false, error: "Booking not found" };
   }
 
+  // Net 15 by default (the business's standard payment terms) -- an explicit dueDate always wins.
+  const issueDate = new Date();
+  const dueDate = data.dueDate ? new Date(data.dueDate) : new Date(issueDate.getTime() + DEFAULT_PAYMENT_TERM_DAYS * 24 * 60 * 60 * 1000);
+
   const invoice = await db().invoice.create({
     data: {
       invoiceNumber: generateInvoiceNumber(),
       quoteId,
       bookingId: data.bookingId || null,
       customerId: quote.lead.customerId,
-      dueDate: data.dueDate ? new Date(data.dueDate) : null,
+      issueDate,
+      dueDate,
       notes: data.notes?.trim() || null,
       status: "UNPAID",
     },
@@ -179,6 +198,41 @@ export async function voidInvoice(id: string): Promise<{ ok: boolean; error?: st
   if (existing.status === "CANCELLED") return { ok: true };
   await db().invoice.update({ where: { id }, data: { status: "CANCELLED" } });
   return { ok: true };
+}
+
+export async function markInvoiceEmailed(id: string): Promise<void> {
+  await db().invoice.update({ where: { id }, data: { emailedAt: new Date() } });
+}
+
+/**
+ * Real completed jobs (status COMPLETED, bookings only -- not quotes/leads in general) whose
+ * accepted quote has never been invoiced. Surfaced as its own panel on the Invoices page precisely
+ * because this gap went unnoticed for weeks in practice (a real job sitting completed-but-unbilled
+ * with no way to see that from the Invoices screen) -- this makes the gap visible and one click to
+ * close, system-wide, not just for whichever customer happened to be checked by hand.
+ */
+export async function listCompletedUninvoicedBookings(): Promise<CompletedUninvoicedBooking[]> {
+  if (!isDatabaseConfigured || !prisma) return [];
+  const bookings = await prisma.booking.findMany({
+    where: {
+      status: "COMPLETED",
+      deletedAt: null,
+      quote: { status: "ACCEPTED", deletedAt: null, invoices: { none: {} } },
+    },
+    include: { customer: true, quote: true, lead: { include: { service: true } } },
+    orderBy: { scheduledStart: "asc" },
+  });
+  return bookings
+    .filter((b) => b.quote)
+    .map((b) => ({
+      bookingId: b.id,
+      reference: b.reference,
+      customerName: b.customer ? `${b.customer.firstName} ${b.customer.lastName}`.trim() : "—",
+      serviceName: b.lead?.service.name ?? "—",
+      serviceDate: bookingServiceDate(b),
+      quoteId: b.quoteId!,
+      total: b.quote!.total,
+    }));
 }
 
 /** Quotes eligible to be invoiced (ACCEPTED, not already invoiced) -- used by the "New invoice" picker. */

@@ -3,18 +3,72 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, X, Loader2, FileStack } from "lucide-react";
+import { Plus, X, Loader2, FileStack, AlertCircle } from "lucide-react";
 import Badge from "@/components/admin/ui/Badge";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import { useToast } from "@/components/admin/ui/Toast";
-import { type InvoiceListItem, type InvoiceableQuote, invoiceStatusLabels, invoiceStatusTone } from "@/lib/invoices";
+import { type InvoiceListItem, type InvoiceableQuote, type CompletedUninvoicedBooking, invoiceStatusLabels, invoiceStatusTone } from "@/lib/invoices";
 import { formatDate } from "@/lib/adminDate";
 
 function money(cents: number) {
   return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-export default function InvoicesView({ invoices }: { invoices: InvoiceListItem[] }) {
+function CompletedUninvoicedPanel({ initialBookings }: { initialBookings: CompletedUninvoicedBooking[] }) {
+  const router = useRouter();
+  const { showToast } = useToast();
+  const [bookings, setBookings] = useState(initialBookings);
+  const [generating, setGenerating] = useState<string | null>(null);
+
+  async function generate(b: CompletedUninvoicedBooking) {
+    setGenerating(b.bookingId);
+    const res = await fetch("/api/admin/invoices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quoteId: b.quoteId, bookingId: b.bookingId }),
+    });
+    const data = await res.json().catch(() => null);
+    setGenerating(null);
+    if (!data?.ok) return showToast(data?.error || "Couldn't generate invoice", "error");
+    setBookings((prev) => prev.filter((x) => x.bookingId !== b.bookingId));
+    showToast("Invoice generated.", "success");
+    router.push(`/admin/invoices/${data.id}`);
+  }
+
+  if (bookings.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+      <div className="flex items-start gap-2">
+        <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden />
+        <div>
+          <p className="text-sm font-semibold text-amber-900">{bookings.length} completed job{bookings.length === 1 ? "" : "s"} never invoiced</p>
+          <p className="mt-0.5 text-xs text-amber-800">A job was marked complete but no invoice was ever generated for it. One click creates it from the real accepted quote -- nothing is sent until you choose to email it.</p>
+        </div>
+      </div>
+      <ul className="mt-3 space-y-2">
+        {bookings.map((b) => (
+          <li key={b.bookingId} className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white px-3.5 py-2.5">
+            <div>
+              <p className="text-sm font-medium text-admin-text">{b.customerName}, {b.serviceName}</p>
+              <p className="text-xs text-admin-text-muted">{b.reference} · {b.serviceDate ? `Serviced ${formatDate(b.serviceDate)}` : "No service date"} · {money(b.total)}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => generate(b)}
+              disabled={generating === b.bookingId}
+              className="ios-press inline-flex items-center gap-1.5 rounded-full bg-admin-teal px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              {generating === b.bookingId && <Loader2 className="size-3.5 animate-spin" aria-hidden />} Generate invoice
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default function InvoicesView({ invoices, completedUninvoiced }: { invoices: InvoiceListItem[]; completedUninvoiced: CompletedUninvoicedBooking[] }) {
   const [pickerOpen, setPickerOpen] = useState(false);
 
   return (
@@ -28,6 +82,8 @@ export default function InvoicesView({ invoices }: { invoices: InvoiceListItem[]
           <Plus className="size-4" aria-hidden /> New invoice
         </button>
       </div>
+
+      <CompletedUninvoicedPanel initialBookings={completedUninvoiced} />
 
       {invoices.length === 0 ? (
         <EmptyState icon={FileStack} title="No invoices yet" description="Issue an invoice from any accepted quote." />

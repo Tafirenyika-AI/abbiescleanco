@@ -420,6 +420,9 @@ model Invoice {
   issueDate DateTime @default(now())
   dueDate   DateTime?
   notes     String?
+  // When this invoice was actually emailed to the customer (the "Email to customer" action) --
+  // distinct from issueDate (when the record was created) and from createdAt. Null until sent.
+  emailedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
