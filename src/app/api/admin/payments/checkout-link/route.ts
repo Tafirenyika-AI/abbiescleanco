@@ -5,6 +5,7 @@ import { getBookingById } from "@/lib/server/bookingStore";
 import { createCheckoutSession } from "@/lib/server/stripe";
 import { createPendingStripePayment } from "@/lib/server/paymentStore";
 import { sendEmail, paymentLinkEmail } from "@/lib/server/email";
+import { getSiteUrl } from "@/lib/server/siteUrl";
 
 const schema = z.object({
   bookingId: z.string().min(1),
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
   const booking = await getBookingById(parsed.data.bookingId);
   if (!booking) return NextResponse.json({ ok: false, error: "Booking not found" }, { status: 404 });
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const siteUrl = getSiteUrl();
   const session = await createCheckoutSession({
     bookingId: parsed.data.bookingId,
     amount: parsed.data.amount,

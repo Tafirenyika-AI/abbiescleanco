@@ -5,6 +5,7 @@ import { listAdminUsers, createAdminUser } from "@/lib/server/adminUsers";
 import { isDatabaseConfigured } from "@/lib/db";
 import { sendEmail, adminInviteEmail } from "@/lib/server/email";
 import { notifyAdmins } from "@/lib/server/notificationStore";
+import { getSiteUrl } from "@/lib/server/siteUrl";
 
 export async function GET(req: NextRequest) {
   const admin = await requireAdmin(req, "MANAGE_USERS");
@@ -39,8 +40,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const created = await createAdminUser(parsed.data);
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    const { subject, html } = await adminInviteEmail({ name: parsed.data.name, loginUrl: `${siteUrl}/admin/login` });
+    const { subject, html } = await adminInviteEmail({ name: parsed.data.name, loginUrl: `${getSiteUrl()}/admin/login` });
     await sendEmail({ to: parsed.data.email, subject, html });
     await notifyAdmins("ADMIN_USER_CHANGED", `Admin added: ${parsed.data.name}`, `${parsed.data.role} · ${parsed.data.email}`, "/admin/users");
     return NextResponse.json({ ok: true, id: created.id });

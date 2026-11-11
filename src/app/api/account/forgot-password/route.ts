@@ -3,6 +3,7 @@ import { forgotPasswordSchema } from "@/lib/validation/account";
 import { requestPasswordReset, AccountsUnavailableError } from "@/lib/server/accounts";
 import { sendEmail } from "@/lib/server/email";
 import { checkRateLimit } from "@/lib/server/rateLimit";
+import { getSiteUrl } from "@/lib/server/siteUrl";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -27,8 +28,7 @@ export async function POST(req: NextRequest) {
     const token = await requestPasswordReset(parsed.data.email);
     // Always respond success — never reveal whether an account exists for this email.
     if (token) {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-      const resetUrl = `${siteUrl}/account/reset-password?token=${token}`;
+      const resetUrl = `${getSiteUrl()}/account/reset-password?token=${token}`;
       await sendEmail({
         to: parsed.data.email,
         subject: "Reset your password",

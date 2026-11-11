@@ -3,6 +3,7 @@ import { prisma, isDatabaseConfigured } from "@/lib/db";
 import { getInvoiceById } from "@/lib/server/invoiceStore";
 import { createPaymentLink, deactivatePaymentLink } from "@/lib/server/stripe";
 import { recordPayment } from "@/lib/server/paymentStore";
+import { getSiteUrl } from "@/lib/server/siteUrl";
 import { type InvoicePaymentLinkSummary } from "@/lib/invoices";
 
 function db() {
@@ -67,8 +68,7 @@ export async function createPaymentLinkForInvoices(invoiceIds: string[]): Promis
       ? `Invoice ${invoiceNumbers[0]}, Abbie's Clean Method`
       : `${invoiceNumbers.length} invoices (${invoiceNumbers.join(", ")}), Abbie's Clean Method`;
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  const stripeResult = await createPaymentLink({ amount, description, successUrl: `${siteUrl}/pay/success` });
+  const stripeResult = await createPaymentLink({ amount, description, successUrl: `${getSiteUrl()}/pay/success` });
   if (!stripeResult.ok) return { ok: false, error: stripeResult.error };
 
   await db().invoicePaymentLink.create({
